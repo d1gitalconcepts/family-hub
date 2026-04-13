@@ -1,7 +1,10 @@
 // Family Hub - Google Tasks sync
 const { google } = require('googleapis');
+const fs = require('fs');
+const path = require('path');
 
 const LIST_NAME = 'Shopping List';
+const IDS_FILE = path.join(__dirname, '.ids.json');
 
 async function syncTasks(authClient, items) {
   const service = google.tasks({ version: 'v1', auth: authClient });
@@ -30,14 +33,38 @@ async function syncTasks(authClient, items) {
   console.log(`[Tasks] Synced ${items.length} items (${unchecked.length} remaining).`);
 }
 
+// ---------------------------------------------------------------------------
+// List lookup — store the ID on disk after first find/create so we never
+// search by name again (prevents duplicate list creation on rapid syncs)
+// ---------------------------------------------------------------------------
+
+function readIds() {
+  if (fs.existsSync(IDS_FILE)) return JSON.parse(fs.readFileSync(IDS_FILE, 'utf8'));
+  return {};
+}
+
+function saveId(key, id) {
+  const ids = readIds();
+  ids[key] = id;
+  fs.writeFileSync(IDS_FILE, JSON.stringify(ids, null, 2));
+}
+
 async function getOrCreateList(service) {
+  const ids = readIds();
+  if (ids.shoppingListId) return ids.shoppingListId;
+
   const res = await service.tasklists.list();
   const lists = res.data.items || [];
   const existing = lists.find((l) => l.title === LIST_NAME);
-  if (existing) return existing.id;
+
+  if (existing) {
+    saveId('shoppingListId', existing.id);
+    return existing.id;
+  }
 
   const created = await service.tasklists.insert({ requestBody: { title: LIST_NAME } });
   console.log(`[Tasks] Created task list "${LIST_NAME}".`);
+  saveId('shoppingListId', created.data.id);
   return created.data.id;
 }
 
