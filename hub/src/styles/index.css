@@ -844,7 +844,7 @@ html, body, #root {
   background: var(--surface);
   border-radius: 12px;
   width: min(760px, 95vw);
-  max-height: 90vh;
+  height: min(700px, 90vh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
