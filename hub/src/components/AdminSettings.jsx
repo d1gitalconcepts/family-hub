@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useTaskLists } from '../hooks/useTaskLists';
 
@@ -12,8 +12,15 @@ export default function AdminSettings({ onClose }) {
   const [weatherConfig, setWeatherConfig] = useConfig('weather_config');
   const allTaskLists = useTaskLists();
 
-  const [awApiKey,  setAwApiKey]  = useState(weatherKeys?.api_key  || '');
-  const [awAppKey,  setAwAppKey]  = useState(weatherKeys?.app_key  || '');
+  const [awApiKey,   setAwApiKey]   = useState('');
+  const [awAppKey,   setAwAppKey]   = useState('');
+  const [keysSaved,  setKeysSaved]  = useState(false);
+
+  // Sync inputs when weatherKeys loads from Supabase
+  useEffect(() => {
+    if (weatherKeys?.api_key) setAwApiKey(weatherKeys.api_key);
+    if (weatherKeys?.app_key) setAwAppKey(weatherKeys.app_key);
+  }, [weatherKeys]);
   const weatherEnabled = weatherConfig?.enabled !== false;
   const weatherFields  = weatherConfig?.fields  || ['temp','feelsLike','humidity','windspeed','rain'];
 
@@ -31,6 +38,8 @@ export default function AdminSettings({ onClose }) {
 
   function saveWeatherKeys() {
     setWeatherKeys({ api_key: awApiKey.trim(), app_key: awAppKey.trim() });
+    setKeysSaved(true);
+    setTimeout(() => setKeysSaved(false), 2500);
   }
 
   function toggleWeatherField(key) {
@@ -400,7 +409,7 @@ export default function AdminSettings({ onClose }) {
                   style={{ alignSelf: 'flex-start', marginTop: 4 }}
                   onClick={saveWeatherKeys}
                 >
-                  Save Keys
+                  {keysSaved ? '✓ Saved' : 'Save Keys'}
                 </button>
               </div>
 
