@@ -13,6 +13,7 @@
   --radius:       8px;
   --sidebar-w:    280px;
   --header-h:     56px;
+  --label-w:      38px;
   --font:         'Google Sans', Roboto, system-ui, sans-serif;
 }
 
@@ -135,7 +136,7 @@ html, body, #root {
 /* Shared sticky day headers */
 .day-headers {
   display: grid;
-  grid-template-columns: repeat(8, minmax(110px, 1fr));
+  grid-template-columns: var(--label-w) repeat(8, minmax(110px, 1fr));
   border-bottom: 2px solid var(--border);
   background: var(--bg-secondary);
   flex-shrink: 0;
@@ -143,6 +144,11 @@ html, body, #root {
   top: 0;
   z-index: 2;
   overflow-x: auto;
+}
+
+.day-header-spacer {
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
 /* Scrollable section bands */
@@ -186,23 +192,36 @@ html, body, #root {
 
 /* Section rows */
 .section-row {
+  display: flex;
   border-bottom: 2px solid var(--border);
 }
 
 .section-row-label {
-  padding: 3px 10px;
+  width: var(--label-w);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
+  padding: 4px 0;
+}
+
+.section-row-label span {
+  writing-mode: vertical-rl;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   color: var(--text-muted);
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .section-cells {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(8, minmax(110px, 1fr));
+  min-width: 0;
 }
 
 .day-cell {

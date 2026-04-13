@@ -72,6 +72,7 @@ export default function WeekView() {
       <div className="week-container">
         {/* Shared sticky day headers */}
         <div className="day-headers">
+          <div className="day-header-spacer" />
           {days.map((day, i) => {
             const isToday =
               day.getDate()     === today.getDate()     &&

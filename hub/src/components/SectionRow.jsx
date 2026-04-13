@@ -28,7 +28,9 @@ export default function SectionRow({ section, days, events, calendarConfig }) {
 
   return (
     <div className="section-row">
-      {section.name && <div className="section-row-label">{section.name}</div>}
+      <div className="section-row-label">
+        {section.name && <span>{section.name}</span>}
+      </div>
       <div className="section-cells">
         {days.map((day, i) => {
           const dayEvents = eventsForDay(day);
