@@ -9,25 +9,48 @@ export default function DayColumn({ date, events, calendarConfig, isActive }) {
     date.getMonth() === today.getMonth() &&
     date.getFullYear() === today.getFullYear();
 
-  // Build color lookup from config
+  // Build lookup maps from config
   const colorMap = {};
+  const nameMap = {};
   if (calendarConfig) {
-    calendarConfig.forEach((c) => { colorMap[c.id] = c.color; });
+    calendarConfig.forEach((c) => {
+      colorMap[c.id] = c.color;
+      nameMap[c.id] = c.name;
+    });
   }
 
-  // Visible calendars set
-  const visibleIds = calendarConfig
-    ? new Set(calendarConfig.filter((c) => c.visible !== false).map((c) => c.id))
-    : null;
+  // Ordered visible calendars (array order = display order)
+  const orderedVisible = calendarConfig
+    ? calendarConfig.filter((c) => c.visible !== false)
+    : [];
 
-  const filtered = visibleIds
-    ? events.filter((e) => visibleIds.has(e.calendar_id))
+  // Events that belong to no configured calendar (show at bottom, ungrouped)
+  const configuredIds = new Set(orderedVisible.map((c) => c.id));
+
+  const visibleEvents = calendarConfig
+    ? events.filter((e) => configuredIds.has(e.calendar_id))
     : events;
 
-  const allDay = filtered.filter((e) => e.is_all_day);
-  const timed  = filtered.filter((e) => !e.is_all_day).sort((a, b) =>
-    new Date(a.start_at) - new Date(b.start_at)
-  );
+  const ungrouped = events.filter((e) => !configuredIds.has(e.calendar_id));
+
+  // Sort events within a group: all-day first, then timed by start time
+  function sortGroup(evs) {
+    const allDay = evs.filter((e) => e.is_all_day);
+    const timed  = evs.filter((e) => !e.is_all_day).sort((a, b) =>
+      new Date(a.start_at) - new Date(b.start_at)
+    );
+    return [...allDay, ...timed];
+  }
+
+  // Build ordered groups
+  const groups = orderedVisible
+    .map((cal) => ({
+      cal,
+      events: sortGroup(visibleEvents.filter((e) => e.calendar_id === cal.id)),
+    }))
+    .filter((g) => g.events.length > 0);
+
+  const hasAny = groups.length > 0 || ungrouped.length > 0;
 
   return (
     <div className={`day-column${isActive ? ' active-day' : ''}`}>
@@ -36,13 +59,23 @@ export default function DayColumn({ date, events, calendarConfig, isActive }) {
         <span className="day-date">{date.getDate()}</span>
       </div>
       <div className="day-events">
-        {allDay.map((e) => (
+        {groups.map(({ cal, events: evs }) => (
+          <div key={cal.id} className="cal-group">
+            <div className="cal-group-label" style={{ '--cal-color': colorMap[cal.id] }}>
+              <span className="cal-group-dot" />
+              <span>{nameMap[cal.id] || cal.name}</span>
+            </div>
+            {evs.map((e) => (
+              <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} />
+            ))}
+          </div>
+        ))}
+
+        {ungrouped.map((e) => (
           <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} />
         ))}
-        {timed.map((e) => (
-          <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} />
-        ))}
-        {filtered.length === 0 && (
+
+        {!hasAny && (
           <span style={{ color: 'var(--text-muted)', fontSize: 12, padding: 4 }}>—</span>
         )}
       </div>

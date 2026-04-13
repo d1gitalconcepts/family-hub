@@ -16,8 +16,9 @@ export function useConfig(key) {
 
     fetch();
 
+    const channelName = `config_${key}_${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`config_${key}`)
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: `key=eq.${key}` }, (payload) => {
         setValue(payload.new?.value ?? null);
       })

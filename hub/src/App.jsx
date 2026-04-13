@@ -10,6 +10,7 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [viewKey, setViewKey] = useState(0);
   const [theme, setTheme] = useState(() => localStorage.getItem('fh_theme') || 'auto');
 
   useEffect(() => {
@@ -60,11 +61,13 @@ export default function App() {
       </header>
 
       <div className="app-body">
-        <WeekView />
+        <WeekView key={viewKey} />
         <ShoppingList />
       </div>
 
-      {showSettings && <AdminSettings onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <AdminSettings onClose={() => { setShowSettings(false); setViewKey((k) => k + 1); }} />
+      )}
     </div>
   );
 }

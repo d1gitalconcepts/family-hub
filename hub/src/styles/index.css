@@ -124,23 +124,33 @@ html, body, #root {
   text-align: center;
 }
 
-.week-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
+.week-container {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-.day-column {
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
+/* Shared sticky day headers */
+.day-headers {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(110px, 1fr));
+  border-bottom: 2px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  overflow-x: auto;
 }
 
-.day-column:last-child { border-right: none; }
+/* Scrollable section bands */
+.sections-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+}
 
 .day-header {
   padding: 8px 8px 4px;
@@ -148,16 +158,12 @@ html, body, #root {
   font-weight: 500;
   font-size: 13px;
   color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-secondary);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  border-right: 1px solid var(--border);
 }
 
-.day-header.today {
-  color: var(--accent);
-}
+.day-header:last-child { border-right: none; }
+
+.day-header.today { color: var(--accent); }
 
 .day-date {
   display: block;
@@ -178,13 +184,42 @@ html, body, #root {
   font-size: 18px;
 }
 
-.day-events {
-  flex: 1;
+/* Section rows */
+.section-row {
+  border-bottom: 2px solid var(--border);
+}
+
+.section-row-label {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-cells {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(110px, 1fr));
+}
+
+.day-cell {
+  border-right: 1px solid var(--border);
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  overflow-y: auto;
+  min-height: 36px;
+}
+
+.day-cell:last-child { border-right: none; }
+
+.day-cell-empty {
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 2px 2px;
 }
 
 /* ── Event cards ───────────────────────────────────────────── */
@@ -221,6 +256,90 @@ html, body, #root {
 .event-cal {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/* ── Settings: sections ────────────────────────────────────── */
+
+.settings-section-block {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.settings-section-block.drop-target {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+}
+
+.settings-section-header:active { cursor: grabbing; }
+
+.section-name-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  cursor: text;
+}
+
+.section-name-input:focus {
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.section-cal-drop-zone {
+  padding: 6px 12px;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+
+.section-cal-drop-zone.drop-active {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+  border-radius: 4px;
+}
+
+.drop-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: italic;
+  padding: 6px 0;
+}
+
+/* ── Settings drag-to-reorder ──────────────────────────────── */
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 0 2px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active { cursor: grabbing; }
+
+.cal-row[draggable] { cursor: default; }
+
+.cal-row-drop-target {
+  border-top: 2px solid var(--accent);
+  margin-top: -1px;
 }
 
 /* ── Buttons ───────────────────────────────────────────────── */
@@ -470,7 +589,6 @@ html, body, #root {
 
 @media (max-width: 1024px) {
   .sidebar { width: 240px; }
-  .week-grid { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
 }
 
 @media (max-width: 768px) {
@@ -481,7 +599,9 @@ html, body, #root {
     border-top: 1px solid var(--border);
     max-height: 40vh;
   }
-  .week-grid { grid-template-columns: 1fr; }
-  .day-column { min-width: unset; }
-  .day-column:not(.active-day) { display: none; }
+  /* Horizontal scroll on mobile for the 8-day grid */
+  .day-headers,
+  .section-cells {
+    min-width: calc(8 * 110px);
+  }
 }
