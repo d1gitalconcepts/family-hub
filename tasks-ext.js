@@ -44,20 +44,22 @@ async function syncTasks(items) {
     ...items.filter((i) => !i.checked),
     ...items.filter((i) =>  i.checked),
   ];
+  const created = [];
   for (const item of ordered) {
-    await googlePost(`${TASKS_BASE}/lists/${listId}/tasks`, {
+    const task = await googlePost(`${TASKS_BASE}/lists/${listId}/tasks`, {
       title:  item.text,
       status: item.checked ? 'completed' : 'needsAction',
     });
+    created.push({ text: item.text, checked: item.checked, google_task_id: task.id });
   }
 
   console.log(`[Tasks] Synced ${items.length} items (${ordered.filter(i => !i.checked).length} remaining).`);
 
-  // Mirror to Supabase
+  // Mirror to Supabase with real Google Task IDs
   await sbUpsert('task_lists', [{
     list_id:    listId,
     list_name:  LIST_NAME,
-    items:      items.map((i) => ({ text: i.text, checked: i.checked, google_task_id: null })),
+    items:      created,
     updated_at: new Date().toISOString(),
   }]);
 }
