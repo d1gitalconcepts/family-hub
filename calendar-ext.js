@@ -17,30 +17,75 @@ async function syncMealCalendar(lines) {
   _mealSyncRunning = true;
 
   try {
-  if (lines[lines.length - 1] === '…') {
-    console.log('[Calendar] Skipping — note is truncated. Open the note in Keep to sync fully.');
-    return;
-  }
+    if (lines[lines.length - 1] === '…') {
+      console.log('[Calendar] Skipping — note is truncated. Open the note in Keep to sync fully.');
+      return;
+    }
 
-  const calendarId = await getOrCreateMealCalendar();
-  const meals = parseMeals(lines);
+    const calendarId = await getOrCreateMealCalendar();
+    const meals      = parseMeals(lines);
 
-  if (!Object.keys(meals).length) {
-    console.log('[Calendar] No meals parsed.');
-    return;
-  }
+    if (!Object.keys(meals).length) {
+      console.log('[Calendar] No meals parsed.');
+      return;
+    }
 
-  const dates = Object.values(meals).map((m) => m.date);
-  await deleteEventsOnDates(calendarId, dates);
-
-  for (const [, { date, meal, url }] of Object.entries(meals)) {
-    if (!meal) continue;
-    await googlePost(
-      `${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
-      { summary: `Dinner: ${meal}`, description: url || undefined, start: { date }, end: { date } }
+    // Fetch all existing events for the week in one query
+    const dates     = Object.values(meals).map((m) => m.date).sort();
+    const weekMin   = dates[0];
+    const weekMax   = dates[dates.length - 1];
+    const existRes  = await googleGet(
+      `${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events` +
+      `?timeMin=${encodeURIComponent(weekMin + 'T00:00:00-12:00')}` +
+      `&timeMax=${encodeURIComponent(weekMax + 'T23:59:59+14:00')}` +
+      `&singleEvents=true`
     );
-    console.log(`[Calendar] Created ${date}: ${meal}`);
-  }
+    const existing = existRes.items || [];
+
+    // Group existing events by date
+    const byDate = {};
+    for (const e of existing) {
+      const d = e.start?.date;
+      if (d) { byDate[d] = byDate[d] || []; byDate[d].push(e); }
+    }
+
+    const plannedDates = new Set(dates);
+
+    // Delete events on dates that no longer have a meal
+    for (const [d, evts] of Object.entries(byDate)) {
+      if (!plannedDates.has(d)) {
+        await Promise.all(evts.map((e) =>
+          googleDelete(`${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${e.id}`)
+        ));
+        console.log(`[Calendar] Removed stale events on ${d}`);
+      }
+    }
+
+    // For each planned meal: delete wrong/extra events, create only if missing
+    for (const [, { date, meal, url }] of Object.entries(meals)) {
+      if (!meal) continue;
+      const expected = `Dinner: ${meal}`;
+      const dayEvts  = byDate[date] || [];
+      const correct  = dayEvts.filter((e) => e.summary === expected);
+      const wrong    = dayEvts.filter((e) => e.summary !== expected);
+
+      // Delete stale/duplicate events
+      const toDelete = [...wrong, ...correct.slice(1)];
+      await Promise.all(toDelete.map((e) =>
+        googleDelete(`${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${e.id}`)
+      ));
+
+      // Create only if the correct event doesn't already exist
+      if (correct.length === 0) {
+        await googlePost(
+          `${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
+          { summary: expected, description: url || undefined, start: { date }, end: { date } }
+        );
+        console.log(`[Calendar] Created ${date}: ${meal}`);
+      } else {
+        console.log(`[Calendar] ${date}: "${meal}" already exists, skipping`);
+      }
+    }
   } finally {
     _mealSyncRunning = false;
   }
