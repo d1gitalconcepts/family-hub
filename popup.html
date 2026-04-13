@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Family Hub Sync</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Google Sans Text', 'Google Sans', Roboto, sans-serif;
+      font-size: 14px;
+      color: #202124;
+      background: #fff;
+      width: 320px;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    #status-line {
+      font-size: 12px;
+      color: #5f6368;
+      margin-bottom: 14px;
+      min-height: 16px;
+    }
+
+    .note-card {
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+
+    .note-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .note-meta {
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 6px;
+    }
+
+    .item-list {
+      list-style: none;
+      font-size: 13px;
+    }
+
+    .item-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 2px 0;
+    }
+
+    .item-list li.checked {
+      color: #9aa0a6;
+      text-decoration: line-through;
+    }
+
+    .overflow-note {
+      font-size: 12px;
+      color: #5f6368;
+      margin-top: 4px;
+    }
+
+    .empty-state {
+      color: #5f6368;
+      font-size: 13px;
+      padding: 8px 0;
+    }
+
+    #error-banner {
+      background: #fce8e6;
+      color: #c5221f;
+      font-size: 12px;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Family Hub Sync</h1>
+  <div id="status-line">Loading…</div>
+  <div id="error-banner"></div>
+  <div id="notes-container"></div>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
