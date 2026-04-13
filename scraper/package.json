@@ -1,0 +1,13 @@
+{
+  "name": "family-hub-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Headless Google Keep scraper for Family Hub — runs on Linux server via cron",
+  "scripts": {
+    "setup": "node setup.js",
+    "scrape": "node scrape.js"
+  },
+  "dependencies": {
+    "playwright": "^1.44.0"
+  }
+}
