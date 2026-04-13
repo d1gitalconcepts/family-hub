@@ -5,10 +5,40 @@ import { useTaskLists } from '../hooks/useTaskLists';
 export default function AdminSettings({ onClose }) {
   const [activeTab, setActiveTab] = useState('calendars');
 
-  const [calConfig, setCalConfig] = useConfig('visible_calendars');
-  const [sections,  setSections]  = useConfig('calendar_sections');
-  const [listConfig, setListConfig] = useConfig('visible_task_lists');
+  const [calConfig,     setCalConfig]     = useConfig('visible_calendars');
+  const [sections,      setSections]      = useConfig('calendar_sections');
+  const [listConfig,    setListConfig]    = useConfig('visible_task_lists');
+  const [weatherKeys,   setWeatherKeys]   = useConfig('weather_keys');
+  const [weatherConfig, setWeatherConfig] = useConfig('weather_config');
   const allTaskLists = useTaskLists();
+
+  const [awApiKey,  setAwApiKey]  = useState(weatherKeys?.api_key  || '');
+  const [awAppKey,  setAwAppKey]  = useState(weatherKeys?.app_key  || '');
+  const weatherEnabled = weatherConfig?.enabled !== false;
+  const weatherFields  = weatherConfig?.fields  || ['temp','feelsLike','humidity','windspeed','rain'];
+
+  const ALL_WEATHER_FIELDS = [
+    { key: 'temp',      label: 'Temperature' },
+    { key: 'feelsLike', label: 'Feels Like' },
+    { key: 'humidity',  label: 'Humidity' },
+    { key: 'windspeed', label: 'Wind Speed' },
+    { key: 'windgust',  label: 'Wind Gusts' },
+    { key: 'rain',      label: 'Rain Today' },
+    { key: 'pressure',  label: 'Pressure' },
+    { key: 'uv',        label: 'UV Index' },
+    { key: 'solar',     label: 'Solar Radiation' },
+  ];
+
+  function saveWeatherKeys() {
+    setWeatherKeys({ api_key: awApiKey.trim(), app_key: awAppKey.trim() });
+  }
+
+  function toggleWeatherField(key) {
+    const next = weatherFields.includes(key)
+      ? weatherFields.filter((f) => f !== key)
+      : [...weatherFields, key];
+    setWeatherConfig({ ...weatherConfig, fields: next });
+  }
 
   // dropTarget: null | 'unassigned' | `section-${id}` | { sectionId, beforeIdx }
   const [dropTarget, setDropTarget] = useState(null);
@@ -169,6 +199,7 @@ export default function AdminSettings({ onClose }) {
   const TABS = [
     { id: 'calendars', label: 'Calendars' },
     { id: 'lists',     label: 'Lists' },
+    { id: 'weather',   label: 'Weather' },
   ];
 
   return (
@@ -318,6 +349,74 @@ export default function AdminSettings({ onClose }) {
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── Weather tab ───────────────────────────────────── */}
+          {activeTab === 'weather' && (
+            <div className="settings-section">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <input
+                  type="checkbox"
+                  id="weather-enabled"
+                  checked={weatherEnabled}
+                  onChange={(e) => setWeatherConfig({ ...weatherConfig, enabled: e.target.checked })}
+                />
+                <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
+              </div>
+
+              <h3 style={{ marginBottom: 10 }}>Ambient Weather API Keys</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+                Get these from <strong>ambientweather.net → Account → API Keys</strong>.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                <label style={{ fontSize: 13 }}>
+                  API Key
+                  <input
+                    className="cal-name-input"
+                    style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+                    type="password"
+                    value={awApiKey}
+                    onChange={(e) => setAwApiKey(e.target.value)}
+                    placeholder="Your API key"
+                    autoComplete="off"
+                  />
+                </label>
+                <label style={{ fontSize: 13 }}>
+                  Application Key
+                  <input
+                    className="cal-name-input"
+                    style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+                    type="password"
+                    value={awAppKey}
+                    onChange={(e) => setAwAppKey(e.target.value)}
+                    placeholder="Your application key"
+                    autoComplete="off"
+                  />
+                </label>
+                <button
+                  className="btn btn-primary"
+                  style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                  onClick={saveWeatherKeys}
+                >
+                  Save Keys
+                </button>
+              </div>
+
+              <h3 style={{ marginBottom: 10 }}>Display Fields</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {ALL_WEATHER_FIELDS.map(({ key, label }) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={weatherFields.includes(key)}
+                      onChange={() => toggleWeatherField(key)}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
             </div>
           )}
 

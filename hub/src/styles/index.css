@@ -407,6 +407,51 @@ html, body, #root {
 
 .btn-icon:hover { background: var(--bg-secondary); }
 
+.weather-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.weather-bar::-webkit-scrollbar { display: none; }
+.weather-bar.weather-stale { opacity: 0.6; }
+
+.weather-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 14px;
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.weather-item:last-of-type { border-right: none; }
+
+.weather-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.weather-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-top: 1px;
+}
+.weather-age {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+  padding-left: 14px;
+  white-space: nowrap;
+}
+
 .scrape-alert {
   background: #fef3c7;
   color: #92400e;

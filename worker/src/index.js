@@ -1,5 +1,6 @@
 import { pollAllCalendars, syncMealCalendar } from './calendar.js';
 import { pollAllTaskLists, syncTasksFromNote, applyPendingUpdates } from './tasks.js';
+import { pollWeather } from './weather.js';
 import { sbSelect, sbUpsert } from './supabase.js';
 
 export default {
@@ -55,7 +56,10 @@ async function runFullSync(env) {
     // 5. Apply any pending checkbox updates
     await applyPendingUpdates(env);
 
-    // 6. Write last sync timestamp for the hub's sync button
+    // 6. Poll weather station
+    await pollWeather(env);
+
+    // 7. Write last sync timestamp for the hub's sync button
     const now = new Date().toISOString();
     await sbUpsert(env, 'config', [{ key: 'last_calendar_sync', value: now, updated_at: now }]);
 

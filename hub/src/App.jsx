@@ -3,6 +3,7 @@ import LoginScreen from './components/LoginScreen';
 import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
 import AdminSettings from './components/AdminSettings';
+import WeatherWidget from './components/WeatherWidget';
 import { getSession, getRole, saveRole, logout } from './auth';
 import { supabase } from './supabaseClient';
 import './styles/index.css';
@@ -152,6 +153,8 @@ export default function App() {
           Sign out
         </button>
       </header>
+
+      <WeatherWidget />
 
       {scrapeIsStale && (
         <div className="scrape-alert">
