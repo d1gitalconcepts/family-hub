@@ -11,6 +11,10 @@ const { syncCalendar } = require('./calendar');
 
 const PORT = process.env.PORT || 3747;
 const CACHE_FILE = path.join(__dirname, '.cache.json');
+const GOOGLE_SYNC_COOLDOWN_MS = 30_000; // minimum gap between Google API syncs
+
+let lastGoogleSync = 0;
+let pendingSyncTimer = null;
 
 const app = express();
 app.use(express.json());
@@ -55,20 +59,32 @@ app.post('/notes', async (req, res) => {
     return res.status(202).json({ cached: true, synced: false, reason: 'Not authenticated. Visit http://localhost:' + PORT + '/auth' });
   }
 
-  try {
-    for (const note of notes) {
-      if (note.id === 'shopping-list' && note.type === 'checklist') {
-        await syncTasks(auth, note.items);
+  // Throttle Google API calls — schedule a sync but don't fire more than
+  // once per GOOGLE_SYNC_COOLDOWN_MS regardless of how often Keep changes.
+  clearTimeout(pendingSyncTimer);
+  const now = Date.now();
+  const delay = Math.max(0, GOOGLE_SYNC_COOLDOWN_MS - (now - lastGoogleSync));
+
+  pendingSyncTimer = setTimeout(async () => {
+    lastGoogleSync = Date.now();
+    const cached = readCache();
+    if (!cached) return;
+    try {
+      for (const note of cached.notes) {
+        if (note.id === 'shopping-list' && note.type === 'checklist') {
+          await syncTasks(auth, note.items);
+        }
+        if (note.id === 'meal-planning' && note.type === 'text') {
+          await syncCalendar(auth, note.lines);
+        }
       }
-      if (note.id === 'meal-planning' && note.type === 'text') {
-        await syncCalendar(auth, note.lines);
-      }
+      console.log('[Server] Google sync complete.');
+    } catch (err) {
+      console.error('[Server] Sync error:', err.message);
     }
-    res.json({ ok: true, synced: true });
-  } catch (err) {
-    console.error('[Server] Sync error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
+  }, delay);
+
+  res.json({ ok: true, queued: true, syncInMs: delay });
 });
 
 // ---------------------------------------------------------------------------
