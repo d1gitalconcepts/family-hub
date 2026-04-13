@@ -6,4 +6,6 @@ server/.ids.json
 hub/node_modules/
 hub/dist/
 hub/.env
+worker/node_modules/
+worker/.wrangler/
 config.js
