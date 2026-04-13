@@ -56,7 +56,7 @@ async function upsertNotes(notes) {
 
 // ── Scraping logic (mirrors content.js) ──────────────────────────────────────
 
-async function scrapeKeep(page) {
+async function scrapeKeep(page, targetNotes) {
   return page.evaluate((targetNotes) => {
     function slugify(title) {
       return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -161,7 +161,7 @@ async function main() {
     // Extra settle time for note content to fully render
     await page.waitForTimeout(3000);
 
-    const notes = await scrapeKeep(page);
+    const notes = await scrapeKeep(page, TARGET_NOTES);
 
     if (notes.length === 0) {
       console.warn(`[${ts}] No target notes found. Is Keep showing them on screen?`);
