@@ -2,28 +2,57 @@
 require('dotenv').config();
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const open = require('open');
 const { getAuthClient, getAuthUrl, handleCallback } = require('./auth');
 const { syncTasks } = require('./tasks');
 const { syncCalendar } = require('./calendar');
 
 const PORT = process.env.PORT || 3747;
+const CACHE_FILE = path.join(__dirname, '.cache.json');
+
 const app = express();
 app.use(express.json());
+
+// Allow any local origin to call the API (for the Family Hub frontend)
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// Cache helpers — persist last known notes to disk
+// ---------------------------------------------------------------------------
+
+function readCache() {
+  if (fs.existsSync(CACHE_FILE)) {
+    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+  }
+  return null;
+}
+
+function writeCache(notes, timestamp) {
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ notes, timestamp, syncedAt: new Date().toISOString() }, null, 2));
+}
 
 // ---------------------------------------------------------------------------
 // POST /notes — receives scraped data from the browser extension
 // ---------------------------------------------------------------------------
 
 app.post('/notes', async (req, res) => {
-  const { notes } = req.body;
+  const { notes, timestamp } = req.body;
   if (!notes || !Array.isArray(notes)) {
     return res.status(400).json({ error: 'Invalid payload' });
   }
 
+  // Always cache the latest data regardless of auth state
+  writeCache(notes, timestamp);
+
   const auth = await getAuthClient();
   if (!auth) {
-    return res.status(401).json({ error: 'Not authenticated. Visit http://localhost:' + PORT + '/auth to authorize.' });
+    return res.status(202).json({ cached: true, synced: false, reason: 'Not authenticated. Visit http://localhost:' + PORT + '/auth' });
   }
 
   try {
@@ -35,11 +64,36 @@ app.post('/notes', async (req, res) => {
         await syncCalendar(auth, note.lines);
       }
     }
-    res.json({ ok: true });
+    res.json({ ok: true, synced: true });
   } catch (err) {
     console.error('[Server] Sync error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /notes — return last known notes (for Family Hub frontend on load)
+// ---------------------------------------------------------------------------
+
+app.get('/notes', (req, res) => {
+  const cache = readCache();
+  if (!cache) return res.status(404).json({ error: 'No data yet. Open Google Keep to start.' });
+  res.json(cache);
+});
+
+// ---------------------------------------------------------------------------
+// GET /status — connection and sync health (for Family Hub status indicators)
+// ---------------------------------------------------------------------------
+
+app.get('/status', async (req, res) => {
+  const cache = readCache();
+  const auth = await getAuthClient();
+  res.json({
+    authenticated: !!auth,
+    lastSync: cache?.syncedAt ?? null,
+    noteCount: cache?.notes?.length ?? 0,
+    authUrl: auth ? null : `http://localhost:${PORT}/auth`,
+  });
 });
 
 // ---------------------------------------------------------------------------

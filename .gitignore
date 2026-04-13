@@ -1,3 +1,4 @@
 server/node_modules/
 server/.env
 server/.tokens.json
+server/.cache.json
