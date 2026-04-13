@@ -140,14 +140,21 @@ function getWeekDates() {
 
 async function deleteEventsOnDates(service, calendarId, dates) {
   for (const date of dates) {
+    // Use a wide UTC window (UTC-12 to UTC+14) to catch all-day events regardless
+    // of what timezone the calendar is set to
     const res = await service.events.list({
       calendarId,
-      timeMin: `${date}T00:00:00Z`,
-      timeMax: `${date}T23:59:59Z`,
+      timeMin: `${date}T00:00:00-12:00`,
+      timeMax: `${date}T23:59:59+14:00`,
       singleEvents: true,
     });
-    const events = res.data.items || [];
-    await Promise.all(events.map((e) => service.events.delete({ calendarId, eventId: e.id })));
+    const events = (res.data.items || []).filter((e) =>
+      e.start?.date === date  // only delete events that are exactly on this date
+    );
+    if (events.length > 0) {
+      await Promise.all(events.map((e) => service.events.delete({ calendarId, eventId: e.id })));
+      console.log(`[Calendar] Deleted ${events.length} event(s) on ${date}`);
+    }
   }
 }
 
