@@ -19,6 +19,15 @@ export default function EventCard({ event, calColor }) {
     try { new URL(str); return true; } catch { return false; }
   }
 
+  function mapsUrl(location) {
+    const enc = encodeURIComponent(location);
+    return `https://www.google.com/maps/dir/?api=1&destination=${enc}`;
+  }
+
+  function appleMapsUrl(location) {
+    return `https://maps.apple.com/?q=${encodeURIComponent(location)}`;
+  }
+
   return (
     <>
       <div
@@ -63,6 +72,19 @@ export default function EventCard({ event, calColor }) {
                   <span>
                     {formatTime(event.start_at)}
                     {event.end_at ? ` – ${formatTime(event.end_at)}` : ''}
+                  </span>
+                </div>
+              )}
+
+              {event.location && (
+                <div className="event-popout-row">
+                  <span className="event-popout-label">Where</span>
+                  <span className="event-popout-location">
+                    <span>{event.location}</span>
+                    <span className="event-popout-map-links">
+                      <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer">Google Maps</a>
+                      <a href={appleMapsUrl(event.location)} target="_blank" rel="noreferrer">Apple Maps</a>
+                    </span>
                   </span>
                 </div>
               )}

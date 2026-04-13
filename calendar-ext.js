@@ -242,6 +242,7 @@ async function pollAllCalendars() {
           end_at:      isAllDay ? null : ev.end?.dateTime,
           start_date:  isAllDay ? ev.start?.date : null,
           end_date:    isAllDay ? ev.end?.date   : null,
+          location:    ev.location || null,
           updated_at:  new Date().toISOString(),
         });
       }
