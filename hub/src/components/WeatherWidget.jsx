@@ -20,24 +20,28 @@ function windCompass(deg) {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-export default function WeatherWidget() {
+export default function WeatherWidget({ position = 'below-header' }) {
   const [weatherConfig] = useConfig('weather_config');
   const [current]       = useConfig('weather_current');
 
-  const enabled = weatherConfig?.enabled !== false;
-  const fields  = weatherConfig?.fields || DEFAULT_FIELDS;
+  const enabled         = weatherConfig?.enabled !== false;
+  const fields          = weatherConfig?.fields || DEFAULT_FIELDS;
+  const hideRainIfZero  = weatherConfig?.hideRainIfZero !== false;
+  const configPosition  = weatherConfig?.position || 'below-header';
 
-  if (!enabled || !current) return null;
+  if (!enabled || !current || configPosition !== position) return null;
 
   const age     = current.updatedAt ? Math.round((Date.now() - new Date(current.updatedAt)) / 60000) : null;
   const isStale = age !== null && age > 15;
 
   return (
-    <div className={`weather-bar${isStale ? ' weather-stale' : ''}`}>
+    <div className={`weather-bar${position === 'in-header' ? ' weather-bar--inline' : ''}${isStale ? ' weather-stale' : ''}`}>
       {fields.map((key) => {
         const def = FIELD_LABELS[key];
         const val = current[key];
         if (!def || val == null) return null;
+        // Hide rain if zero and toggle is on
+        if (key === 'rain' && hideRainIfZero && val === 0) return null;
         return (
           <div key={key} className="weather-item">
             <span className="weather-label">{def.label}</span>

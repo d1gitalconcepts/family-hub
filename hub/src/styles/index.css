@@ -81,7 +81,8 @@ html, body, #root {
 .app-header h1 {
   font-size: 18px;
   font-weight: 500;
-  flex: 1;
+  flex-shrink: 0;
+  margin-right: 4px;
 }
 
 .app-body {
@@ -450,6 +451,39 @@ html, body, #root {
   margin-left: auto;
   padding-left: 14px;
   white-space: nowrap;
+}
+
+/* In-header inline variant */
+.weather-bar--inline {
+  background: transparent;
+  border-bottom: none;
+  padding: 0;
+  gap: 0;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.weather-bar--inline .weather-item {
+  flex-direction: row;
+  align-items: center;
+  padding: 0 10px;
+  gap: 5px;
+  border-right: 1px solid var(--border);
+}
+
+.weather-bar--inline .weather-label {
+  font-size: 10px;
+}
+
+.weather-bar--inline .weather-value {
+  font-size: 13px;
+  margin-top: 0;
+}
+
+.weather-bar--inline .weather-age {
+  font-size: 10px;
+  padding-left: 8px;
+  margin-left: 0;
 }
 
 .scrape-alert {

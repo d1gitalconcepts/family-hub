@@ -133,6 +133,7 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1>Family Hub</h1>
+        <WeatherWidget position="in-header" />
         <button
           className={`btn-sync${syncing ? ' syncing' : ''}`}
           onClick={requestSync}
@@ -154,7 +155,7 @@ export default function App() {
         </button>
       </header>
 
-      <WeatherWidget />
+      <WeatherWidget position="below-header" />
 
       {scrapeIsStale && (
         <div className="scrape-alert">

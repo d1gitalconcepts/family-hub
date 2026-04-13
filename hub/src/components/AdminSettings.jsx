@@ -49,6 +49,18 @@ export default function AdminSettings({ onClose }) {
     setWeatherConfig({ ...weatherConfig, fields: next });
   }
 
+  function moveWeatherField(key, dir) {
+    const idx = weatherFields.indexOf(key);
+    if (idx < 0) return;
+    const next = [...weatherFields];
+    if (dir === 'up' && idx > 0) {
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+    } else if (dir === 'down' && idx < next.length - 1) {
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+    }
+    setWeatherConfig({ ...weatherConfig, fields: next });
+  }
+
   // dropTarget: null | 'unassigned' | `section-${id}` | { sectionId, beforeIdx }
   const [dropTarget, setDropTarget] = useState(null);
   const drag = useRef(null);
@@ -364,6 +376,8 @@ export default function AdminSettings({ onClose }) {
           {/* ── Weather tab ───────────────────────────────────── */}
           {activeTab === 'weather' && (
             <div className="settings-section">
+
+              {/* Enable toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
                 <input
                   type="checkbox"
@@ -374,12 +388,26 @@ export default function AdminSettings({ onClose }) {
                 <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
               </div>
 
+              {/* Widget position */}
+              <h3 style={{ marginBottom: 8 }}>Widget Position</h3>
+              <div style={{ marginBottom: 18 }}>
+                <select
+                  className="cal-name-input"
+                  style={{ fontSize: 13, padding: '5px 8px' }}
+                  value={weatherConfig?.position || 'below-header'}
+                  onChange={(e) => setWeatherConfig({ ...weatherConfig, position: e.target.value })}
+                >
+                  <option value="below-header">Below header bar</option>
+                  <option value="in-header">Inside header bar</option>
+                </select>
+              </div>
+
+              {/* API Keys */}
               <h3 style={{ marginBottom: 10 }}>Ambient Weather API Keys</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
                 Get these from <strong>ambientweather.net → Account → API Keys</strong>.
               </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
                 <label style={{ fontSize: 13 }}>
                   API Key
                   <input
@@ -413,19 +441,71 @@ export default function AdminSettings({ onClose }) {
                 </button>
               </div>
 
-              <h3 style={{ marginBottom: 10 }}>Display Fields</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {ALL_WEATHER_FIELDS.map(({ key, label }) => (
-                  <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              {/* Display options */}
+              <h3 style={{ marginBottom: 8 }}>Display Options</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+                <input
+                  type="checkbox"
+                  id="hide-rain-zero"
+                  checked={weatherConfig?.hideRainIfZero !== false}
+                  onChange={(e) => setWeatherConfig({ ...weatherConfig, hideRainIfZero: e.target.checked })}
+                />
+                <label htmlFor="hide-rain-zero" style={{ fontSize: 13 }}>
+                  Hide "Rain Today" when there has been no rain
+                </label>
+              </div>
+
+              {/* Reorderable fields list */}
+              <h3 style={{ marginBottom: 6 }}>Display Fields</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+                Check fields to show them. Use arrows to reorder.
+              </p>
+
+              {/* Enabled fields in order */}
+              {weatherFields.map((key, idx) => {
+                const def = ALL_WEATHER_FIELDS.find((f) => f.key === key);
+                if (!def) return null;
+                return (
+                  <div key={key} className="cal-row" style={{ gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <button
+                        className="btn-icon"
+                        style={{ fontSize: 10, lineHeight: 1, padding: '1px 4px', opacity: idx === 0 ? 0.3 : 1 }}
+                        disabled={idx === 0}
+                        onClick={() => moveWeatherField(key, 'up')}
+                        title="Move up"
+                      >▲</button>
+                      <button
+                        className="btn-icon"
+                        style={{ fontSize: 10, lineHeight: 1, padding: '1px 4px', opacity: idx === weatherFields.length - 1 ? 0.3 : 1 }}
+                        disabled={idx === weatherFields.length - 1}
+                        onClick={() => moveWeatherField(key, 'down')}
+                        title="Move down"
+                      >▼</button>
+                    </div>
                     <input
                       type="checkbox"
-                      checked={weatherFields.includes(key)}
+                      checked={true}
                       onChange={() => toggleWeatherField(key)}
                     />
-                    {label}
-                  </label>
-                ))}
-              </div>
+                    <span style={{ fontSize: 13 }}>{def.label}</span>
+                  </div>
+                );
+              })}
+
+              {/* Disabled fields (not in weatherFields) */}
+              {ALL_WEATHER_FIELDS.filter(({ key }) => !weatherFields.includes(key)).map(({ key, label }) => (
+                <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.55 }}>
+                  <div style={{ width: 24 }} />
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={() => toggleWeatherField(key)}
+                  />
+                  <span style={{ fontSize: 13 }}>{label}</span>
+                </div>
+              ))}
+
             </div>
           )}
 
