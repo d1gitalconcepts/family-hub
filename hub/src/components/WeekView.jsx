@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
@@ -21,36 +21,51 @@ function formatWeekLabel(days) {
   return `${days[0].toLocaleDateString(undefined, opts)} – ${days[7].toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 export default function WeekView() {
   const [anchor, setAnchor] = useState(new Date());
   const [calConfig] = useConfig('visible_calendars');
-  const [sections] = useConfig('calendar_sections');
+  const [sections]  = useConfig('calendar_sections');
+  const isMobile    = useIsMobile();
 
-  const days = getWeekDays(anchor);
+  // Mobile: default to today's index in the week (0=Sun … 6=Sat)
+  const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
+
+  const days      = getWeekDays(anchor);
   const weekStart = days[0];
-  const weekEnd = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
-  const events = useCalendarEvents(weekStart, weekEnd);
+  const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
+  const events    = useCalendarEvents(weekStart, weekEnd);
 
   const today = new Date();
 
   function prevWeek() { const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d); }
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
-  function goToday()  { setAnchor(new Date()); }
+  function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const calendars  = calConfig  || [];
-  const sectionList = sections  || [];
+  const visibleDays = isMobile ? [days[mobileDayIdx]] : days;
+
+  const calendars   = calConfig  || [];
+  const sectionList = sections   || [];
 
   const assignedIds = new Set(sectionList.flatMap((s) => s.calendarIds || []));
   const unassigned  = calendars.filter((c) => !assignedIds.has(c.id) && c.visible !== false);
 
-  // Deduplicate: each calendar ID appears only in the first section that claims it
   const seen = new Set();
   const deduped = sectionList.map((s) => ({
     ...s,
     calendarIds: (s.calendarIds || []).filter((id) => !seen.has(id) && seen.add(id)),
   }));
 
-  // If no sections yet, show everything in one unlabelled band
   const resolvedSections = deduped.length > 0
     ? [
         ...deduped,
@@ -60,42 +75,67 @@ export default function WeekView() {
       ]
     : [{ id: '__all', name: '', calendarIds: calendars.map((c) => c.id) }];
 
+  const selectedDay = days[mobileDayIdx];
+  const mobileIsToday =
+    selectedDay.getDate()     === today.getDate()     &&
+    selectedDay.getMonth()    === today.getMonth()    &&
+    selectedDay.getFullYear() === today.getFullYear();
+
   return (
     <div className="main-area">
-      <div className="week-nav">
-        <button className="btn-icon" onClick={prevWeek}>‹</button>
-        <span>{formatWeekLabel(days)}</span>
-        <button className="btn" onClick={goToday} style={{ fontSize: 12, padding: '4px 8px' }}>Today</button>
-        <button className="btn-icon" onClick={nextWeek}>›</button>
-      </div>
+      {/* Desktop nav */}
+      {!isMobile && (
+        <div className="week-nav">
+          <button className="btn-icon" onClick={prevWeek}>‹</button>
+          <span>{formatWeekLabel(days)}</span>
+          <button className="btn" onClick={goToday} style={{ fontSize: 12, padding: '4px 8px' }}>Today</button>
+          <button className="btn-icon" onClick={nextWeek}>›</button>
+        </div>
+      )}
+
+      {/* Mobile nav */}
+      {isMobile && (
+        <div className="week-nav">
+          <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
+          <button className="btn-icon" onClick={() => setMobileDayIdx((i) => Math.max(0, i - 1))}>‹</button>
+          <span style={{ flex: 1, textAlign: 'center' }}>
+            {DAY_NAMES[selectedDay.getDay()]} {selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            {mobileIsToday && <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--accent)' }}>Today</span>}
+          </span>
+          <button className="btn-icon" onClick={() => setMobileDayIdx((i) => Math.min(7, i + 1))}>›</button>
+          <button className="btn-icon" onClick={nextWeek} title="Next week">»</button>
+        </div>
+      )}
 
       <div className="week-container">
-        {/* Shared sticky day headers */}
-        <div className="day-headers">
-          <div className="day-header-spacer" />
-          {days.map((day, i) => {
-            const isToday =
-              day.getDate()     === today.getDate()     &&
-              day.getMonth()    === today.getMonth()    &&
-              day.getFullYear() === today.getFullYear();
-            return (
-              <div key={i} className={`day-header${isToday ? ' today' : ''}`}>
-                {DAY_NAMES[day.getDay()]}
-                <span className="day-date">{day.getDate()}</span>
-              </div>
-            );
-          })}
-        </div>
+        {/* Day headers */}
+        {!isMobile && (
+          <div className="day-headers">
+            <div className="day-header-spacer" />
+            {days.map((day, i) => {
+              const isToday =
+                day.getDate()     === today.getDate()     &&
+                day.getMonth()    === today.getMonth()    &&
+                day.getFullYear() === today.getFullYear();
+              return (
+                <div key={i} className={`day-header${isToday ? ' today' : ''}`}>
+                  {DAY_NAMES[day.getDay()]}
+                  <span className="day-date">{day.getDate()}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Horizontal section bands */}
         <div className="sections-body">
           {resolvedSections.map((section) => (
             <SectionRow
               key={section.id}
               section={section}
-              days={days}
+              days={visibleDays}
               events={events}
               calendarConfig={calendars}
+              isMobile={isMobile}
             />
           ))}
         </div>

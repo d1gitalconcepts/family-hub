@@ -657,9 +657,10 @@ html, body, #root {
     border-top: 1px solid var(--border);
     max-height: 40vh;
   }
-  /* Horizontal scroll on mobile for the 8-day grid */
-  .day-headers,
   .section-cells {
-    min-width: calc(8 * 110px);
+    grid-template-columns: 1fr;
+  }
+  .day-cell {
+    min-height: 48px;
   }
 }
