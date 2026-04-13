@@ -8,10 +8,13 @@ const open = require('open');
 const { getAuthClient, getAuthUrl, handleCallback } = require('./auth');
 const { syncTasks } = require('./tasks');
 const { syncCalendar } = require('./calendar');
+const { startPoller } = require('./calendarPoller');
+const { upsertNote, upsertTaskList, getPendingUpdates, markUpdateApplied } = require('./supabase');
 
 const PORT = process.env.PORT || 3747;
 const CACHE_FILE = path.join(__dirname, '.cache.json');
-const GOOGLE_SYNC_COOLDOWN_MS = 30_000; // minimum gap between Google API syncs
+const GOOGLE_SYNC_COOLDOWN_MS = 30_000;
+const PENDING_UPDATE_INTERVAL_MS = 30_000;
 
 let lastGoogleSync = 0;
 let pendingSyncTimer = null;
@@ -27,7 +30,7 @@ app.use((req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
-// Cache helpers — persist last known notes to disk
+// Cache helpers
 // ---------------------------------------------------------------------------
 
 function readCache() {
@@ -51,7 +54,6 @@ app.post('/notes', async (req, res) => {
     return res.status(400).json({ error: 'Invalid payload' });
   }
 
-  // Always cache the latest data regardless of auth state
   writeCache(notes, timestamp);
 
   const auth = await getAuthClient();
@@ -59,8 +61,6 @@ app.post('/notes', async (req, res) => {
     return res.status(202).json({ cached: true, synced: false, reason: 'Not authenticated. Visit http://localhost:' + PORT + '/auth' });
   }
 
-  // Throttle Google API calls — schedule a sync but don't fire more than
-  // once per GOOGLE_SYNC_COOLDOWN_MS regardless of how often Keep changes.
   clearTimeout(pendingSyncTimer);
   const now = Date.now();
   const delay = Math.max(0, GOOGLE_SYNC_COOLDOWN_MS - (now - lastGoogleSync));
@@ -73,10 +73,16 @@ app.post('/notes', async (req, res) => {
       for (const note of cached.notes) {
         if (note.id === 'shopping-list' && note.type === 'checklist') {
           await syncTasks(auth, note.items);
+          // Write to Supabase after syncing to Google Tasks
+          await syncSupabaseAfterTaskSync(note);
         }
         if (note.id === 'meal-planning' && note.type === 'text') {
           await syncCalendar(auth, note.lines);
         }
+        // Write all notes to Supabase
+        await upsertNote(note.id, note, note.scrapedAt).catch((e) =>
+          console.warn('[Supabase] Note upsert failed:', e.message)
+        );
       }
       console.log('[Server] Google sync complete.');
     } catch (err) {
@@ -87,8 +93,24 @@ app.post('/notes', async (req, res) => {
   res.json({ ok: true, queued: true, syncInMs: delay });
 });
 
+// Write task list to Supabase with google task IDs included
+async function syncSupabaseAfterTaskSync(note) {
+  const ids = require('./supabase').getClient ? null : null; // ids stored in .ids.json
+  const idsFile = path.join(__dirname, '.ids.json');
+  let listId = null;
+  if (fs.existsSync(idsFile)) {
+    const ids = JSON.parse(fs.readFileSync(idsFile, 'utf8'));
+    listId = ids.shoppingListId || null;
+  }
+  await upsertTaskList(
+    listId || 'shopping-list',
+    'Shopping List',
+    note.items
+  ).catch((e) => console.warn('[Supabase] TaskList upsert failed:', e.message));
+}
+
 // ---------------------------------------------------------------------------
-// GET /notes — return last known notes (for Family Hub frontend on load)
+// GET /notes — return last known notes
 // ---------------------------------------------------------------------------
 
 app.get('/notes', (req, res) => {
@@ -98,7 +120,7 @@ app.get('/notes', (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /status — connection and sync health (for Family Hub status indicators)
+// GET /status — health check
 // ---------------------------------------------------------------------------
 
 app.get('/status', async (req, res) => {
@@ -140,10 +162,61 @@ app.get('/oauth/callback', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Pending task updates — apply hub checkbox changes to Google Tasks
+// ---------------------------------------------------------------------------
+
+async function applyPendingTaskUpdates() {
+  const auth = await getAuthClient();
+  if (!auth) return;
+
+  let updates;
+  try {
+    updates = await getPendingUpdates();
+  } catch (e) {
+    // Supabase not configured yet — skip silently
+    return;
+  }
+
+  if (!updates.length) return;
+
+  const { google } = require('googleapis');
+  const tasksService = google.tasks({ version: 'v1', auth });
+  const idsFile = path.join(__dirname, '.ids.json');
+  if (!fs.existsSync(idsFile)) return;
+  const { shoppingListId } = JSON.parse(fs.readFileSync(idsFile, 'utf8'));
+  if (!shoppingListId) return;
+
+  for (const update of updates) {
+    try {
+      await tasksService.tasks.patch({
+        tasklist: update.list_id || shoppingListId,
+        task: update.task_id,
+        requestBody: { status: update.checked ? 'completed' : 'needsAction' },
+      });
+      await markUpdateApplied(update.id);
+      console.log(`[Tasks] Applied pending update: ${update.task_id} → ${update.checked ? 'completed' : 'needsAction'}`);
+    } catch (err) {
+      console.warn('[Tasks] Failed to apply pending update:', err.message);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 
 app.listen(PORT, () => {
   console.log(`[Family Hub] Sync server running on http://localhost:${PORT}`);
   console.log(`[Family Hub] To authorize with Google, visit http://localhost:${PORT}/auth`);
+
+  // Start Google Calendar → Supabase poller
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+    startPoller();
+    setInterval(() => {
+      applyPendingTaskUpdates().catch((e) => console.warn('[Tasks] Pending update error:', e.message));
+    }, PENDING_UPDATE_INTERVAL_MS);
+  } else {
+    console.log('[Server] Supabase not configured — calendar polling and hub write-back disabled.');
+    console.log('[Server] Add SUPABASE_URL and SUPABASE_SERVICE_KEY to .env to enable.');
+  }
 });
