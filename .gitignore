@@ -9,3 +9,4 @@ hub/.env
 worker/node_modules/
 worker/.wrangler/
 config.js
+.claude/settings.local.json
