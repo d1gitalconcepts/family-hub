@@ -407,6 +407,26 @@ html, body, #root {
 
 .btn-icon:hover { background: var(--bg-secondary); }
 
+.scrape-alert {
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #fde68a;
+  flex-shrink: 0;
+}
+.scrape-alert code {
+  font-family: monospace;
+  background: rgba(0,0,0,0.08);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+[data-theme="dark"] .scrape-alert {
+  background: #451a03;
+  color: #fcd34d;
+  border-color: #78350f;
+}
+
 .btn-sync {
   display: flex;
   align-items: center;

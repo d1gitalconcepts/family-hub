@@ -28,6 +28,7 @@ export default function App() {
   const isMobile                      = useIsMobile();
   const [lastSync, setLastSync]       = useState(null);
   const [syncing, setSyncing]         = useState(false);
+  const [lastScrape, setLastScrape]   = useState(null);
 
   useEffect(() => {
     async function checkSession() {
@@ -56,6 +57,24 @@ export default function App() {
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, []);
+
+  // Monitor Keep scraper freshness (admin only)
+  useEffect(() => {
+    if (role !== 'admin') return;
+    async function fetchLastScrape() {
+      const { data } = await supabase.from('notes').select('scraped_at').eq('key', 'shopping-list').maybeSingle();
+      if (data?.scraped_at) setLastScrape(new Date(data.scraped_at));
+    }
+    fetchLastScrape();
+    const ch = supabase.channel(`scrape_monitor_${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes', filter: 'key=eq.shopping-list' }, (payload) => {
+        if (payload.new?.scraped_at) setLastScrape(new Date(payload.new.scraped_at));
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [role]);
+
+  const scrapeIsStale = role === 'admin' && lastScrape && (Date.now() - lastScrape.getTime()) > 15 * 60 * 1000;
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
@@ -124,6 +143,12 @@ export default function App() {
           Sign out
         </button>
       </header>
+
+      {scrapeIsStale && (
+        <div className="scrape-alert">
+          ⚠ Keep sync is overdue — last scraped {lastScrape.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Check the scraper on the Linux server (<code>cat ~/family-hub/scraper/scraper.log</code>).
+        </div>
+      )}
 
       <div className="app-body">
         <WeekView key={viewKey} />
