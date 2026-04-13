@@ -162,12 +162,34 @@ async function main() {
     await page.waitForTimeout(2000);
 
     // Open each target note in the editor one at a time so we get full content.
-    // Keep truncates long text notes in card view (shows "…"); opening in editor
-    // gives us the complete text.
+    // Keep truncates long TEXT notes in card view (shows "…"); opening in editor
+    // gives us the complete text. Checklist notes are NOT opened in editor —
+    // their card view is fine and editor mode inflates item counts with
+    // archived/completed items from Keep's history.
     const allNotes = [];
 
     for (const noteName of TARGET_NOTES) {
-      // Click the note title to open it in editor view
+      // Detect whether this note is a checklist in card view
+      const isChecklist = await page.evaluate((name) => {
+        const els = document.querySelectorAll('div[role="textbox"]');
+        for (const el of els) {
+          if (el.innerText.trim() !== name) continue;
+          const p3 = el.parentElement?.parentElement?.parentElement;
+          const p4 = p3?.parentElement;
+          const container = p4 || p3;
+          return (container?.querySelectorAll('div[role="checkbox"]').length ?? 0) > 0;
+        }
+        return false;
+      }, noteName);
+
+      if (isChecklist) {
+        // Checklist note — scrape directly from card view
+        const scraped = await scrapeKeep(page, [noteName]);
+        allNotes.push(...scraped);
+        continue;
+      }
+
+      // Text note — click open in editor to get full untruncated content
       const clicked = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
