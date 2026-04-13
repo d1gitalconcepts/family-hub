@@ -91,20 +91,42 @@ async function syncMealCalendar(lines) {
   }
 }
 
+async function verifyCalendarAccessible(calendarId) {
+  try {
+    await googleGet(`${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}`);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function getOrCreateMealCalendar() {
   const ids = await getGoogleIds();
-  if (ids.mealPlanningCalendarId) return ids.mealPlanningCalendarId;
 
-  const res      = await googleGet(`${CAL_BASE}/users/me/calendarList`);
-  const existing = (res.items || []).find((c) => c.summary === MEAL_CAL_NAME);
-
-  if (existing) {
-    await saveGoogleId('mealPlanningCalendarId', existing.id);
-    return existing.id;
+  // Validate cached ID is still accessible
+  if (ids.mealPlanningCalendarId) {
+    if (await verifyCalendarAccessible(ids.mealPlanningCalendarId)) {
+      return ids.mealPlanningCalendarId;
+    }
+    console.warn('[Calendar] Cached meal calendar is gone, re-discovering...');
+    await saveGoogleId('mealPlanningCalendarId', null);
   }
 
+  // Search calendar list for an accessible "Meal Planning" calendar
+  const res  = await googleGet(`${CAL_BASE}/users/me/calendarList`);
+  const candidates = (res.items || []).filter((c) => c.summary === MEAL_CAL_NAME);
+  for (const cal of candidates) {
+    if (await verifyCalendarAccessible(cal.id)) {
+      await saveGoogleId('mealPlanningCalendarId', cal.id);
+      console.log(`[Calendar] Found existing "${MEAL_CAL_NAME}" calendar.`);
+      return cal.id;
+    }
+    console.warn(`[Calendar] "${MEAL_CAL_NAME}" (${cal.id}) inaccessible, skipping.`);
+  }
+
+  // Create a fresh calendar
   const created = await googlePost(`${CAL_BASE}/calendars`, { summary: MEAL_CAL_NAME });
-  console.log(`[Calendar] Created calendar "${MEAL_CAL_NAME}".`);
+  console.log(`[Calendar] Created new "${MEAL_CAL_NAME}" calendar: ${created.id}`);
   await saveGoogleId('mealPlanningCalendarId', created.id);
   return created.id;
 }
