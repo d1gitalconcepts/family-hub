@@ -85,10 +85,23 @@ async function scrapeKeep(page, targetNotes) {
 
       if (!noteContainer) return;
 
-      const checkboxItems = noteContainer.querySelectorAll('div[role="checkbox"]');
+      const allCheckboxes = Array.from(noteContainer.querySelectorAll('div[role="checkbox"]'));
 
-      if (checkboxItems.length > 0) {
-        // Checklist note
+      if (allCheckboxes.length > 0) {
+        // Checklist note.
+        // In editor mode Keep renders ALL historically completed items in a
+        // collapsed "X checked items" section. We find that toggle button and
+        // only keep checkboxes that appear BEFORE it in the DOM, which gives us
+        // the active (current) items only — regardless of how long the list is.
+        const completedToggle = Array.from(noteContainer.querySelectorAll('[role="button"]'))
+          .find((el) => /\d+\s+checked\s+item/i.test(el.innerText || el.getAttribute('aria-label') || ''));
+
+        const checkboxItems = completedToggle
+          ? allCheckboxes.filter(
+              (cb) => completedToggle.compareDocumentPosition(cb) & Node.DOCUMENT_POSITION_PRECEDING
+            )
+          : allCheckboxes;
+
         const items = [];
         checkboxItems.forEach((checkbox) => {
           const checked = checkbox.getAttribute('aria-checked') === 'true';
@@ -161,35 +174,15 @@ async function main() {
     // Extra settle time for note content to fully render
     await page.waitForTimeout(2000);
 
-    // Open each target note in the editor one at a time so we get full content.
-    // Keep truncates long TEXT notes in card view (shows "…"); opening in editor
-    // gives us the complete text. Checklist notes are NOT opened in editor —
-    // their card view is fine and editor mode inflates item counts with
-    // archived/completed items from Keep's history.
+    // Open every target note in the editor one at a time so we get full content.
+    // - Text notes: card view truncates long content with "…"; editor shows all.
+    // - Checklist notes: card view caps visible items (~10-15); editor shows all,
+    //   but also exposes historical completed items. scrapeKeep() filters those
+    //   out by stopping at Keep's "X checked items" section toggle.
     const allNotes = [];
 
     for (const noteName of TARGET_NOTES) {
-      // Detect whether this note is a checklist in card view
-      const isChecklist = await page.evaluate((name) => {
-        const els = document.querySelectorAll('div[role="textbox"]');
-        for (const el of els) {
-          if (el.innerText.trim() !== name) continue;
-          const p3 = el.parentElement?.parentElement?.parentElement;
-          const p4 = p3?.parentElement;
-          const container = p4 || p3;
-          return (container?.querySelectorAll('div[role="checkbox"]').length ?? 0) > 0;
-        }
-        return false;
-      }, noteName);
-
-      if (isChecklist) {
-        // Checklist note — scrape directly from card view
-        const scraped = await scrapeKeep(page, [noteName]);
-        allNotes.push(...scraped);
-        continue;
-      }
-
-      // Text note — click open in editor to get full untruncated content
+      // Click the note title to open it in editor view
       const clicked = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
