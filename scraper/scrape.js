@@ -89,18 +89,14 @@ async function scrapeKeep(page, targetNotes) {
 
       if (allCheckboxes.length > 0) {
         // Checklist note.
-        // In editor mode Keep renders ALL historically completed items in a
-        // collapsed "X checked items" section. We find that toggle button and
-        // only keep checkboxes that appear BEFORE it in the DOM, which gives us
-        // the active (current) items only — regardless of how long the list is.
-        const completedToggle = Array.from(noteContainer.querySelectorAll('[role="button"]'))
-          .find((el) => /\d+\s+checked\s+item/i.test(el.innerText || el.getAttribute('aria-label') || ''));
-
-        const checkboxItems = completedToggle
-          ? allCheckboxes.filter(
-              (cb) => completedToggle.compareDocumentPosition(cb) & Node.DOCUMENT_POSITION_PRECEDING
-            )
-          : allCheckboxes;
+        // In editor mode Keep renders ALL historically completed items in the DOM
+        // inside a collapsed "X checked items" section. Those elements are hidden
+        // (zero bounding rect) while active items are visible. Filter to only
+        // the visible ones so we never capture old completed items.
+        const checkboxItems = allCheckboxes.filter((cb) => {
+          const rect = cb.getBoundingClientRect();
+          return rect.width > 0 || rect.height > 0;
+        });
 
         const items = [];
         checkboxItems.forEach((checkbox) => {
