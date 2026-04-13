@@ -144,7 +144,7 @@ async function main() {
   const page    = await context.newPage();
 
   try {
-    await page.goto('https://keep.google.com', { waitUntil: 'networkidle', timeout: 45000 });
+    await page.goto('https://keep.google.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Detect redirect to login page
     if (page.url().includes('accounts.google.com')) {
@@ -152,10 +152,13 @@ async function main() {
       process.exit(1);
     }
 
-    // Wait for note title elements to appear in the DOM (attached, not necessarily visible)
-    await page.waitForSelector('div[role="textbox"]', { state: 'attached', timeout: 20000 });
+    // Wait for Keep's note grid to render — poll until we have textbox elements
+    await page.waitForFunction(
+      () => document.querySelectorAll('div[role="textbox"]').length > 0,
+      { timeout: 30000, polling: 500 }
+    );
 
-    // Extra settle time for Keep's virtual list to render note content
+    // Extra settle time for note content to fully render
     await page.waitForTimeout(3000);
 
     const notes = await scrapeKeep(page);
