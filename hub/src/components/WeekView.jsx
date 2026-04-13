@@ -36,6 +36,7 @@ export default function WeekView() {
   const [anchor, setAnchor] = useState(new Date());
   const [calConfig] = useConfig('visible_calendars');
   const [sections]  = useConfig('calendar_sections');
+  const [forecast]  = useConfig('weather_forecast');
   const isMobile    = useIsMobile();
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
@@ -145,6 +146,7 @@ export default function WeekView() {
               days={visibleDays}
               events={events}
               calendarConfig={calendars}
+              forecast={forecast}
               isMobile={isMobile}
               gridStyle={isMobile ? undefined : cellsGridStyle}
               dayClasses={isMobile ? undefined : dayClasses}

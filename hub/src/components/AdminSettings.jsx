@@ -5,11 +5,12 @@ import { useTaskLists } from '../hooks/useTaskLists';
 export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [activeTab, setActiveTab] = useState('calendars');
 
-  const [calConfig,     setCalConfig]     = useConfig('visible_calendars');
-  const [sections,      setSections]      = useConfig('calendar_sections');
-  const [listConfig,    setListConfig]    = useConfig('visible_task_lists');
-  const [weatherKeys,   setWeatherKeys]   = useConfig('weather_keys');
-  const [weatherConfig, setWeatherConfig] = useConfig('weather_config');
+  const [calConfig,      setCalConfig]     = useConfig('visible_calendars');
+  const [sections,       setSections]      = useConfig('calendar_sections');
+  const [listConfig,     setListConfig]    = useConfig('visible_task_lists');
+  const [weatherKeys,    setWeatherKeys]   = useConfig('weather_keys');
+  const [weatherConfig,  setWeatherConfig] = useConfig('weather_config');
+  const [weatherForecast]                  = useConfig('weather_forecast');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -73,7 +74,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [dropTarget, setDropTarget] = useState(null);
   const drag = useRef(null);
 
-  const calendars   = calConfig  || [];
+  // Inject virtual forecast "calendar" when forecast data is available
+  const FORECAST_VIRTUAL = { id: '__weather_forecast', name: '⛅ Weather Forecast', color: '#4fc3f7', visible: true, virtual: true };
+  const baseCalendars = calConfig || [];
+  const calendars     = weatherForecast?.length
+    ? baseCalendars.some((c) => c.id === '__weather_forecast')
+      ? baseCalendars
+      : [...baseCalendars, FORECAST_VIRTUAL]
+    : baseCalendars;
   const sectionList = sections   || [];
   const assignedIds = new Set(sectionList.flatMap((s) => s.calendarIds || []));
   const unassigned  = calendars.filter((c) => !assignedIds.has(c.id));
@@ -84,9 +92,9 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     return { list_id: l.list_id, name: cfg?.name || l.list_name, visible: cfg?.visible ?? true, itemCount: (l.items || []).length };
   });
 
-  // --- Calendar field updates ---
+  // --- Calendar field updates (skip virtual entries like forecast) ---
   function updateCalendar(id, field, value) {
-    setCalConfig(calendars.map((c) => c.id === id ? { ...c, [field]: value } : c));
+    setCalConfig(calendars.filter((c) => !c.virtual).map((c) => c.id === id ? { ...c, [field]: value } : c));
   }
 
   // --- List field updates ---
@@ -202,25 +210,35 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         onDrop={(e) => onCalDropAtPosition(e, fromSectionId, idx)}
       >
         <span className="drag-handle">⠿</span>
-        <input
-          type="checkbox"
-          checked={cal.visible !== false}
-          onChange={(e) => updateCalendar(cal.id, 'visible', e.target.checked)}
-          style={{ accentColor: cal.color }}
-        />
-        <span className="cal-dot" style={{ background: cal.color }} />
-        <input
-          type="color"
-          className="cal-color-input"
-          value={cal.color || '#4285f4'}
-          onChange={(e) => updateCalendar(cal.id, 'color', e.target.value)}
-        />
-        <input
-          className="cal-name-input"
-          value={cal.name || ''}
-          onChange={(e) => updateCalendar(cal.id, 'name', e.target.value)}
-          placeholder="Calendar name"
-        />
+        {cal.virtual ? (
+          // Virtual entries (e.g. Weather Forecast) — read-only, no color/name editing
+          <>
+            <span className="cal-dot" style={{ background: cal.color }} />
+            <span style={{ fontSize: 13, flex: 1 }}>{cal.name}</span>
+          </>
+        ) : (
+          <>
+            <input
+              type="checkbox"
+              checked={cal.visible !== false}
+              onChange={(e) => updateCalendar(cal.id, 'visible', e.target.checked)}
+              style={{ accentColor: cal.color }}
+            />
+            <span className="cal-dot" style={{ background: cal.color }} />
+            <input
+              type="color"
+              className="cal-color-input"
+              value={cal.color || '#4285f4'}
+              onChange={(e) => updateCalendar(cal.id, 'color', e.target.value)}
+            />
+            <input
+              className="cal-name-input"
+              value={cal.name || ''}
+              onChange={(e) => updateCalendar(cal.id, 'name', e.target.value)}
+              placeholder="Calendar name"
+            />
+          </>
+        )}
       </div>
     );
   }

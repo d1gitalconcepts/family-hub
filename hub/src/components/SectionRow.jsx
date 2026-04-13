@@ -1,7 +1,11 @@
 import EventCard from './EventCard';
+import ForecastCard from './ForecastCard';
 
-export default function SectionRow({ section, days, events, calendarConfig, gridStyle, dayClasses }) {
+const FORECAST_ID = '__weather_forecast';
+
+export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses }) {
   const calIds = new Set(section.calendarIds || []);
+  const showForecast = calIds.has(FORECAST_ID);
 
   const colorMap = {};
   const visibleIds = new Set();
@@ -29,6 +33,12 @@ export default function SectionRow({ section, days, events, calendarConfig, grid
       });
   }
 
+  function forecastForDay(day) {
+    if (!showForecast || !forecast?.length) return null;
+    const dateStr = day.toISOString().split('T')[0];
+    return forecast.find((f) => f.date === dateStr) ?? null;
+  }
+
   return (
     <div className="section-row">
       <div className="section-row-label">
@@ -36,13 +46,16 @@ export default function SectionRow({ section, days, events, calendarConfig, grid
       </div>
       <div className="section-cells" style={gridStyle}>
         {days.map((day, i) => {
-          const dayEvents = eventsForDay(day);
+          const dayEvents   = eventsForDay(day);
+          const forecastDay = forecastForDay(day);
+          const isEmpty     = dayEvents.length === 0 && !forecastDay;
           return (
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
+              {forecastDay && <ForecastCard day={forecastDay} />}
               {dayEvents.map((e) => (
                 <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} />
               ))}
-              {dayEvents.length === 0 && <span className="day-cell-empty">—</span>}
+              {isEmpty && <span className="day-cell-empty">—</span>}
             </div>
           );
         })}
