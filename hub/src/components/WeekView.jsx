@@ -42,17 +42,18 @@ export default function WeekView() {
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
 
   const today     = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const days      = getWeekDays(anchor);
   const weekStart = days[0];
   const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
   const events    = useCalendarEvents(weekStart, weekEnd);
 
+  function sameDay(a, b) {
+    return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+  }
+
   // Build grid template: today's column is wider than the rest
-  const todayIdx = days.findIndex((d) =>
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear()
-  );
+  const todayIdx = days.findIndex((d) => sameDay(d, today));
   const colTemplate = days.map((_, i) =>
     i === todayIdx ? 'minmax(160px, 2fr)' : 'minmax(100px, 1fr)'
   ).join(' ');
@@ -64,7 +65,10 @@ export default function WeekView() {
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
   function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const visibleDays = isMobile ? [days[mobileDayIdx]] : days;
+  const visibleDays  = isMobile ? [days[mobileDayIdx]] : days;
+  const dayClasses   = days.map((d) =>
+    sameDay(d, today) ? 'today' : sameDay(d, yesterday) ? 'yesterday' : ''
+  );
 
   const calendars   = calConfig  || [];
   const sectionList = sections   || [];
@@ -124,18 +128,12 @@ export default function WeekView() {
         {!isMobile && (
           <div className="day-headers" style={headerGridStyle}>
             <div className="day-header-spacer" />
-            {days.map((day, i) => {
-              const isToday =
-                day.getDate()     === today.getDate()     &&
-                day.getMonth()    === today.getMonth()    &&
-                day.getFullYear() === today.getFullYear();
-              return (
-                <div key={i} className={`day-header${isToday ? ' today' : ''}`}>
-                  {DAY_NAMES[day.getDay()]}
-                  <span className="day-date">{day.getDate()}</span>
-                </div>
-              );
-            })}
+            {days.map((day, i) => (
+              <div key={i} className={`day-header${dayClasses[i] ? ' ' + dayClasses[i] : ''}`}>
+                {DAY_NAMES[day.getDay()]}
+                <span className="day-date">{day.getDate()}</span>
+              </div>
+            ))}
           </div>
         )}
 
@@ -149,6 +147,7 @@ export default function WeekView() {
               calendarConfig={calendars}
               isMobile={isMobile}
               gridStyle={isMobile ? undefined : cellsGridStyle}
+              dayClasses={isMobile ? undefined : dayClasses}
             />
           ))}
         </div>

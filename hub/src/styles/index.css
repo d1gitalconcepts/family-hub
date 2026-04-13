@@ -237,6 +237,18 @@ html, body, #root {
 
 .day-cell:last-child { border-right: none; }
 
+.day-cell.today {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.day-cell.yesterday {
+  opacity: 0.45;
+}
+
+.day-header.yesterday {
+  opacity: 0.45;
+}
+
 .day-cell-empty {
   color: var(--text-muted);
   font-size: 11px;
