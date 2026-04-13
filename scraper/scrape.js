@@ -89,14 +89,24 @@ async function scrapeKeep(page, targetNotes) {
 
       if (allCheckboxes.length > 0) {
         // Checklist note.
-        // Keep marks historically completed items with the class 'barxie-MPu53c'
-        // on the item's grandparent container (p3). Active items (both currently
-        // checked and unchecked) do NOT have this class. Filter it out so we
-        // only capture the live shopping list regardless of its length.
-        const checkboxItems = allCheckboxes.filter((cb) => {
+        // Keep puts ALL checked items (recent and historical) into the archived
+        // section marked with class 'barxie-MPu53c' on the grandparent (p3).
+        // Items are ordered newest-first within that section.
+        // Strategy: take ALL unchecked items + the first RECENT_CHECKED_LIMIT
+        // checked items (most recently checked = top of the archived section).
+        // This captures the current shopping trip without pulling in years of history.
+        const RECENT_CHECKED_LIMIT = 30;
+        const unchecked = allCheckboxes.filter((cb) => {
           const p3 = cb.parentElement?.parentElement?.parentElement;
           return !p3?.classList.contains('barxie-MPu53c');
         });
+        const recentChecked = allCheckboxes
+          .filter((cb) => {
+            const p3 = cb.parentElement?.parentElement?.parentElement;
+            return p3?.classList.contains('barxie-MPu53c');
+          })
+          .slice(0, RECENT_CHECKED_LIMIT);
+        const checkboxItems = [...unchecked, ...recentChecked];
 
         const items = [];
         checkboxItems.forEach((checkbox) => {
