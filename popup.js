@@ -1,11 +1,13 @@
 // Family Hub - Popup (ES module)
 // Reads note data from storage and renders it live.
 
-import { KEYS, readNotes, readLastSync, readErrors } from './storage.js';
+import { KEYS, readNotes, readLastSync, readErrors, readEndpoint, writeEndpoint } from './storage.js';
 
 const statusLine = document.getElementById('status-line');
 const errorBanner = document.getElementById('error-banner');
 const notesContainer = document.getElementById('notes-container');
+const endpointInput = document.getElementById('endpoint-input');
+const endpointSaved = document.getElementById('endpoint-saved');
 
 // ---------------------------------------------------------------------------
 // Render
@@ -152,6 +154,7 @@ function buildListItem(text, isChecked) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await render();
+  await initEndpointInput();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (changes[KEYS.NOTES] || changes[KEYS.ERRORS])) {
@@ -159,3 +162,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Endpoint settings
+// ---------------------------------------------------------------------------
+
+async function initEndpointInput() {
+  const current = await readEndpoint();
+  if (current) endpointInput.value = current;
+
+  let saveTimer = null;
+
+  endpointInput.addEventListener('input', () => {
+    endpointSaved.textContent = '';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const val = endpointInput.value.trim();
+      await writeEndpoint(val || null);
+      endpointSaved.textContent = val ? 'Saved.' : 'Cleared.';
+      setTimeout(() => { endpointSaved.textContent = ''; }, 2000);
+    }, 800);
+  });
+}

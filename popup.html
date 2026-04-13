@@ -85,6 +85,39 @@
       margin-bottom: 10px;
       display: none;
     }
+
+    .settings-section {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .settings-label {
+      font-size: 11px;
+      color: #5f6368;
+      margin-bottom: 4px;
+    }
+
+    #endpoint-input {
+      width: 100%;
+      font-size: 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      padding: 5px 8px;
+      color: #202124;
+      outline: none;
+    }
+
+    #endpoint-input:focus {
+      border-color: #1a73e8;
+    }
+
+    #endpoint-saved {
+      font-size: 11px;
+      color: #188038;
+      margin-top: 3px;
+      min-height: 14px;
+    }
   </style>
 </head>
 <body>
@@ -92,6 +125,19 @@
   <div id="status-line">Loading…</div>
   <div id="error-banner"></div>
   <div id="notes-container"></div>
+
+  <div class="settings-section">
+    <div class="settings-label">Local endpoint URL (optional)</div>
+    <input
+      type="url"
+      id="endpoint-input"
+      placeholder="http://localhost:3000/notes"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div id="endpoint-saved"></div>
+  </div>
+
   <script type="module" src="popup.js"></script>
 </body>
 </html>
