@@ -103,15 +103,34 @@ chrome.alarms.create('pollCalendars',  { periodInMinutes: 5   });
 chrome.alarms.create('pollTaskLists',  { periodInMinutes: 5   });
 chrome.alarms.create('pendingUpdates', { periodInMinutes: 0.5 }); // ~30s
 
+async function runCalendarSync() {
+  await pollAllCalendars();
+  const now = new Date().toISOString();
+  await sbUpsert('config', [{ key: 'last_calendar_sync', value: now, updated_at: now }]);
+}
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'pollCalendars') {
-    pollAllCalendars().catch((err) => console.warn('[Poller] Error:', err.message));
+    runCalendarSync().catch((err) => console.warn('[Poller] Error:', err.message));
   }
   if (alarm.name === 'pollTaskLists') {
     pollAllTaskLists().catch((err) => console.warn('[TaskPoller] Error:', err.message));
   }
   if (alarm.name === 'pendingUpdates') {
     applyPendingUpdates().catch((err) => console.warn('[PendingUpdates] Error:', err.message));
+    // Check if hub requested an immediate sync
+    checkSyncRequest().catch((err) => console.warn('[SyncRequest] Error:', err.message));
   }
   // keepalive: no-op
 });
+
+async function checkSyncRequest() {
+  if (!(await isAuthenticated())) return;
+  const rows = await sbSelect('config', { key: 'eq.sync_requested', select: 'value' });
+  if (rows?.[0]?.value !== 'true') return;
+  // Clear the flag first to avoid double-firing
+  await sbUpsert('config', [{ key: 'sync_requested', value: 'false', updated_at: new Date().toISOString() }]);
+  console.log('[SyncRequest] Manual sync triggered from hub');
+  await runCalendarSync();
+  await pollAllTaskLists();
+}

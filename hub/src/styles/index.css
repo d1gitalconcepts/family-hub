@@ -407,6 +407,34 @@ html, body, #root {
 
 .btn-icon:hover { background: var(--bg-secondary); }
 
+.btn-sync {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.btn-sync:hover { background: var(--bg-secondary); color: var(--text); }
+.btn-sync:disabled { cursor: default; opacity: 0.6; }
+.sync-icon {
+  font-size: 15px;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.4s;
+}
+.btn-sync.syncing .sync-icon {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .btn-primary {
   background: var(--accent);
   color: #fff;

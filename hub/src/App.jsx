@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import LoginScreen from './components/LoginScreen';
 import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
 import AdminSettings from './components/AdminSettings';
 import { getSession, getRole, saveRole, logout } from './auth';
+import { supabase } from './supabaseClient';
 import './styles/index.css';
 
 function useIsMobile() {
@@ -25,6 +26,8 @@ export default function App() {
   const [viewKey, setViewKey]         = useState(0);
   const [theme, setTheme]             = useState(() => localStorage.getItem('fh_theme') || 'auto');
   const isMobile                      = useIsMobile();
+  const [lastSync, setLastSync]       = useState(null);
+  const [syncing, setSyncing]         = useState(false);
 
   useEffect(() => {
     async function checkSession() {
@@ -33,6 +36,32 @@ export default function App() {
       setLoading(false);
     }
     checkSession();
+  }, []);
+
+  // Load + live-update last sync timestamp written by the extension
+  useEffect(() => {
+    async function fetchLastSync() {
+      const { data } = await supabase.from('config').select('value').eq('key', 'last_calendar_sync').maybeSingle();
+      if (data?.value) setLastSync(new Date(data.value));
+    }
+    fetchLastSync();
+
+    const ch = supabase.channel(`last_sync_${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.last_calendar_sync' }, (payload) => {
+        if (payload.new?.value) {
+          setLastSync(new Date(payload.new.value));
+          setSyncing(false);
+        }
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, []);
+
+  const requestSync = useCallback(async () => {
+    setSyncing(true);
+    await supabase.from('config').upsert({ key: 'sync_requested', value: 'true', updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    // If extension doesn't respond within 15s, stop spinner
+    setTimeout(() => setSyncing(false), 15000);
   }, []);
 
   useEffect(() => {
@@ -69,6 +98,18 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1>Family Hub</h1>
+        <button
+          className={`btn-sync${syncing ? ' syncing' : ''}`}
+          onClick={requestSync}
+          disabled={syncing}
+          title={lastSync ? `Last synced ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Sync now'}
+        >
+          <span className="sync-icon">↻</span>
+          {lastSync && !syncing && (
+            <span className="sync-label">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          )}
+          {syncing && <span className="sync-label">Syncing…</span>}
+        </button>
         <button className="btn-icon" onClick={cycleTheme} title="Toggle theme">{themeIcon()}</button>
         {role === 'admin' && (
           <button className="btn-icon" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
