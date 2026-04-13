@@ -1,31 +1,22 @@
 {
   "manifest_version": 3,
   "name": "Family Hub - Keep Sync",
-  "version": "0.2.0",
-  "description": "Scrapes Google Keep and syncs directly to Google Tasks, Calendar, and Supabase",
+  "version": "0.3.0",
+  "description": "Scrapes Google Keep and uploads raw notes to Supabase. Calendar and Tasks sync is handled by the Cloudflare Worker.",
   "permissions": [
     "scripting",
     "storage",
-    "alarms",
-    "identity"
+    "alarms"
   ],
   "host_permissions": [
     "https://keep.google.com/*",
-    "https://www.googleapis.com/*",
-    "https://tasks.googleapis.com/*",
-    "https://oauth2.googleapis.com/*",
-    "https://accounts.google.com/*",
     "https://*.supabase.co/*"
   ],
   "background": {
     "scripts": [
       "config.js",
       "storage.js",
-      "google-auth.js",
-      "google-api.js",
       "supabase-ext.js",
-      "tasks-ext.js",
-      "calendar-ext.js",
       "background.js"
     ]
   },

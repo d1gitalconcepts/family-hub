@@ -59,9 +59,15 @@ export default function App() {
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
-    await supabase.from('config').upsert({ key: 'sync_requested', value: 'true', updated_at: new Date().toISOString() }, { onConflict: 'key' });
-    // If extension doesn't respond within 15s, stop spinner
-    setTimeout(() => setSyncing(false), 15000);
+    try {
+      await fetch(`${import.meta.env.VITE_WORKER_URL}/sync`, { method: 'POST' });
+    } catch (err) {
+      console.warn('[Sync] Worker request failed:', err.message);
+      setSyncing(false);
+    }
+    // Spinner clears when last_calendar_sync updates via realtime subscription
+    // Safety fallback in case realtime is slow
+    setTimeout(() => setSyncing(false), 30000);
   }, []);
 
   useEffect(() => {

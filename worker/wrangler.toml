@@ -1,0 +1,16 @@
+name = "family-hub-worker"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+# Secrets are set via: npx wrangler secret put SECRET_NAME
+# Required secrets:
+#   GOOGLE_CLIENT_ID
+#   GOOGLE_CLIENT_SECRET
+#   GOOGLE_REFRESH_TOKEN     (run: node get-token.js to obtain)
+#   SUPABASE_URL
+#   SUPABASE_ANON_KEY
+#   SUPABASE_EMAIL
+#   SUPABASE_PASSWORD

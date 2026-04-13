@@ -1,0 +1,13 @@
+{
+  "name": "family-hub-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev":    "wrangler dev",
+    "deploy": "wrangler deploy",
+    "token":  "node get-token.js"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
