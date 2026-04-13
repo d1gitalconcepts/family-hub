@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useTaskLists } from '../hooks/useTaskLists';
 
-export default function AdminSettings({ onClose }) {
+export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [activeTab, setActiveTab] = useState('calendars');
 
   const [calConfig,     setCalConfig]     = useConfig('visible_calendars');
@@ -229,6 +229,7 @@ export default function AdminSettings({ onClose }) {
     { id: 'calendars', label: 'Calendars' },
     { id: 'lists',     label: 'Lists' },
     { id: 'weather',   label: 'Weather' },
+    { id: 'display',   label: 'Display' },
   ];
 
   return (
@@ -508,6 +509,47 @@ export default function AdminSettings({ onClose }) {
                 </div>
               ))}
 
+            </div>
+          )}
+
+          {/* ── Display tab ───────────────────────────────────── */}
+          {activeTab === 'display' && (
+            <div className="settings-section">
+              <h3 style={{ marginBottom: 12 }}>Theme</h3>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[
+                  { value: 'auto',  icon: '🌓', label: 'Auto'  },
+                  { value: 'light', icon: '☀️', label: 'Light' },
+                  { value: 'dark',  icon: '🌙', label: 'Dark'  },
+                ].map(({ value, icon, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => onThemeChange(value)}
+                    style={{
+                      flex: 1,
+                      padding: '14px 8px',
+                      borderRadius: 'var(--radius)',
+                      border: `2px solid ${theme === value ? 'var(--accent)' : 'var(--border)'}`,
+                      background: theme === value ? 'color-mix(in srgb, var(--accent) 10%, var(--surface))' : 'var(--surface)',
+                      color: theme === value ? 'var(--accent)' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font)',
+                      fontWeight: theme === value ? 600 : 400,
+                      fontSize: 13,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 24 }}>{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10 }}>
+                Auto follows your device's system preference.
+              </p>
             </div>
           )}
 

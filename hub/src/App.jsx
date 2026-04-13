@@ -24,6 +24,7 @@ export default function App() {
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileList, setShowMobileList] = useState(false);
+  const [showMenu, setShowMenu]       = useState(false);
   const [viewKey, setViewKey]         = useState(0);
   const [theme, setTheme]             = useState(() => localStorage.getItem('fh_theme') || 'auto');
   const isMobile                      = useIsMobile();
@@ -31,6 +32,7 @@ export default function App() {
   const [syncing, setSyncing]         = useState(false);
   const [lastScrape, setLastScrape]   = useState(null);
   const manualSyncPending             = useRef(false);
+  const menuRef                       = useRef(null);
 
   useEffect(() => {
     async function checkSession() {
@@ -40,6 +42,16 @@ export default function App() {
     }
     checkSession();
   }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMenu]);
 
   // Load + live-update last sync timestamp written by the extension
   useEffect(() => {
@@ -84,6 +96,7 @@ export default function App() {
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
+    setShowMenu(false);
     manualSyncPending.current = true;
     try {
       await fetch(`${import.meta.env.VITE_WORKER_URL}/sync`, { method: 'POST' });
@@ -113,14 +126,6 @@ export default function App() {
     if (!isMobile) setShowMobileList(false);
   }, [isMobile]);
 
-  function cycleTheme() {
-    setTheme((t) => t === 'auto' ? 'dark' : t === 'dark' ? 'light' : 'auto');
-  }
-
-  function themeIcon() {
-    return theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌓';
-  }
-
   async function handleLogout() {
     await logout();
     setRole(null);
@@ -134,26 +139,46 @@ export default function App() {
       <header className="app-header">
         <h1>Family Hub</h1>
         <WeatherWidget position="in-header" />
-        <div className="header-actions">
+        <div className="header-actions" ref={menuRef}>
           <button
-            className={`btn-sync${syncing ? ' syncing' : ''}`}
-            onClick={requestSync}
-            disabled={syncing}
-            title={lastSync ? `Last synced ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Sync now'}
+            className="btn-icon header-menu-trigger"
+            onClick={() => setShowMenu((s) => !s)}
+            title="Menu"
           >
-            <span className="sync-icon">↻</span>
-            {lastSync && !syncing && (
-              <span className="sync-label">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            )}
-            {syncing && <span className="sync-label">Syncing…</span>}
+            ☰
           </button>
-          <button className="btn-icon" onClick={cycleTheme} title="Toggle theme">{themeIcon()}</button>
-          {role === 'admin' && (
-            <button className="btn-icon" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
+          {showMenu && (
+            <div className="header-menu">
+              <button
+                className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
+                onClick={requestSync}
+                disabled={syncing}
+              >
+                <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
+                <span>
+                  <span className="header-menu-item-label">{syncing ? 'Syncing…' : 'Sync now'}</span>
+                  {lastSync && !syncing && (
+                    <span className="header-menu-item-sub">
+                      Last synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </span>
+              </button>
+              {role === 'admin' && (
+                <button
+                  className="header-menu-item"
+                  onClick={() => { setShowSettings(true); setShowMenu(false); }}
+                >
+                  <span>⚙</span>
+                  <span className="header-menu-item-label">Settings</span>
+                </button>
+              )}
+              <button className="header-menu-item header-menu-item--danger" onClick={handleLogout}>
+                <span>⎋</span>
+                <span className="header-menu-item-label">Sign out</span>
+              </button>
+            </div>
           )}
-          <button className="btn" onClick={handleLogout} style={{ fontSize: 12, padding: '4px 8px' }}>
-            Sign out
-          </button>
         </div>
       </header>
 
@@ -192,7 +217,11 @@ export default function App() {
       )}
 
       {showSettings && (
-        <AdminSettings onClose={() => { setShowSettings(false); setViewKey((k) => k + 1); }} />
+        <AdminSettings
+          onClose={() => { setShowSettings(false); setViewKey((k) => k + 1); }}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
       )}
     </div>
   );

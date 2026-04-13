@@ -85,12 +85,63 @@ html, body, #root {
 }
 
 .header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  position: relative;
   margin-left: auto;
   flex-shrink: 0;
 }
+
+.header-menu-trigger {
+  font-size: 20px;
+  padding: 6px 10px;
+}
+
+.header-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  min-width: 200px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-family: var(--font);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.header-menu-item:last-child { border-bottom: none; }
+.header-menu-item:hover { background: var(--bg-secondary); }
+.header-menu-item:disabled { opacity: 0.6; cursor: default; }
+
+.header-menu-item-label {
+  display: block;
+  font-weight: 500;
+}
+
+.header-menu-item-sub {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.header-menu-item--danger { color: var(--danger); }
+.header-menu-item--danger:hover { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 
 .app-body {
   display: flex;
