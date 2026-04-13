@@ -82,7 +82,14 @@ html, body, #root {
   font-size: 18px;
   font-weight: 500;
   flex-shrink: 0;
-  margin-right: 4px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .app-body {

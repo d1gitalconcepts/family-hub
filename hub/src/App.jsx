@@ -134,25 +134,27 @@ export default function App() {
       <header className="app-header">
         <h1>Family Hub</h1>
         <WeatherWidget position="in-header" />
-        <button
-          className={`btn-sync${syncing ? ' syncing' : ''}`}
-          onClick={requestSync}
-          disabled={syncing}
-          title={lastSync ? `Last synced ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Sync now'}
-        >
-          <span className="sync-icon">↻</span>
-          {lastSync && !syncing && (
-            <span className="sync-label">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <div className="header-actions">
+          <button
+            className={`btn-sync${syncing ? ' syncing' : ''}`}
+            onClick={requestSync}
+            disabled={syncing}
+            title={lastSync ? `Last synced ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Sync now'}
+          >
+            <span className="sync-icon">↻</span>
+            {lastSync && !syncing && (
+              <span className="sync-label">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            )}
+            {syncing && <span className="sync-label">Syncing…</span>}
+          </button>
+          <button className="btn-icon" onClick={cycleTheme} title="Toggle theme">{themeIcon()}</button>
+          {role === 'admin' && (
+            <button className="btn-icon" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
           )}
-          {syncing && <span className="sync-label">Syncing…</span>}
-        </button>
-        <button className="btn-icon" onClick={cycleTheme} title="Toggle theme">{themeIcon()}</button>
-        {role === 'admin' && (
-          <button className="btn-icon" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
-        )}
-        <button className="btn" onClick={handleLogout} style={{ fontSize: 12, padding: '4px 8px' }}>
-          Sign out
-        </button>
+          <button className="btn" onClick={handleLogout} style={{ fontSize: 12, padding: '4px 8px' }}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       <WeatherWidget position="below-header" />

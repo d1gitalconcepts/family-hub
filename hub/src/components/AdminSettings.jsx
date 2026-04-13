@@ -49,16 +49,24 @@ export default function AdminSettings({ onClose }) {
     setWeatherConfig({ ...weatherConfig, fields: next });
   }
 
-  function moveWeatherField(key, dir) {
-    const idx = weatherFields.indexOf(key);
-    if (idx < 0) return;
-    const next = [...weatherFields];
-    if (dir === 'up' && idx > 0) {
-      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
-    } else if (dir === 'down' && idx < next.length - 1) {
-      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+  function onWeatherDragStart(e, idx) {
+    drag.current = { type: 'weather-field', fromIdx: idx };
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  }
+
+  function onWeatherDrop(e, toIdx) {
+    e.preventDefault();
+    if (!drag.current || drag.current.type !== 'weather-field') return;
+    const { fromIdx } = drag.current;
+    if (fromIdx !== toIdx) {
+      const next = [...weatherFields];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      setWeatherConfig({ ...weatherConfig, fields: next });
     }
-    setWeatherConfig({ ...weatherConfig, fields: next });
+    drag.current = null;
+    setDropTarget(null);
   }
 
   // dropTarget: null | 'unassigned' | `section-${id}` | { sectionId, beforeIdx }
@@ -461,28 +469,22 @@ export default function AdminSettings({ onClose }) {
                 Check fields to show them. Use arrows to reorder.
               </p>
 
-              {/* Enabled fields in order */}
+              {/* Enabled fields in order — draggable */}
               {weatherFields.map((key, idx) => {
                 const def = ALL_WEATHER_FIELDS.find((f) => f.key === key);
                 if (!def) return null;
+                const isDropTarget = dropTarget?.type === 'weather-field' && dropTarget?.beforeIdx === idx;
                 return (
-                  <div key={key} className="cal-row" style={{ gap: 6 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <button
-                        className="btn-icon"
-                        style={{ fontSize: 10, lineHeight: 1, padding: '1px 4px', opacity: idx === 0 ? 0.3 : 1 }}
-                        disabled={idx === 0}
-                        onClick={() => moveWeatherField(key, 'up')}
-                        title="Move up"
-                      >▲</button>
-                      <button
-                        className="btn-icon"
-                        style={{ fontSize: 10, lineHeight: 1, padding: '1px 4px', opacity: idx === weatherFields.length - 1 ? 0.3 : 1 }}
-                        disabled={idx === weatherFields.length - 1}
-                        onClick={() => moveWeatherField(key, 'down')}
-                        title="Move down"
-                      >▼</button>
-                    </div>
+                  <div
+                    key={key}
+                    className={`cal-row${isDropTarget ? ' cal-row-drop-target' : ''}`}
+                    draggable
+                    onDragStart={(e) => onWeatherDragStart(e, idx)}
+                    onDragEnd={onDragEnd}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ type: 'weather-field', beforeIdx: idx }); }}
+                    onDrop={(e) => onWeatherDrop(e, idx)}
+                  >
+                    <span className="drag-handle">⠿</span>
                     <input
                       type="checkbox"
                       checked={true}
@@ -493,10 +495,10 @@ export default function AdminSettings({ onClose }) {
                 );
               })}
 
-              {/* Disabled fields (not in weatherFields) */}
+              {/* Disabled fields — click checkbox to add to bottom of list */}
               {ALL_WEATHER_FIELDS.filter(({ key }) => !weatherFields.includes(key)).map(({ key, label }) => (
-                <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.55 }}>
-                  <div style={{ width: 24 }} />
+                <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.5 }}>
+                  <span className="drag-handle" style={{ visibility: 'hidden' }}>⠿</span>
                   <input
                     type="checkbox"
                     checked={false}
