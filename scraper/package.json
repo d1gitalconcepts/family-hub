@@ -5,9 +5,11 @@
   "description": "Headless Google Keep scraper for Family Hub — runs on Linux server via cron",
   "scripts": {
     "setup": "node setup.js",
-    "scrape": "node scrape.js"
+    "scrape": "node scrape.js",
+    "watch": "node watcher.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
     "playwright": "^1.44.0"
   }
 }
