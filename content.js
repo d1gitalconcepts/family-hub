@@ -42,11 +42,12 @@ function scrapeNotes() {
       checkboxItems.forEach((checkbox) => {
         const checked = checkbox.getAttribute('aria-checked') === 'true';
 
-        // Primary: look for a span with Google Sans Text font (current Keep DOM)
-        // Fallback: take innerText of the checkbox's parent row, minus the checkbox text
-        const parent = checkbox.parentElement;
-        const textSpan = parent?.querySelector('span[style*="Google Sans Text"]');
-        const text = textSpan?.innerText?.trim() || extractRowText(parent, checkbox);
+        // The text span is a sibling of the checkbox container, so we go up
+        // to the grandparent (the row) to find it.
+        // Fallback: take innerText of the row minus the checkbox element's text.
+        const row = checkbox.parentElement?.parentElement;
+        const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
+        const text = textSpan?.innerText?.trim() || extractRowText(row, checkbox);
 
         if (text) {
           items.push({ text, checked });
