@@ -89,13 +89,13 @@ async function scrapeKeep(page, targetNotes) {
 
       if (allCheckboxes.length > 0) {
         // Checklist note.
-        // In editor mode Keep renders ALL historically completed items in the DOM
-        // inside a collapsed "X checked items" section. Those elements are hidden
-        // (zero bounding rect) while active items are visible. Filter to only
-        // the visible ones so we never capture old completed items.
+        // Keep marks historically completed items with the class 'barxie-MPu53c'
+        // on the item's grandparent container (p3). Active items (both currently
+        // checked and unchecked) do NOT have this class. Filter it out so we
+        // only capture the live shopping list regardless of its length.
         const checkboxItems = allCheckboxes.filter((cb) => {
-          const rect = cb.getBoundingClientRect();
-          return rect.width > 0 || rect.height > 0;
+          const p3 = cb.parentElement?.parentElement?.parentElement;
+          return !p3?.classList.contains('barxie-MPu53c');
         });
 
         const items = [];
