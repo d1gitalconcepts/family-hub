@@ -649,14 +649,59 @@ html, body, #root {
   .sidebar { width: 240px; }
 }
 
+/* ── Mobile floating list button ───────────────────────────── */
+
+.mobile-list-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* ── Mobile bottom drawer ──────────────────────────────────── */
+
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+}
+
+.mobile-drawer {
+  width: 100%;
+  max-height: 75vh;
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mobile-drawer-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .app-body { flex-direction: column; }
-  .sidebar {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--border);
-    max-height: 40vh;
-  }
   .section-cells {
     grid-template-columns: 1fr;
   }
