@@ -158,6 +158,11 @@ function getWeekDates() {
 
 // ── All-calendar poller ───────────────────────────────────────────────────────
 
+// Synthetic calendar ID for birthday events intercepted from personal calendars
+const BIRTHDAY_CAL_ID    = '__birthdays__';
+const BIRTHDAY_CAL_NAME  = 'Birthdays';
+const BIRTHDAY_CAL_COLOR = '#f06292';
+
 export async function pollAllCalendars(env) {
   const min = new Date();
   min.setDate(min.getDate() - min.getDay() - 1); // back to last Saturday
@@ -172,9 +177,10 @@ export async function pollAllCalendars(env) {
     return;
   }
 
-  const calendars = calListRes.items || [];
-  const allEvents = [];
-  const seenIds   = [];
+  const calendars    = calListRes.items || [];
+  const allEvents    = [];
+  const seenIds      = [];
+  let   birthdayCount = 0;
 
   for (const cal of calendars) {
     try {
@@ -188,12 +194,17 @@ export async function pollAllCalendars(env) {
       for (const ev of events) {
         if (!ev.id) continue;
         seenIds.push(ev.id);
+
+        // Intercept birthday events — Google tags them with eventType: 'birthday'
+        const isBirthday = ev.eventType === 'birthday';
+        if (isBirthday) birthdayCount++;
+
         const isAllDay = !!ev.start?.date;
         allEvents.push({
           google_id:   ev.id,
-          calendar_id: cal.id,
-          cal_name:    cal.summary,
-          cal_color:   cal.backgroundColor || '#4285f4',
+          calendar_id: isBirthday ? BIRTHDAY_CAL_ID   : cal.id,
+          cal_name:    isBirthday ? BIRTHDAY_CAL_NAME  : cal.summary,
+          cal_color:   isBirthday ? BIRTHDAY_CAL_COLOR : (cal.backgroundColor || '#4285f4'),
           summary:     ev.summary || '(No title)',
           description: ev.description || null,
           is_all_day:  isAllDay,
@@ -218,28 +229,33 @@ export async function pollAllCalendars(env) {
   // Keep visible_calendars config in sync (add new calendars, never remove)
   try {
     const existing = await sbSelect(env, 'config', { key: 'eq.visible_calendars', select: 'value' });
+    const birthdayEntry = { id: BIRTHDAY_CAL_ID, name: BIRTHDAY_CAL_NAME, color: BIRTHDAY_CAL_COLOR, visible: true };
+
     if (!existing.length) {
-      const initial = calendars.map((c) => ({
-        id: c.id, name: c.summary, color: c.backgroundColor || '#4285f4', visible: true,
-      }));
+      const initial = [
+        ...calendars.map((c) => ({ id: c.id, name: c.summary, color: c.backgroundColor || '#4285f4', visible: true })),
+        ...(birthdayCount > 0 ? [birthdayEntry] : []),
+      ];
       await sbUpsert(env, 'config', [{ key: 'visible_calendars', value: initial, updated_at: new Date().toISOString() }]);
       console.log(`[CalPoller] Initialized visible_calendars with ${initial.length} calendars.`);
     } else {
       const current    = existing[0].value || [];
       const currentIds = new Set(current.map((c) => c.id));
       const newCals    = calendars.filter((c) => !currentIds.has(c.id));
-      if (newCals.length) {
+      const needsBirthdayEntry = birthdayCount > 0 && !currentIds.has(BIRTHDAY_CAL_ID);
+      if (newCals.length || needsBirthdayEntry) {
         const updated = [
           ...current,
           ...newCals.map((c) => ({ id: c.id, name: c.summary, color: c.backgroundColor || '#4285f4', visible: true })),
+          ...(needsBirthdayEntry ? [birthdayEntry] : []),
         ];
         await sbUpsert(env, 'config', [{ key: 'visible_calendars', value: updated, updated_at: new Date().toISOString() }]);
-        console.log(`[CalPoller] Added ${newCals.length} new calendar(s).`);
+        console.log(`[CalPoller] Added ${newCals.length} new calendar(s)${needsBirthdayEntry ? ' + Birthdays' : ''}.`);
       }
     }
   } catch (err) {
     console.warn('[CalPoller] Config seed error:', err.message);
   }
 
-  console.log(`[CalPoller] Synced ${allEvents.length} events from ${calendars.length} calendars.`);
+  console.log(`[CalPoller] Synced ${allEvents.length} events (${birthdayCount} birthdays) from ${calendars.length} calendars.`);
 }
