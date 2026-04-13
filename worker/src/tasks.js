@@ -25,30 +25,49 @@ async function getOrCreateShoppingList(env) {
   return created.id;
 }
 
-// ── Sync shopping list from Supabase notes → Google Tasks ────────────────────
+// ── Sync shopping list from Supabase notes → Google Tasks (diff-based) ───────
+// Only creates/deletes/patches what actually changed to stay within
+// Cloudflare Workers' free-tier subrequest limit.
 
 export async function syncTasksFromNote(env, items) {
-  const listId = await getOrCreateShoppingList(env);
-
-  // Clear existing tasks then recreate from note (unchecked first, then checked)
-  const existing = await googleGet(env,
+  const listId  = await getOrCreateShoppingList(env);
+  const current = await googleGet(env,
     `${TASKS_BASE}/lists/${listId}/tasks?showCompleted=true&showHidden=true`
   );
+  const currentTasks = current.items || [];
+
+  const currentByTitle = new Map(currentTasks.map((t) => [t.title, t]));
+  const desiredTitles  = new Set(items.map((i) => i.text));
+
+  // Delete tasks that are no longer in the note
+  const toDelete = currentTasks.filter((t) => !desiredTitles.has(t.title));
   await Promise.all(
-    (existing.items || []).map((t) => googleDelete(env, `${TASKS_BASE}/lists/${listId}/tasks/${t.id}`))
+    toDelete.map((t) => googleDelete(env, `${TASKS_BASE}/lists/${listId}/tasks/${t.id}`))
   );
 
-  const ordered = [
-    ...items.filter((i) => !i.checked),
-    ...items.filter((i) =>  i.checked),
-  ];
-  for (const item of ordered) {
-    await googlePost(env, `${TASKS_BASE}/lists/${listId}/tasks`, {
-      title:  item.text,
-      status: item.checked ? 'completed' : 'needsAction',
-    });
+  // Create new items or patch status on existing ones
+  let created = 0, patched = 0;
+  for (const item of items) {
+    const desired = item.checked ? 'completed' : 'needsAction';
+    const existing = currentByTitle.get(item.text);
+    if (!existing) {
+      await googlePost(env, `${TASKS_BASE}/lists/${listId}/tasks`, {
+        title: item.text, status: desired,
+      });
+      created++;
+    } else if (existing.status !== desired) {
+      await googlePatch(env, `${TASKS_BASE}/lists/${listId}/tasks/${existing.id}`, {
+        status: desired,
+      });
+      patched++;
+    }
   }
-  console.log(`[Tasks] Synced ${items.length} shopping items to Google Tasks.`);
+
+  if (toDelete.length || created || patched) {
+    console.log(`[Tasks] Shopping sync: +${created} created, ~${patched} patched, -${toDelete.length} deleted.`);
+  } else {
+    console.log('[Tasks] Shopping list unchanged, no Google Tasks updates needed.');
+  }
 }
 
 // ── Poll all Google Task lists → Supabase ────────────────────────────────────

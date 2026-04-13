@@ -31,16 +31,19 @@ export default {
 async function runFullSync(env) {
   console.log('[Worker] Starting full sync...');
   try {
-    // 1. Sync shopping list note → Google Tasks
-    const shoppingNote = await sbSelect(env, 'notes', { key: 'eq.shopping-list', select: 'data' });
-    if (shoppingNote?.[0]?.data?.items?.length) {
-      await syncTasksFromNote(env, shoppingNote[0].data.items);
+    // Fetch both notes in a single Supabase call
+    const notes       = await sbSelect(env, 'notes', { key: 'in.(shopping-list,meal-planning)', select: 'key,data' });
+    const shoppingNote = notes.find((n) => n.key === 'shopping-list');
+    const mealNote     = notes.find((n) => n.key === 'meal-planning');
+
+    // 1. Sync shopping list note → Google Tasks (diff-based, minimal API calls)
+    if (shoppingNote?.data?.items?.length) {
+      await syncTasksFromNote(env, shoppingNote.data.items);
     }
 
     // 2. Sync meal planning note → Google Calendar
-    const mealNote = await sbSelect(env, 'notes', { key: 'eq.meal-planning', select: 'data' });
-    if (mealNote?.[0]?.data?.lines?.length) {
-      await syncMealCalendar(env, mealNote[0].data.lines);
+    if (mealNote?.data?.lines?.length) {
+      await syncMealCalendar(env, mealNote.data.lines);
     }
 
     // 3. Poll all calendars → Supabase

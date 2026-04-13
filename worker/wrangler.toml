@@ -5,6 +5,14 @@ compatibility_date = "2025-01-01"
 [triggers]
 crons = ["*/5 * * * *"]
 
+# Subrequest limit: free plan = 50, Workers Paid = up to 1000.
+# With 16+ calendars you may hit the free limit on busy syncs.
+# To increase: upgrade to Workers Paid ($5/mo) at dash.cloudflare.com,
+# then uncomment the block below and redeploy.
+#
+# [limits]
+# subrequests = 1000
+
 # Secrets are set via: npx wrangler secret put SECRET_NAME
 # Required secrets:
 #   GOOGLE_CLIENT_ID
