@@ -41,8 +41,11 @@ export default function WeekView() {
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
 
+  const today     = new Date();
   const days      = getWeekDays(anchor);
   const weekStart = days[0];
+  const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
+  const events    = useCalendarEvents(weekStart, weekEnd);
 
   // Build grid template: today's column is wider than the rest
   const todayIdx = days.findIndex((d) =>
@@ -54,10 +57,6 @@ export default function WeekView() {
     i === todayIdx ? 'minmax(140px, 2fr)' : 'minmax(80px, 1fr)'
   ).join(' ');
   const gridStyle = { gridTemplateColumns: `var(--label-w) ${colTemplate}` };
-  const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
-  const events    = useCalendarEvents(weekStart, weekEnd);
-
-  const today = new Date();
 
   function prevWeek() { const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d); }
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
