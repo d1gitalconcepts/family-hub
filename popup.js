@@ -68,19 +68,12 @@ async function render() {
       const list = document.createElement('ul');
       list.className = 'item-list';
 
-      // Show up to 5 unchecked items
-      unchecked.slice(0, 5).forEach((item) => {
+      // Show all unchecked items
+      unchecked.forEach((item) => {
         list.appendChild(buildListItem(item.text, false));
       });
 
       card.appendChild(list);
-
-      if (unchecked.length > 5) {
-        const overflow = document.createElement('p');
-        overflow.className = 'overflow-note';
-        overflow.textContent = `+ ${unchecked.length - 5} more unchecked`;
-        card.appendChild(overflow);
-      }
 
       // Show up to 2 checked items (collapsed feel)
       if (checked.length > 0) {
