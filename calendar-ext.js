@@ -255,7 +255,10 @@ async function pollAllCalendars() {
     await sbDeleteStaleEvents(seenIds);
   }
 
-  // Seed visible_calendars config on first run
+  // Keep visible_calendars config in sync with polled calendars.
+  // On first run: seed with all calendars.
+  // On subsequent runs: add any new calendar IDs (e.g. recreated Meal Planning)
+  // without touching existing entries (preserves user's visibility/color/name settings).
   try {
     const existing = await sbSelect('config', { key: 'eq.visible_calendars', select: 'value' });
     if (!existing.length) {
@@ -264,6 +267,18 @@ async function pollAllCalendars() {
       }));
       await sbUpsert('config', [{ key: 'visible_calendars', value: initial, updated_at: new Date().toISOString() }]);
       console.log(`[CalPoller] Initialized visible_calendars with ${initial.length} calendars.`);
+    } else {
+      const current   = existing[0].value || [];
+      const currentIds = new Set(current.map((c) => c.id));
+      const newCals   = calendars.filter((cal) => !currentIds.has(cal.id));
+      if (newCals.length) {
+        const updated = [
+          ...current,
+          ...newCals.map((cal) => ({ id: cal.id, name: cal.summary, color: cal.backgroundColor || '#4285f4', visible: true })),
+        ];
+        await sbUpsert('config', [{ key: 'visible_calendars', value: updated, updated_at: new Date().toISOString() }]);
+        console.log(`[CalPoller] Added ${newCals.length} new calendar(s) to visible_calendars: ${newCals.map(c => c.summary).join(', ')}`);
+      }
     }
   } catch (err) {
     console.warn('[CalPoller] Config seed error:', err.message);
