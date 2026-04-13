@@ -3,3 +3,6 @@ server/.env
 server/.tokens.json
 server/.cache.json
 server/.ids.json
+hub/node_modules/
+hub/dist/
+hub/.env
