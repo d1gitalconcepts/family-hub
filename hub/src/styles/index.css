@@ -367,6 +367,7 @@ html, body, #root {
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
+  flex: 1;
 }
 
 .forecast-emoji { font-size: 15px; flex-shrink: 0; }
