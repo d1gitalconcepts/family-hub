@@ -54,9 +54,11 @@ export default function WeekView() {
     d.getFullYear() === today.getFullYear()
   );
   const colTemplate = days.map((_, i) =>
-    i === todayIdx ? 'minmax(140px, 2fr)' : 'minmax(80px, 1fr)'
+    i === todayIdx ? 'minmax(160px, 2fr)' : 'minmax(100px, 1fr)'
   ).join(' ');
-  const gridStyle = { gridTemplateColumns: `var(--label-w) ${colTemplate}` };
+  // day-headers includes the label spacer; section-cells does not (label is a separate flex element)
+  const headerGridStyle = { gridTemplateColumns: `var(--label-w) ${colTemplate}` };
+  const cellsGridStyle  = { gridTemplateColumns: colTemplate };
 
   function prevWeek() { const d = new Date(anchor); d.setDate(d.getDate() - 7); setAnchor(d); }
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
@@ -120,7 +122,7 @@ export default function WeekView() {
       <div className="week-container">
         {/* Day headers */}
         {!isMobile && (
-          <div className="day-headers" style={gridStyle}>
+          <div className="day-headers" style={headerGridStyle}>
             <div className="day-header-spacer" />
             {days.map((day, i) => {
               const isToday =
@@ -146,7 +148,7 @@ export default function WeekView() {
               events={events}
               calendarConfig={calendars}
               isMobile={isMobile}
-              gridStyle={isMobile ? undefined : gridStyle}
+              gridStyle={isMobile ? undefined : cellsGridStyle}
             />
           ))}
         </div>
