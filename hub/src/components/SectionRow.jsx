@@ -39,6 +39,10 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
     return forecast.find((f) => f.date === dateStr) ?? null;
   }
 
+  // Hide the entire section row if every visible day is empty
+  const hasContent = days.some((day) => eventsForDay(day).length > 0 || forecastForDay(day) !== null);
+  if (!hasContent) return null;
+
   return (
     <div className="section-row">
       <div className="section-row-label">
