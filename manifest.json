@@ -13,8 +13,7 @@
     "http://localhost/*"
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "scripts": ["storage.js", "background.js"]
   },
   "content_scripts": [
     {

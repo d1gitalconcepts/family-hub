@@ -1,8 +1,7 @@
-// Family Hub - Background Service Worker (ES module)
+// Family Hub - Background Script
 // Receives scraped notes from the content script, detects changes,
 // and persists data to chrome.storage.local.
-
-import { writeNotes, appendError, readEndpoint } from './storage.js';
+// Loaded after storage.js, so all storage helpers are global.
 
 // ---------------------------------------------------------------------------
 // Message handler
@@ -51,14 +50,13 @@ async function postToEndpoint(url, notes, timestamp) {
 }
 
 // ---------------------------------------------------------------------------
-// Alarms — wake the service worker periodically so it stays responsive
+// Alarms — keepalive for when the background page would otherwise go idle
 // ---------------------------------------------------------------------------
 
 chrome.alarms.create('keepalive', { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepalive') {
-    // No-op: the act of waking the worker is the point.
-    // Future: could check if the Keep tab is alive and request a re-scrape.
+    // No-op: keeps the background page responsive.
   }
 });

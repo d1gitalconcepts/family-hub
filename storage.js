@@ -1,5 +1,5 @@
-// Family Hub - Storage helpers (ES module)
-// Shared by background.js and popup.js
+// Family Hub - Storage helpers
+// Shared by background.js and popup.js as a plain global script.
 
 const KEYS = {
   NOTES:      'familyhub_notes',
@@ -9,18 +9,16 @@ const KEYS = {
   ENDPOINT:   'familyhub_localEndpoint',
 };
 
-export { KEYS };
-
 // ---------------------------------------------------------------------------
 // Notes
 // ---------------------------------------------------------------------------
 
-export async function readNotes() {
+async function readNotes() {
   const result = await chrome.storage.local.get(KEYS.NOTES);
   return result[KEYS.NOTES] ?? [];
 }
 
-export async function writeNotes(notes, timestamp) {
+async function writeNotes(notes, timestamp) {
   const existing = await chrome.storage.local.get([KEYS.NOTES, KEYS.SYNC_COUNT]);
   const existingJson = JSON.stringify(existing[KEYS.NOTES] ?? []);
   const incomingJson = JSON.stringify(notes);
@@ -40,12 +38,12 @@ export async function writeNotes(notes, timestamp) {
 // Metadata
 // ---------------------------------------------------------------------------
 
-export async function readLastSync() {
+async function readLastSync() {
   const result = await chrome.storage.local.get(KEYS.LAST_SYNC);
   return result[KEYS.LAST_SYNC] ?? null;
 }
 
-export async function readSyncCount() {
+async function readSyncCount() {
   const result = await chrome.storage.local.get(KEYS.SYNC_COUNT);
   return result[KEYS.SYNC_COUNT] ?? 0;
 }
@@ -54,12 +52,12 @@ export async function readSyncCount() {
 // Errors
 // ---------------------------------------------------------------------------
 
-export async function readErrors() {
+async function readErrors() {
   const result = await chrome.storage.local.get(KEYS.ERRORS);
   return result[KEYS.ERRORS] ?? [];
 }
 
-export async function appendError(message) {
+async function appendError(message) {
   const existing = await readErrors();
   const updated = [
     { message, timestamp: new Date().toISOString() },
@@ -72,12 +70,12 @@ export async function appendError(message) {
 // Endpoint (localhost HTTP bridge)
 // ---------------------------------------------------------------------------
 
-export async function readEndpoint() {
+async function readEndpoint() {
   const result = await chrome.storage.local.get(KEYS.ENDPOINT);
   return result[KEYS.ENDPOINT] ?? null;
 }
 
-export async function writeEndpoint(url) {
+async function writeEndpoint(url) {
   await chrome.storage.local.set({ [KEYS.ENDPOINT]: url });
 }
 
@@ -85,7 +83,7 @@ export async function writeEndpoint(url) {
 // Utilities
 // ---------------------------------------------------------------------------
 
-export function slugify(title) {
+function slugify(title) {
   return title
     .toLowerCase()
     .trim()

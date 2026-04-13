@@ -1,7 +1,6 @@
-// Family Hub - Popup (ES module)
+// Family Hub - Popup
 // Reads note data from storage and renders it live.
-
-import { KEYS, readNotes, readLastSync, readErrors, readEndpoint, writeEndpoint } from './storage.js';
+// storage.js is loaded first by popup.html, so all storage helpers are global.
 
 const statusLine = document.getElementById('status-line');
 const errorBanner = document.getElementById('error-banner');
@@ -70,20 +69,17 @@ async function render() {
       list.className = 'item-list';
 
       // Show up to 5 unchecked items
-      const shown = unchecked.slice(0, 5);
-      shown.forEach((item) => {
-        const li = buildListItem(item.text, false);
-        list.appendChild(li);
+      unchecked.slice(0, 5).forEach((item) => {
+        list.appendChild(buildListItem(item.text, false));
       });
+
+      card.appendChild(list);
 
       if (unchecked.length > 5) {
         const overflow = document.createElement('p');
         overflow.className = 'overflow-note';
         overflow.textContent = `+ ${unchecked.length - 5} more unchecked`;
-        card.appendChild(list);
         card.appendChild(overflow);
-      } else {
-        card.appendChild(list);
       }
 
       // Show up to 2 checked items (collapsed feel)
@@ -91,17 +87,15 @@ async function render() {
         const checkedList = document.createElement('ul');
         checkedList.className = 'item-list';
         checked.slice(0, 2).forEach((item) => {
-          const li = buildListItem(item.text, true);
-          checkedList.appendChild(li);
+          checkedList.appendChild(buildListItem(item.text, true));
         });
+        card.appendChild(checkedList);
+
         if (checked.length > 2) {
           const more = document.createElement('p');
           more.className = 'overflow-note';
           more.textContent = `+ ${checked.length - 2} more checked`;
-          card.appendChild(checkedList);
           card.appendChild(more);
-        } else {
-          card.appendChild(checkedList);
         }
       }
 
@@ -115,8 +109,7 @@ async function render() {
       const list = document.createElement('ul');
       list.className = 'item-list';
       note.lines.slice(0, 5).forEach((line) => {
-        const li = buildListItem(line, false);
-        list.appendChild(li);
+        list.appendChild(buildListItem(line, false));
       });
       card.appendChild(list);
 
