@@ -2,14 +2,14 @@
 // Reads note data from storage and renders it live.
 // storage.js is loaded first by popup.html, so all storage helpers are global.
 
-const statusLine = document.getElementById('status-line');
-const errorBanner = document.getElementById('error-banner');
+const statusLine     = document.getElementById('status-line');
+const errorBanner    = document.getElementById('error-banner');
 const notesContainer = document.getElementById('notes-container');
-const endpointInput = document.getElementById('endpoint-input');
-const endpointSaved = document.getElementById('endpoint-saved');
+const authStatus     = document.getElementById('auth-status');
+const authBtn        = document.getElementById('auth-btn');
 
 // ---------------------------------------------------------------------------
-// Render
+// Render notes
 // ---------------------------------------------------------------------------
 
 async function render() {
@@ -19,7 +19,6 @@ async function render() {
     readErrors(),
   ]);
 
-  // Status line
   if (lastSync) {
     const d = new Date(lastSync);
     statusLine.textContent = `Last synced: ${d.toLocaleTimeString()} — ${d.toLocaleDateString()}`;
@@ -27,7 +26,6 @@ async function render() {
     statusLine.textContent = 'Not yet synced. Open Google Keep to start.';
   }
 
-  // Error banner
   if (errors.length > 0) {
     errorBanner.style.display = 'block';
     errorBanner.textContent = `${errors.length} scrape error(s) — last: ${errors[0].message}`;
@@ -35,7 +33,6 @@ async function render() {
     errorBanner.style.display = 'none';
   }
 
-  // Notes
   notesContainer.innerHTML = '';
 
   if (notes.length === 0) {
@@ -57,33 +54,23 @@ async function render() {
 
     if (note.type === 'checklist') {
       const unchecked = note.items.filter((i) => !i.checked);
-      const checked = note.items.filter((i) => i.checked);
-      const total = note.items.length;
+      const checked   = note.items.filter((i) =>  i.checked);
 
       const meta = document.createElement('div');
       meta.className = 'note-meta';
-      meta.textContent = `${unchecked.length} remaining / ${total} total`;
+      meta.textContent = `${unchecked.length} remaining / ${note.items.length} total`;
       card.appendChild(meta);
 
       const list = document.createElement('ul');
       list.className = 'item-list';
-
-      // Show all unchecked items
-      unchecked.forEach((item) => {
-        list.appendChild(buildListItem(item.text, false));
-      });
-
+      unchecked.forEach((item) => list.appendChild(buildListItem(item.text, false)));
       card.appendChild(list);
 
-      // Show up to 2 checked items (collapsed feel)
       if (checked.length > 0) {
         const checkedList = document.createElement('ul');
         checkedList.className = 'item-list';
-        checked.slice(0, 2).forEach((item) => {
-          checkedList.appendChild(buildListItem(item.text, true));
-        });
+        checked.slice(0, 2).forEach((item) => checkedList.appendChild(buildListItem(item.text, true)));
         card.appendChild(checkedList);
-
         if (checked.length > 2) {
           const more = document.createElement('p');
           more.className = 'overflow-note';
@@ -91,9 +78,7 @@ async function render() {
           card.appendChild(more);
         }
       }
-
     } else {
-      // Plain text note
       const isTruncated = note.lines[note.lines.length - 1] === '…';
       const meta = document.createElement('div');
       meta.className = 'note-meta';
@@ -102,9 +87,7 @@ async function render() {
 
       const list = document.createElement('ul');
       list.className = 'item-list';
-      note.lines.forEach((line) => {
-        list.appendChild(buildListItem(line, false));
-      });
+      note.lines.forEach((line) => list.appendChild(buildListItem(line, false)));
       card.appendChild(list);
 
       if (isTruncated) {
@@ -120,20 +103,46 @@ async function render() {
 }
 
 function buildListItem(text, isChecked) {
-  const li = document.createElement('li');
+  const li   = document.createElement('li');
   if (isChecked) li.className = 'checked';
-
-  const icon = document.createElement('span');
-  icon.className = 'check-icon';
+  const icon  = document.createElement('span');
   icon.textContent = isChecked ? '☑' : '☐';
-
   const label = document.createElement('span');
   label.textContent = text;
-
   li.appendChild(icon);
   li.appendChild(label);
   return li;
 }
+
+// ---------------------------------------------------------------------------
+// Auth status
+// ---------------------------------------------------------------------------
+
+async function refreshAuthUI() {
+  chrome.runtime.sendMessage({ type: 'GET_AUTH_STATUS' }, (response) => {
+    const connected = response?.authenticated;
+    authStatus.textContent = connected ? 'Connected to Google' : 'Not connected';
+    authStatus.style.color = connected ? '#188038' : '#5f6368';
+    authBtn.textContent    = connected ? 'Disconnect' : 'Connect to Google';
+    authBtn.className      = connected ? 'disconnect' : '';
+  });
+}
+
+authBtn.addEventListener('click', () => {
+  const isDisconnect = authBtn.classList.contains('disconnect');
+  authBtn.disabled = true;
+  authBtn.textContent = '…';
+
+  const msgType = isDisconnect ? 'REVOKE_AUTH' : 'LAUNCH_OAUTH';
+  chrome.runtime.sendMessage({ type: msgType }, (response) => {
+    authBtn.disabled = false;
+    if (!response?.ok && response?.error) {
+      authStatus.textContent = `Error: ${response.error}`;
+      authStatus.style.color = '#c5221f';
+    }
+    refreshAuthUI();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Init + live updates
@@ -141,7 +150,7 @@ function buildListItem(text, isChecked) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await render();
-  await initEndpointInput();
+  await refreshAuthUI();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (changes[KEYS.NOTES] || changes[KEYS.ERRORS])) {
@@ -149,25 +158,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Endpoint settings
-// ---------------------------------------------------------------------------
-
-async function initEndpointInput() {
-  const current = await readEndpoint();
-  if (current) endpointInput.value = current;
-
-  let saveTimer = null;
-
-  endpointInput.addEventListener('input', () => {
-    endpointSaved.textContent = '';
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      const val = endpointInput.value.trim();
-      await writeEndpoint(val || null);
-      endpointSaved.textContent = val ? 'Saved.' : 'Cleared.';
-      setTimeout(() => { endpointSaved.textContent = ''; }, 2000);
-    }, 800);
-  });
-}

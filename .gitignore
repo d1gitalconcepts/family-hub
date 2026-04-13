@@ -6,3 +6,4 @@ server/.ids.json
 hub/node_modules/
 hub/dist/
 hub/.env
+config.js

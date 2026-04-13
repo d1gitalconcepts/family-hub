@@ -1,19 +1,33 @@
 {
   "manifest_version": 3,
   "name": "Family Hub - Keep Sync",
-  "version": "0.1.0",
-  "description": "Scrapes Google Keep lists and syncs them to Family Hub",
+  "version": "0.2.0",
+  "description": "Scrapes Google Keep and syncs directly to Google Tasks, Calendar, and Supabase",
   "permissions": [
     "scripting",
     "storage",
-    "alarms"
+    "alarms",
+    "identity"
   ],
   "host_permissions": [
     "https://keep.google.com/*",
-    "http://localhost/*"
+    "https://www.googleapis.com/*",
+    "https://tasks.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://accounts.google.com/*",
+    "https://*.supabase.co/*"
   ],
   "background": {
-    "scripts": ["storage.js", "background.js"]
+    "scripts": [
+      "config.js",
+      "storage.js",
+      "google-auth.js",
+      "google-api.js",
+      "supabase-ext.js",
+      "tasks-ext.js",
+      "calendar-ext.js",
+      "background.js"
+    ]
   },
   "content_scripts": [
     {
@@ -25,5 +39,10 @@
   "action": {
     "default_popup": "popup.html",
     "default_title": "Family Hub Sync"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "family-hub-sync@familyhub.local"
+    }
   }
 }

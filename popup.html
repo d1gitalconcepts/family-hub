@@ -90,34 +90,32 @@
       margin-top: 14px;
       padding-top: 12px;
       border-top: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
     }
 
-    .settings-label {
-      font-size: 11px;
-      color: #5f6368;
-      margin-bottom: 4px;
-    }
-
-    #endpoint-input {
-      width: 100%;
+    #auth-status {
       font-size: 12px;
+      color: #5f6368;
+      flex: 1;
+    }
+
+    #auth-btn {
+      font-size: 12px;
+      padding: 5px 12px;
       border: 1px solid #dadce0;
       border-radius: 4px;
-      padding: 5px 8px;
-      color: #202124;
-      outline: none;
+      cursor: pointer;
+      background: #fff;
+      color: #1a73e8;
+      font-family: inherit;
+      white-space: nowrap;
     }
 
-    #endpoint-input:focus {
-      border-color: #1a73e8;
-    }
-
-    #endpoint-saved {
-      font-size: 11px;
-      color: #188038;
-      margin-top: 3px;
-      min-height: 14px;
-    }
+    #auth-btn:hover { background: #f8f9fa; }
+    #auth-btn.disconnect { color: #c5221f; }
   </style>
 </head>
 <body>
@@ -127,15 +125,8 @@
   <div id="notes-container"></div>
 
   <div class="settings-section">
-    <div class="settings-label">Local endpoint URL (optional)</div>
-    <input
-      type="url"
-      id="endpoint-input"
-      placeholder="http://localhost:3000/notes"
-      autocomplete="off"
-      spellcheck="false"
-    />
-    <div id="endpoint-saved"></div>
+    <div id="auth-status">Checking…</div>
+    <button id="auth-btn">…</button>
   </div>
 
   <script src="storage.js"></script>

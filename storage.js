@@ -6,7 +6,6 @@ const KEYS = {
   LAST_SYNC:  'familyhub_lastSync',
   SYNC_COUNT: 'familyhub_syncCount',
   ERRORS:     'familyhub_errors',
-  ENDPOINT:   'familyhub_localEndpoint',
 };
 
 // ---------------------------------------------------------------------------
@@ -43,11 +42,6 @@ async function readLastSync() {
   return result[KEYS.LAST_SYNC] ?? null;
 }
 
-async function readSyncCount() {
-  const result = await chrome.storage.local.get(KEYS.SYNC_COUNT);
-  return result[KEYS.SYNC_COUNT] ?? 0;
-}
-
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
@@ -62,21 +56,24 @@ async function appendError(message) {
   const updated = [
     { message, timestamp: new Date().toISOString() },
     ...existing,
-  ].slice(0, 10); // keep last 10
+  ].slice(0, 10);
   await chrome.storage.local.set({ [KEYS.ERRORS]: updated });
 }
 
 // ---------------------------------------------------------------------------
-// Endpoint (localhost HTTP bridge)
+// Google resource ID cache (task list, calendars)
+// Replaces the server's .ids.json file.
 // ---------------------------------------------------------------------------
 
-async function readEndpoint() {
-  const result = await chrome.storage.local.get(KEYS.ENDPOINT);
-  return result[KEYS.ENDPOINT] ?? null;
+async function getGoogleIds() {
+  const result = await chrome.storage.local.get('googleIds');
+  return result.googleIds || {};
 }
 
-async function writeEndpoint(url) {
-  await chrome.storage.local.set({ [KEYS.ENDPOINT]: url });
+async function saveGoogleId(key, id) {
+  const ids = await getGoogleIds();
+  ids[key] = id;
+  await chrome.storage.local.set({ googleIds: ids });
 }
 
 // ---------------------------------------------------------------------------

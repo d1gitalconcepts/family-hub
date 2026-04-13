@@ -1,7 +1,49 @@
-// Family Hub - Background Script
-// Receives scraped notes from the content script, detects changes,
-// and persists data to chrome.storage.local.
-// Loaded after storage.js, so all storage helpers are global.
+// Family Hub - Background Script (consolidated, no local server)
+// All syncing happens directly from the extension to Google APIs + Supabase.
+// Script load order (from manifest): config → storage → google-auth → google-api
+//                                    → supabase-ext → tasks-ext → calendar-ext → this
+
+// ---------------------------------------------------------------------------
+// Sync throttle — debounce 30s after last scrape before hitting Google APIs
+// ---------------------------------------------------------------------------
+
+let syncTimer = null;
+
+function scheduleSyncAndUpload(notes) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => runSync(notes), 30000);
+}
+
+async function runSync(notes) {
+  if (!(await isAuthenticated())) {
+    console.log('[Sync] Skipping — not authenticated with Google.');
+    return;
+  }
+
+  const shopping = notes.find((n) => n.title === 'Shopping List');
+  const meals    = notes.find((n) => n.title === 'Meal Planning');
+
+  if (shopping?.items) {
+    try { await syncTasks(shopping.items); }
+    catch (err) { console.warn('[Sync] Tasks error:', err.message); }
+  }
+
+  if (meals?.lines) {
+    try { await syncMealCalendar(meals.lines); }
+    catch (err) { console.warn('[Sync] Calendar error:', err.message); }
+  }
+
+  // Mirror raw note data to Supabase for the hub
+  const now = new Date().toISOString();
+  if (shopping) {
+    try { await sbUpsert('notes', [{ key: 'shopping-list', data: shopping, scraped_at: now, updated_at: now }]); }
+    catch (err) { console.warn('[Sync] Supabase notes error:', err.message); }
+  }
+  if (meals) {
+    try { await sbUpsert('notes', [{ key: 'meal-planning', data: meals, scraped_at: now, updated_at: now }]); }
+    catch (err) { console.warn('[Sync] Supabase meals error:', err.message); }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Message handler
@@ -12,51 +54,60 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     handleNotesScrape(message.data, message.timestamp)
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
-    return true; // keep channel open for async response
+    return true;
   }
 
   if (message.type === 'SCRAPE_ERROR') {
-    appendError(message.error)
-      .then(() => sendResponse({ ok: true }));
+    appendError(message.error).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+
+  if (message.type === 'LAUNCH_OAUTH') {
+    launchOAuthFlow()
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'REVOKE_AUTH') {
+    revokeAuth()
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (message.type === 'GET_AUTH_STATUS') {
+    isAuthenticated()
+      .then((authenticated) => sendResponse({ authenticated }))
+      .catch(() => sendResponse({ authenticated: false }));
     return true;
   }
 });
 
 // ---------------------------------------------------------------------------
-// Core: persist notes if changed, then optionally forward to local endpoint
+// Core: persist notes if changed, then schedule sync
 // ---------------------------------------------------------------------------
 
 async function handleNotesScrape(notes, timestamp) {
   const written = await writeNotes(notes, timestamp);
-  if (!written) return; // nothing changed
-
-  const endpoint = await readEndpoint();
-  if (endpoint) {
-    await postToEndpoint(endpoint, notes, timestamp);
-  }
-}
-
-async function postToEndpoint(url, notes, timestamp) {
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, timestamp }),
-    });
-  } catch (err) {
-    // Endpoint is optional — log but don't surface as a scrape error
-    console.warn('[Family Hub] Local endpoint POST failed:', err.message);
-  }
+  if (!written) return;
+  scheduleSyncAndUpload(notes);
 }
 
 // ---------------------------------------------------------------------------
-// Alarms — keepalive for when the background page would otherwise go idle
+// Alarms
 // ---------------------------------------------------------------------------
 
-chrome.alarms.create('keepalive', { periodInMinutes: 1 });
+chrome.alarms.create('keepalive',      { periodInMinutes: 1   });
+chrome.alarms.create('pollCalendars',  { periodInMinutes: 5   });
+chrome.alarms.create('pendingUpdates', { periodInMinutes: 0.5 }); // ~30s
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepalive') {
-    // No-op: keeps the background page responsive.
+  if (alarm.name === 'pollCalendars') {
+    pollAllCalendars().catch((err) => console.warn('[Poller] Error:', err.message));
   }
+  if (alarm.name === 'pendingUpdates') {
+    applyPendingUpdates().catch((err) => console.warn('[PendingUpdates] Error:', err.message));
+  }
+  // keepalive: no-op
 });
