@@ -1,16 +1,10 @@
 // Family Hub - Popup
-// Reads note data from storage and renders it live.
+// Shows the last scrape time and a preview of synced notes.
 // storage.js is loaded first by popup.html, so all storage helpers are global.
 
 const statusLine     = document.getElementById('status-line');
 const errorBanner    = document.getElementById('error-banner');
 const notesContainer = document.getElementById('notes-container');
-const authStatus     = document.getElementById('auth-status');
-const authBtn        = document.getElementById('auth-btn');
-
-// ---------------------------------------------------------------------------
-// Render notes
-// ---------------------------------------------------------------------------
 
 async function render() {
   const [notes, lastSync, errors] = await Promise.all([
@@ -21,7 +15,7 @@ async function render() {
 
   if (lastSync) {
     const d = new Date(lastSync);
-    statusLine.textContent = `Last synced: ${d.toLocaleTimeString()} — ${d.toLocaleDateString()}`;
+    statusLine.textContent = `Last scraped: ${d.toLocaleTimeString()} — ${d.toLocaleDateString()}`;
   } else {
     statusLine.textContent = 'Not yet synced. Open Google Keep to start.';
   }
@@ -103,7 +97,7 @@ async function render() {
 }
 
 function buildListItem(text, isChecked) {
-  const li   = document.createElement('li');
+  const li    = document.createElement('li');
   if (isChecked) li.className = 'checked';
   const icon  = document.createElement('span');
   icon.textContent = isChecked ? '☑' : '☐';
@@ -114,43 +108,8 @@ function buildListItem(text, isChecked) {
   return li;
 }
 
-// ---------------------------------------------------------------------------
-// Auth status
-// ---------------------------------------------------------------------------
-
-async function refreshAuthUI() {
-  chrome.runtime.sendMessage({ type: 'GET_AUTH_STATUS' }, (response) => {
-    const connected = response?.authenticated;
-    authStatus.textContent = connected ? 'Connected to Google' : 'Not connected';
-    authStatus.style.color = connected ? '#188038' : '#5f6368';
-    authBtn.textContent    = connected ? 'Disconnect' : 'Connect to Google';
-    authBtn.className      = connected ? 'disconnect' : '';
-  });
-}
-
-authBtn.addEventListener('click', () => {
-  const isDisconnect = authBtn.classList.contains('disconnect');
-  authBtn.disabled = true;
-  authBtn.textContent = '…';
-
-  const msgType = isDisconnect ? 'REVOKE_AUTH' : 'LAUNCH_OAUTH';
-  chrome.runtime.sendMessage({ type: msgType }, (response) => {
-    authBtn.disabled = false;
-    if (!response?.ok && response?.error) {
-      authStatus.textContent = `Error: ${response.error}`;
-      authStatus.style.color = '#c5221f';
-    }
-    refreshAuthUI();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Init + live updates
-// ---------------------------------------------------------------------------
-
 document.addEventListener('DOMContentLoaded', async () => {
   await render();
-  await refreshAuthUI();
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && (changes[KEYS.NOTES] || changes[KEYS.ERRORS])) {
