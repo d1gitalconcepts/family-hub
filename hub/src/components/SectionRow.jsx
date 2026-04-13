@@ -10,8 +10,8 @@ export default function SectionRow({ section, days, events, calendarConfig }) {
     if (calIds.has(c.id) && c.visible !== false) visibleIds.add(c.id);
   });
 
-  // If no calIds configured (e.g. __all fallback), show every event unfiltered
-  const unfiltered = calIds.size === 0;
+  // Only show all events unfiltered for the explicit __all fallback section
+  const unfiltered = section.id === '__all';
 
   function eventsForDay(day) {
     const dateStr = day.toISOString().split('T')[0];
