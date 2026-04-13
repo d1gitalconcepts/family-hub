@@ -75,7 +75,8 @@ async function sbDeleteStaleEvents(seenIds) {
   await supabaseEnsureAuth();
 
   const windowMin = new Date();
-  windowMin.setDate(windowMin.getDate() - 1);
+  windowMin.setDate(windowMin.getDate() - windowMin.getDay()); // this Sunday
+  windowMin.setHours(0, 0, 0, 0);
   const minIso  = windowMin.toISOString();
   const minDate = minIso.split('T')[0];
 

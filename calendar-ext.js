@@ -198,7 +198,11 @@ function getWeekDates() {
 async function pollAllCalendars() {
   if (!(await isAuthenticated())) return;
 
-  const min = new Date(); min.setDate(min.getDate() - 1);  min.setHours(0, 0, 0, 0);
+  // Start from the beginning of the current week (Sunday) so past days
+  // in the same week are always included and never stale-deleted.
+  const min = new Date();
+  min.setDate(min.getDate() - min.getDay()); // back to this Sunday
+  min.setHours(0, 0, 0, 0);
   const max = new Date(); max.setDate(max.getDate() + 14); max.setHours(23, 59, 59, 999);
 
   let calListRes;
