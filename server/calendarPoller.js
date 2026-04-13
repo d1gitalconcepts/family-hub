@@ -92,6 +92,7 @@ async function pollCalendars() {
 
   if (allEvents.length) {
     await upsertEvents(allEvents);
+    await deleteStaleEvents(seenIds);
   }
 
   console.log(`[Poller] Synced ${allEvents.length} events from ${calendars.length} calendars.`);
