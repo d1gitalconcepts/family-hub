@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import LoginScreen from './components/LoginScreen';
 import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
@@ -29,6 +29,7 @@ export default function App() {
   const [lastSync, setLastSync]       = useState(null);
   const [syncing, setSyncing]         = useState(false);
   const [lastScrape, setLastScrape]   = useState(null);
+  const manualSyncPending             = useRef(false);
 
   useEffect(() => {
     async function checkSession() {
@@ -52,6 +53,10 @@ export default function App() {
         if (payload.new?.value) {
           setLastSync(new Date(payload.new.value));
           setSyncing(false);
+          if (manualSyncPending.current) {
+            manualSyncPending.current = false;
+            setViewKey((k) => k + 1);
+          }
         }
       })
       .subscribe();
@@ -78,15 +83,19 @@ export default function App() {
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
+    manualSyncPending.current = true;
     try {
       await fetch(`${import.meta.env.VITE_WORKER_URL}/sync`, { method: 'POST' });
     } catch (err) {
       console.warn('[Sync] Worker request failed:', err.message);
       setSyncing(false);
+      manualSyncPending.current = false;
     }
-    // Spinner clears when last_calendar_sync updates via realtime subscription
-    // Safety fallback in case realtime is slow
-    setTimeout(() => setSyncing(false), 30000);
+    // Safety fallback — clear spinner and flag if realtime doesn't respond in 30s
+    setTimeout(() => {
+      setSyncing(false);
+      manualSyncPending.current = false;
+    }, 30000);
   }, []);
 
   useEffect(() => {
