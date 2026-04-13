@@ -626,28 +626,10 @@ html, body, #root {
   word-break: break-all;
 }
 
-.event-popout-location {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.event-popout-location-link {
+  color: var(--accent);
+  word-break: break-word;
 }
-
-.event-popout-map-links {
-  display: flex;
-  gap: 10px;
-}
-
-.event-popout-map-links a {
-  font-size: 12px;
-  color: #fff;
-  background: var(--accent);
-  padding: 4px 10px;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.event-popout-map-links a:hover { opacity: 0.85; }
 
 /* ── Settings panel ────────────────────────────────────────── */
 
