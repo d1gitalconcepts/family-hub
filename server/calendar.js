@@ -8,6 +8,13 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 const IDS_FILE = path.join(__dirname, '.ids.json');
 
 async function syncCalendar(authClient, lines) {
+  // If Keep truncated the note card, the last line is '…'.
+  // Never sync truncated data — it would delete events for hidden days.
+  if (lines[lines.length - 1] === '…') {
+    console.log('[Calendar] Skipping sync — note is truncated. Open the Meal Planning note in Keep to sync fully.');
+    return;
+  }
+
   const service = google.calendar({ version: 'v3', auth: authClient });
 
   const calendarId = await getOrCreateCalendar(service);
