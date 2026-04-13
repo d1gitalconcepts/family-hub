@@ -159,15 +159,46 @@ async function main() {
     );
 
     // Extra settle time for note content to fully render
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
 
-    const notes = await scrapeKeep(page, TARGET_NOTES);
+    // Open each target note in the editor one at a time so we get full content.
+    // Keep truncates long text notes in card view (shows "…"); opening in editor
+    // gives us the complete text.
+    const allNotes = [];
 
-    if (notes.length === 0) {
+    for (const noteName of TARGET_NOTES) {
+      // Click the note title to open it in editor view
+      const clicked = await page.evaluate((name) => {
+        const els = document.querySelectorAll('div[role="textbox"]');
+        for (const el of els) {
+          if (el.innerText.trim() === name) { el.click(); return true; }
+        }
+        return false;
+      }, noteName);
+
+      if (!clicked) {
+        console.warn(`[${ts}] Note not found on screen: "${noteName}" — skipping.`);
+        continue;
+      }
+
+      // Wait for the editor overlay (.oT9UPb) to appear
+      await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(800);
+
+      // Scrape this note while the editor is open (full content visible)
+      const scraped = await scrapeKeep(page, [noteName]);
+      allNotes.push(...scraped);
+
+      // Close the editor and wait for it to animate away
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(600);
+    }
+
+    if (allNotes.length === 0) {
       console.warn(`[${ts}] No target notes found. Is Keep showing them on screen?`);
     } else {
-      await upsertNotes(notes);
-      const summary = notes.map((n) =>
+      await upsertNotes(allNotes);
+      const summary = allNotes.map((n) =>
         n.type === 'checklist'
           ? `${n.title} (${n.items.length} items)`
           : `${n.title} (${n.lines.length} lines)`
