@@ -198,10 +198,10 @@ function getWeekDates() {
 async function pollAllCalendars() {
   if (!(await isAuthenticated())) return;
 
-  // Start from the beginning of the current week (Sunday) so past days
-  // in the same week are always included and never stale-deleted.
+  // Start from Saturday before this week so all-day Sunday events are
+  // never excluded by the API's exclusive start-time lower bound.
   const min = new Date();
-  min.setDate(min.getDate() - min.getDay()); // back to this Sunday
+  min.setDate(min.getDate() - min.getDay() - 1); // back to last Saturday
   min.setHours(0, 0, 0, 0);
   const max = new Date(); max.setDate(max.getDate() + 14); max.setHours(23, 59, 59, 999);
 
