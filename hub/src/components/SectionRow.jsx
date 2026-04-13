@@ -10,11 +10,14 @@ export default function SectionRow({ section, days, events, calendarConfig }) {
     if (calIds.has(c.id) && c.visible !== false) visibleIds.add(c.id);
   });
 
+  // If no calIds configured (e.g. __all fallback), show every event unfiltered
+  const unfiltered = calIds.size === 0;
+
   function eventsForDay(day) {
     const dateStr = day.toISOString().split('T')[0];
     return events
       .filter((e) => {
-        if (!visibleIds.has(e.calendar_id)) return false;
+        if (!unfiltered && !visibleIds.has(e.calendar_id)) return false;
         if (e.is_all_day) return e.start_date === dateStr;
         if (!e.start_at) return false;
         return new Date(e.start_at).toISOString().split('T')[0] === dateStr;

@@ -17,7 +17,8 @@ export function useCalendarEvents(weekStart, weekEnd) {
         )
         .order('start_at', { ascending: true });
 
-      if (!error) setEvents(data || []);
+      if (error) console.error('[useCalendarEvents]', error);
+      else setEvents(data || []);
     }
 
     fetchEvents();
