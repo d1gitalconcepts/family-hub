@@ -1,4 +1,7 @@
+import { useState } from 'react';
+
 export default function EventCard({ event, calColor }) {
+  const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
   function formatTime(iso) {
@@ -6,17 +9,78 @@ export default function EventCard({ event, calColor }) {
     return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
+  function formatDate(iso, dateStr) {
+    const d = iso ? new Date(iso) : dateStr ? new Date(dateStr + 'T12:00:00') : null;
+    if (!d) return '';
+    return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function isUrl(str) {
+    try { new URL(str); return true; } catch { return false; }
+  }
+
   return (
-    <div
-      className={`event-card${event.is_all_day ? ' all-day' : ''}`}
-      style={{ '--cal-color': color }}
-      title={event.description || event.summary}
-    >
-      {!event.is_all_day && (
-        <span className="event-time">{formatTime(event.start_at)}</span>
+    <>
+      <div
+        className={`event-card${event.is_all_day ? ' all-day' : ''}`}
+        style={{ '--cal-color': color, cursor: 'pointer' }}
+        onClick={() => setOpen(true)}
+      >
+        {!event.is_all_day && (
+          <span className="event-time">{formatTime(event.start_at)}</span>
+        )}
+        <span className="event-title">{event.summary}</span>
+        <span className="event-cal">{event.cal_name}</span>
+      </div>
+
+      {open && (
+        <div className="event-popout-overlay" onClick={() => setOpen(false)}>
+          <div
+            className="event-popout"
+            style={{ '--cal-color': color }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="event-popout-bar" />
+
+            <div className="event-popout-header">
+              <div className="event-popout-title">{event.summary}</div>
+              <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
+            </div>
+
+            <div className="event-popout-meta">
+              <span className="event-popout-cal" style={{ color }}>● {event.cal_name}</span>
+            </div>
+
+            <div className="event-popout-body">
+              <div className="event-popout-row">
+                <span className="event-popout-label">Date</span>
+                <span>{formatDate(event.start_at, event.start_date)}</span>
+              </div>
+
+              {!event.is_all_day && event.start_at && (
+                <div className="event-popout-row">
+                  <span className="event-popout-label">Time</span>
+                  <span>
+                    {formatTime(event.start_at)}
+                    {event.end_at ? ` – ${formatTime(event.end_at)}` : ''}
+                  </span>
+                </div>
+              )}
+
+              {event.description && (
+                <div className="event-popout-row event-popout-desc">
+                  <span className="event-popout-label">Details</span>
+                  <span>
+                    {isUrl(event.description.trim())
+                      ? <a href={event.description.trim()} target="_blank" rel="noreferrer">{event.description.trim()}</a>
+                      : event.description}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
-      <span className="event-title">{event.summary}</span>
-      <span className="event-cal">{event.cal_name}</span>
-    </div>
+    </>
   );
 }

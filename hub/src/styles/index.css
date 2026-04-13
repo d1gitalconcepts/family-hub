@@ -521,6 +521,111 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+/* ── Event popout ──────────────────────────────────────────── */
+
+.event-popout-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .event-popout-overlay {
+    align-items: center;
+  }
+}
+
+.event-popout {
+  background: var(--surface);
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 4px solid var(--cal-color, #4285f4);
+}
+
+@media (min-width: 769px) {
+  .event-popout {
+    border-radius: 12px;
+    border-top: none;
+    border-left: 4px solid var(--cal-color, #4285f4);
+  }
+}
+
+.event-popout-bar {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+}
+
+@media (min-width: 769px) {
+  .event-popout-bar { display: none; }
+}
+
+.event-popout-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px 4px;
+  gap: 8px;
+}
+
+.event-popout-title {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.3;
+  flex: 1;
+}
+
+.event-popout-meta {
+  padding: 0 16px 10px;
+  font-size: 13px;
+}
+
+.event-popout-cal { font-weight: 500; }
+
+.event-popout-body {
+  padding: 0 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.event-popout-row {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.event-popout-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  min-width: 52px;
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+
+.event-popout-desc span {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.event-popout-desc a {
+  color: var(--accent);
+  word-break: break-all;
+}
+
 /* ── Settings panel ────────────────────────────────────────── */
 
 .settings-overlay {
