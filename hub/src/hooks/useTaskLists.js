@@ -15,8 +15,9 @@ export function useTaskLists() {
 
     fetch();
 
+    const channelName = `task_lists_${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('task_lists_changes')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_lists' }, fetch)
       .subscribe();
 

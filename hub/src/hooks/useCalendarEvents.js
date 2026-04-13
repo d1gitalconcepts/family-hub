@@ -24,8 +24,9 @@ export function useCalendarEvents(weekStart, weekEnd) {
     fetchEvents();
 
     // Real-time subscription
+    const channelName = `calendar_events_${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('calendar_events_changes')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, fetchEvents)
       .subscribe();
 
