@@ -54,6 +54,93 @@ async function upsertNotes(notes) {
   if (!res.ok) throw new Error(`Supabase upsert failed: ${await res.text()}`);
 }
 
+// Fetch pending Keep checkbox updates for a given note key
+async function fetchPendingKeepUpdates(noteKey) {
+  await supabaseAuth();
+  const res = await fetch(
+    `${CONFIG.SUPABASE_URL}/rest/v1/keep_updates?note_key=eq.${encodeURIComponent(noteKey)}&select=id,item_text,checked`,
+    {
+      headers: {
+        'apikey':        CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${_jwt}`,
+      },
+    }
+  );
+  if (!res.ok) {
+    console.warn(`[Hub] Failed to fetch keep_updates: ${await res.text()}`);
+    return [];
+  }
+  return res.json();
+}
+
+// Delete applied keep_updates rows by id array
+async function clearPendingKeepUpdates(ids) {
+  if (!ids.length) return;
+  await supabaseAuth();
+  const res = await fetch(
+    `${CONFIG.SUPABASE_URL}/rest/v1/keep_updates?id=in.(${ids.join(',')})`,
+    {
+      method:  'DELETE',
+      headers: {
+        'apikey':        CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${_jwt}`,
+      },
+    }
+  );
+  if (!res.ok) {
+    console.warn(`[Hub] Failed to clear keep_updates: ${await res.text()}`);
+  }
+}
+
+// ── Keep write-back ───────────────────────────────────────────────────────────
+
+// Apply pending checkbox updates while the note editor is open.
+// Returns the ids of successfully applied updates.
+async function applyKeepUpdates(page, updates) {
+  if (!updates.length) return [];
+  const appliedIds = [];
+
+  for (const update of updates) {
+    const applied = await page.evaluate(({ itemText, desiredChecked }) => {
+      // Find all checkboxes in the open editor (.oT9UPb)
+      const editor = document.querySelector('.oT9UPb');
+      if (!editor) return false;
+
+      const checkboxes = Array.from(editor.querySelectorAll('div[role="checkbox"]'));
+      for (const cb of checkboxes) {
+        const row      = cb.parentElement?.parentElement;
+        const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
+        let   text     = textSpan?.innerText?.trim();
+
+        // Fallback: clone row, strip checkbox, read text
+        if (!text && row) {
+          const clone = row.cloneNode(true);
+          const cbClone = clone.querySelector('[role="checkbox"]');
+          if (cbClone) cbClone.remove();
+          text = clone.innerText?.trim();
+        }
+
+        if (!text || text.toLowerCase() !== itemText.toLowerCase()) continue;
+
+        const isChecked = cb.getAttribute('aria-checked') === 'true';
+        if (isChecked !== desiredChecked) {
+          cb.click();
+          return true;  // clicked
+        }
+        return false;   // already in correct state — no click needed
+      }
+      return false; // item not found
+    }, { itemText: update.item_text, desiredChecked: update.checked });
+
+    if (applied !== null) {
+      // Whether we clicked or it was already correct, the update is resolved
+      appliedIds.push(update.id);
+    }
+  }
+
+  return appliedIds;
+}
+
 // ── Scraping logic (mirrors content.js) ──────────────────────────────────────
 
 async function scrapeKeep(page, targetNotes) {
@@ -150,6 +237,10 @@ async function scrapeKeep(page, targetNotes) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+function slugify(str) {
+  return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 async function main() {
   const ts = new Date().toISOString();
 
@@ -188,6 +279,14 @@ async function main() {
     const allNotes = [];
 
     for (const noteName of TARGET_NOTES) {
+      const noteKey = slugify(noteName);
+
+      // Fetch any pending checkbox updates queued by the hub for this note
+      const pendingUpdates = await fetchPendingKeepUpdates(noteKey);
+      if (pendingUpdates.length) {
+        console.log(`[${ts}] ${pendingUpdates.length} pending Keep update(s) for "${noteName}"`);
+      }
+
       // Click the note title to open it in editor view
       const clicked = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
@@ -205,6 +304,24 @@ async function main() {
       // Wait for the editor overlay (.oT9UPb) to appear
       await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(800);
+
+      // Apply any pending checkbox updates while the editor is open
+      if (pendingUpdates.length) {
+        const appliedIds = await applyKeepUpdates(page, pendingUpdates);
+        if (appliedIds.length) {
+          console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+          await clearPendingKeepUpdates(appliedIds);
+          // Brief pause so Keep can register the clicks before we scrape
+          await page.waitForTimeout(600);
+        }
+        const skipped = pendingUpdates.length - appliedIds.length;
+        if (skipped > 0) {
+          console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
+          // Still clear them so they don't pile up
+          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+          await clearPendingKeepUpdates(notApplied);
+        }
+      }
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);

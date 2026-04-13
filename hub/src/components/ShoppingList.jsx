@@ -26,20 +26,37 @@ export default function ShoppingList() {
       .filter(Boolean);
   }
 
-  async function toggleItem(listId, item) {
+  function slugify(str) {
+    return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  async function toggleItem(list, item) {
+    const listId     = list.list_id;
     const key        = `${listId}:${item.google_task_id || item.text}`;
     const newChecked = !(optimistic[key] ?? item.checked);
     setOptimistic((prev) => ({ ...prev, [key]: newChecked }));
 
+    // 1. Queue Google Tasks update — worker applies this
     const { error } = await supabase.from('pending_updates').insert({
       list_id: listId,
       task_id: item.google_task_id || item.text,
       checked: newChecked,
     });
     if (error) {
-      console.warn('[Hub] Failed to queue update:', error.message);
+      console.warn('[Hub] Failed to queue task update:', error.message);
       setOptimistic((prev) => ({ ...prev, [key]: item.checked }));
+      return;
     }
+
+    // 2. Queue Keep checkbox update — Linux scraper applies this on next run
+    const noteKey = slugify(list.displayName);
+    await supabase.from('keep_updates').insert({
+      note_key:  noteKey,
+      item_text: item.text,
+      checked:   newChecked,
+    }).then(({ error: e }) => {
+      if (e) console.warn('[Hub] Failed to queue Keep update:', e.message);
+    });
   }
 
   return (
@@ -70,7 +87,7 @@ export default function ShoppingList() {
                   key={item.google_task_id || item.text}
                   item={item}
                   checked={false}
-                  onToggle={() => toggleItem(list.list_id, item)}
+                  onToggle={() => toggleItem(list, item)}
                 />
               ))}
 
@@ -84,7 +101,7 @@ export default function ShoppingList() {
                       key={item.google_task_id || item.text}
                       item={item}
                       checked={true}
-                      onToggle={() => toggleItem(list.list_id, item)}
+                      onToggle={() => toggleItem(list, item)}
                     />
                   ))}
                 </>
