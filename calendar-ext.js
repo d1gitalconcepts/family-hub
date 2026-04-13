@@ -7,7 +7,16 @@ const DAY_NAMES     = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', '
 
 // ── Meal Planning calendar sync ──────────────────────────────────────────────
 
+let _mealSyncRunning = false;
+
 async function syncMealCalendar(lines) {
+  if (_mealSyncRunning) {
+    console.log('[Calendar] Meal sync already running, skipping.');
+    return;
+  }
+  _mealSyncRunning = true;
+
+  try {
   if (lines[lines.length - 1] === '…') {
     console.log('[Calendar] Skipping — note is truncated. Open the note in Keep to sync fully.');
     return;
@@ -31,6 +40,9 @@ async function syncMealCalendar(lines) {
       { summary: `Dinner: ${meal}`, description: url || undefined, start: { date }, end: { date } }
     );
     console.log(`[Calendar] Created ${date}: ${meal}`);
+  }
+  } finally {
+    _mealSyncRunning = false;
   }
 }
 
