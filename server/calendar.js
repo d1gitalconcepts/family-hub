@@ -23,17 +23,18 @@ async function syncCalendar(authClient, lines) {
   await deleteEventsOnDates(service, calendarId, dates);
 
   // Create new events
-  for (const [day, { date, meal }] of Object.entries(meals)) {
+  for (const [day, { date, meal, url }] of Object.entries(meals)) {
     if (!meal) continue; // day listed but no meal
     await service.events.insert({
       calendarId,
       requestBody: {
         summary: `Dinner: ${meal}`,
+        description: url || undefined,
         start: { date },
         end:   { date },
       },
     });
-    console.log(`[Calendar] Created event on ${date}: ${meal}`);
+    console.log(`[Calendar] Created event on ${date}: ${meal}${url ? ' (with recipe URL)' : ''}`);
   }
 }
 
@@ -96,6 +97,12 @@ function parseMeals(lines) {
       if (mealText && !mealText.startsWith('http')) {
         meals[currentDay].meal = mealText;
       }
+      continue;
+    }
+
+    // Recipe URL on its own line following a meal bullet
+    if (currentDay && meals[currentDay]?.meal && trimmed.startsWith('http')) {
+      meals[currentDay].url = trimmed;
     }
   }
 
