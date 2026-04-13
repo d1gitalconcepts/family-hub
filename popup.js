@@ -94,23 +94,24 @@ async function render() {
 
     } else {
       // Plain text note
+      const isTruncated = note.lines[note.lines.length - 1] === '…';
       const meta = document.createElement('div');
       meta.className = 'note-meta';
-      meta.textContent = `${note.lines.length} line(s)`;
+      meta.textContent = `${note.lines.length} line(s)${isTruncated ? ' — truncated by Keep' : ''}`;
       card.appendChild(meta);
 
       const list = document.createElement('ul');
       list.className = 'item-list';
-      note.lines.slice(0, 5).forEach((line) => {
+      note.lines.forEach((line) => {
         list.appendChild(buildListItem(line, false));
       });
       card.appendChild(list);
 
-      if (note.lines.length > 5) {
-        const overflow = document.createElement('p');
-        overflow.className = 'overflow-note';
-        overflow.textContent = `+ ${note.lines.length - 5} more lines`;
-        card.appendChild(overflow);
+      if (isTruncated) {
+        const warn = document.createElement('p');
+        warn.className = 'overflow-note';
+        warn.textContent = '⚠ Open this note in Keep to sync all content.';
+        card.appendChild(warn);
       }
     }
 

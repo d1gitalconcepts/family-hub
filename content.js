@@ -16,11 +16,14 @@ const TARGET_NOTES = [
 
 function scrapeNotes() {
   const results = [];
+  const seen = new Set(); // deduplicate notes that appear multiple times in the DOM
   const titleElements = document.querySelectorAll('div[role="textbox"]');
 
   titleElements.forEach((titleEl) => {
     const title = titleEl.innerText.trim();
     if (!TARGET_NOTES.includes(title)) return;
+    if (seen.has(title)) return; // skip duplicate DOM entries (e.g. pinned + list)
+    seen.add(title);
 
     // Walk up to find the note's root container
     const noteContainer =
