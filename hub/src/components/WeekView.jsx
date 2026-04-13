@@ -43,6 +43,17 @@ export default function WeekView() {
 
   const days      = getWeekDays(anchor);
   const weekStart = days[0];
+
+  // Build grid template: today's column is wider than the rest
+  const todayIdx = days.findIndex((d) =>
+    d.getDate() === today.getDate() &&
+    d.getMonth() === today.getMonth() &&
+    d.getFullYear() === today.getFullYear()
+  );
+  const colTemplate = days.map((_, i) =>
+    i === todayIdx ? 'minmax(140px, 2fr)' : 'minmax(80px, 1fr)'
+  ).join(' ');
+  const gridStyle = { gridTemplateColumns: `var(--label-w) ${colTemplate}` };
   const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
   const events    = useCalendarEvents(weekStart, weekEnd);
 
@@ -110,7 +121,7 @@ export default function WeekView() {
       <div className="week-container">
         {/* Day headers */}
         {!isMobile && (
-          <div className="day-headers">
+          <div className="day-headers" style={gridStyle}>
             <div className="day-header-spacer" />
             {days.map((day, i) => {
               const isToday =
@@ -136,6 +147,7 @@ export default function WeekView() {
               events={events}
               calendarConfig={calendars}
               isMobile={isMobile}
+              gridStyle={isMobile ? undefined : gridStyle}
             />
           ))}
         </div>

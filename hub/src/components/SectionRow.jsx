@@ -1,6 +1,6 @@
 import EventCard from './EventCard';
 
-export default function SectionRow({ section, days, events, calendarConfig }) {
+export default function SectionRow({ section, days, events, calendarConfig, gridStyle }) {
   const calIds = new Set(section.calendarIds || []);
 
   const colorMap = {};
@@ -34,7 +34,7 @@ export default function SectionRow({ section, days, events, calendarConfig }) {
       <div className="section-row-label">
         {section.name && <span>{section.name}</span>}
       </div>
-      <div className="section-cells">
+      <div className="section-cells" style={gridStyle}>
         {days.map((day, i) => {
           const dayEvents = eventsForDay(day);
           return (
