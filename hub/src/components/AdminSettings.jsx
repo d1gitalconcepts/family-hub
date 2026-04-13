@@ -1,22 +1,39 @@
 import { useRef, useState } from 'react';
 import { useConfig } from '../hooks/useConfig';
+import { useTaskLists } from '../hooks/useTaskLists';
 
 export default function AdminSettings({ onClose }) {
+  const [activeTab, setActiveTab] = useState('calendars');
+
   const [calConfig, setCalConfig] = useConfig('visible_calendars');
   const [sections,  setSections]  = useConfig('calendar_sections');
+  const [listConfig, setListConfig] = useConfig('visible_task_lists');
+  const allTaskLists = useTaskLists();
 
   // dropTarget: null | 'unassigned' | `section-${id}` | { sectionId, beforeIdx }
   const [dropTarget, setDropTarget] = useState(null);
-  const drag = useRef(null); // { type: 'section'|'calendar', fromSectionId, calId, fromIdx }
+  const drag = useRef(null);
 
   const calendars   = calConfig  || [];
   const sectionList = sections   || [];
   const assignedIds = new Set(sectionList.flatMap((s) => s.calendarIds || []));
   const unassigned  = calendars.filter((c) => !assignedIds.has(c.id));
 
+  // Merge task list config with live data from Supabase
+  const listRows = allTaskLists.map((l) => {
+    const cfg = (listConfig || []).find((c) => c.list_id === l.list_id);
+    return { list_id: l.list_id, name: cfg?.name || l.list_name, visible: cfg?.visible ?? true, itemCount: (l.items || []).length };
+  });
+
   // --- Calendar field updates ---
   function updateCalendar(id, field, value) {
     setCalConfig(calendars.map((c) => c.id === id ? { ...c, [field]: value } : c));
+  }
+
+  // --- List field updates ---
+  function updateListRow(listId, field, value) {
+    const updated = listRows.map((r) => r.list_id === listId ? { ...r, [field]: value } : r);
+    setListConfig(updated);
   }
 
   // --- Section CRUD ---
@@ -32,7 +49,7 @@ export default function AdminSettings({ onClose }) {
     setSections(sectionList.map((s) => s.id === id ? { ...s, name } : s));
   }
 
-  // --- Drag: sections (reorder) ---
+  // --- Drag: sections ---
   function onSectionDragStart(e, idx) {
     drag.current = { type: 'section', fromIdx: idx };
     e.dataTransfer.effectAllowed = 'move';
@@ -60,7 +77,6 @@ export default function AdminSettings({ onClose }) {
     e.stopPropagation();
   }
 
-  // Drop onto a specific position within a section (before `toIdx`)
   function onCalDropAtPosition(e, toSectionId, toIdx) {
     e.preventDefault();
     e.stopPropagation();
@@ -70,16 +86,13 @@ export default function AdminSettings({ onClose }) {
     setSections(
       sectionList.map((s) => {
         if (s.id === fromSectionId && s.id === toSectionId) {
-          // Same section — reorder
           const ids = [...s.calendarIds];
           ids.splice(fromIdx, 1);
           const insertAt = fromIdx < toIdx ? toIdx - 1 : toIdx;
           ids.splice(insertAt, 0, calId);
           return { ...s, calendarIds: ids };
         }
-        if (s.id === fromSectionId) {
-          return { ...s, calendarIds: s.calendarIds.filter((id) => id !== calId) };
-        }
+        if (s.id === fromSectionId) return { ...s, calendarIds: s.calendarIds.filter((id) => id !== calId) };
         if (s.id === toSectionId) {
           const ids = [...(s.calendarIds || [])];
           ids.splice(toIdx, 0, calId);
@@ -92,7 +105,6 @@ export default function AdminSettings({ onClose }) {
     setDropTarget(null);
   }
 
-  // Drop onto the section zone (append to end)
   function onCalDropToSection(e, toSectionId) {
     e.preventDefault();
     e.stopPropagation();
@@ -127,11 +139,7 @@ export default function AdminSettings({ onClose }) {
         draggable
         onDragStart={(e) => onCalDragStart(e, cal.id, fromSectionId, idx)}
         onDragEnd={onDragEnd}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setDropTarget({ sectionId: fromSectionId, beforeIdx: idx });
-        }}
+        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ sectionId: fromSectionId, beforeIdx: idx }); }}
         onDrop={(e) => onCalDropAtPosition(e, fromSectionId, idx)}
       >
         <span className="drag-handle">⠿</span>
@@ -158,9 +166,15 @@ export default function AdminSettings({ onClose }) {
     );
   }
 
+  const TABS = [
+    { id: 'calendars', label: 'Calendars' },
+    { id: 'lists',     label: 'Lists' },
+  ];
+
   return (
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+
         <div className="settings-panel-header">
           Settings
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -170,98 +184,140 @@ export default function AdminSettings({ onClose }) {
             <button className="btn-icon" onClick={onClose}>✕</button>
           </div>
         </div>
+
+        <div className="settings-tabs">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`settings-tab${activeTab === tab.id ? ' active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="settings-body">
 
-          {/* Sections */}
-          <div className="settings-section">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <h3 style={{ margin: 0 }}>Sections</h3>
-              <button className="btn" style={{ fontSize: 12, padding: '3px 10px' }} onClick={addSection}>
-                + Add Section
-              </button>
-            </div>
+          {/* ── Calendars tab ─────────────────────────────────── */}
+          {activeTab === 'calendars' && (
+            <>
+              <div className="settings-section">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <h3 style={{ margin: 0 }}>Sections</h3>
+                  <button className="btn" style={{ fontSize: 12, padding: '3px 10px' }} onClick={addSection}>
+                    + Add Section
+                  </button>
+                </div>
 
-            {sectionList.length === 0 && (
-              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                No sections yet. Add one and drag calendars into it.
-              </p>
-            )}
+                {sectionList.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                    No sections yet. Add one and drag calendars into it.
+                  </p>
+                )}
 
-            {sectionList.map((section, si) => {
-              const calIds = section.calendarIds || [];
-              return (
-                <div
-                  key={section.id}
-                  className={`settings-section-block${dropTarget === `section-${section.id}` ? ' drop-target' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); setDropTarget(`section-${section.id}`); }}
-                  onDrop={(e) => onSectionDrop(e, si)}
-                  onDragLeave={() => setDropTarget(null)}
-                >
+                {sectionList.map((section, si) => {
+                  const calIds = section.calendarIds || [];
+                  return (
+                    <div
+                      key={section.id}
+                      className={`settings-section-block${dropTarget === `section-${section.id}` ? ' drop-target' : ''}`}
+                      onDragOver={(e) => { e.preventDefault(); setDropTarget(`section-${section.id}`); }}
+                      onDrop={(e) => onSectionDrop(e, si)}
+                      onDragLeave={() => setDropTarget(null)}
+                    >
+                      <div
+                        className="settings-section-header"
+                        draggable
+                        onDragStart={(e) => onSectionDragStart(e, si)}
+                        onDragEnd={onDragEnd}
+                      >
+                        <span className="drag-handle">⠿</span>
+                        <input
+                          className="section-name-input"
+                          value={section.name}
+                          onChange={(e) => renameSection(section.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <button
+                          className="btn-icon"
+                          style={{ fontSize: 12, color: 'var(--danger)' }}
+                          onClick={() => deleteSection(section.id)}
+                          title="Delete section"
+                        >✕</button>
+                      </div>
+
+                      <div
+                        className={`section-cal-drop-zone${dropTarget === `cals-${section.id}` ? ' drop-active' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget(`cals-${section.id}`); }}
+                        onDrop={(e) => onCalDropToSection(e, section.id)}
+                        onDragLeave={() => setDropTarget(null)}
+                      >
+                        {calIds.map((calId, i) => (
+                          <CalRow
+                            key={calId}
+                            cal={calById(calId)}
+                            fromSectionId={section.id}
+                            idx={i}
+                            isDropTarget={dropTarget?.sectionId === section.id && dropTarget?.beforeIdx === i}
+                          />
+                        ))}
+                        {calIds.length === 0 && <div className="drop-hint">Drop calendars here</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(unassigned.length > 0 || sectionList.length > 0) && (
+                <div className="settings-section">
+                  <h3>Unassigned Calendars</h3>
                   <div
-                    className="settings-section-header"
-                    draggable
-                    onDragStart={(e) => onSectionDragStart(e, si)}
-                    onDragEnd={onDragEnd}
-                  >
-                    <span className="drag-handle">⠿</span>
-                    <input
-                      className="section-name-input"
-                      value={section.name}
-                      onChange={(e) => renameSection(section.id, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <button
-                      className="btn-icon"
-                      style={{ fontSize: 12, color: 'var(--danger)' }}
-                      onClick={() => deleteSection(section.id)}
-                      title="Delete section"
-                    >✕</button>
-                  </div>
-
-                  <div
-                    className={`section-cal-drop-zone${dropTarget === `cals-${section.id}` ? ' drop-active' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget(`cals-${section.id}`); }}
-                    onDrop={(e) => onCalDropToSection(e, section.id)}
+                    className={`section-cal-drop-zone${dropTarget === 'unassigned' ? ' drop-active' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setDropTarget('unassigned'); }}
+                    onDrop={onCalDropToUnassigned}
                     onDragLeave={() => setDropTarget(null)}
                   >
-                    {calIds.map((calId, i) => (
-                      <CalRow
-                        key={calId}
-                        cal={calById(calId)}
-                        fromSectionId={section.id}
-                        idx={i}
-                        isDropTarget={
-                          dropTarget?.sectionId === section.id &&
-                          dropTarget?.beforeIdx === i
-                        }
-                      />
+                    {unassigned.map((cal, i) => (
+                      <CalRow key={cal.id} cal={cal} fromSectionId={null} idx={i} isDropTarget={false} />
                     ))}
-                    {calIds.length === 0 && (
-                      <div className="drop-hint">Drop calendars here</div>
-                    )}
+                    {unassigned.length === 0 && <div className="drop-hint">All calendars are assigned</div>}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </>
+          )}
 
-          {/* Unassigned */}
-          {(unassigned.length > 0 || sectionList.length > 0) && (
+          {/* ── Lists tab ──────────────────────────────────────── */}
+          {activeTab === 'lists' && (
             <div className="settings-section">
-              <h3>Unassigned Calendars</h3>
-              <div
-                className={`section-cal-drop-zone${dropTarget === 'unassigned' ? ' drop-active' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); setDropTarget('unassigned'); }}
-                onDrop={onCalDropToUnassigned}
-                onDragLeave={() => setDropTarget(null)}
-              >
-                {unassigned.map((cal, i) => (
-                  <CalRow key={cal.id} cal={cal} fromSectionId={null} idx={i} isDropTarget={false} />
-                ))}
-                {unassigned.length === 0 && (
-                  <div className="drop-hint">All calendars are assigned</div>
-                )}
-              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
+                Choose which Google Task lists appear in the sidebar. Lists are synced from Google Tasks every 5 minutes.
+              </p>
+
+              {listRows.length === 0 && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  No task lists found. Open Google Keep or wait for a sync.
+                </p>
+              )}
+
+              {listRows.map((row) => (
+                <div key={row.list_id} className="cal-row">
+                  <input
+                    type="checkbox"
+                    checked={row.visible}
+                    onChange={(e) => updateListRow(row.list_id, 'visible', e.target.checked)}
+                  />
+                  <input
+                    className="cal-name-input"
+                    value={row.name}
+                    onChange={(e) => updateListRow(row.list_id, 'name', e.target.value)}
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {row.itemCount} item{row.itemCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 

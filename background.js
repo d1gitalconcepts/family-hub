@@ -100,11 +100,15 @@ async function handleNotesScrape(notes, timestamp) {
 
 chrome.alarms.create('keepalive',      { periodInMinutes: 1   });
 chrome.alarms.create('pollCalendars',  { periodInMinutes: 5   });
+chrome.alarms.create('pollTaskLists',  { periodInMinutes: 5   });
 chrome.alarms.create('pendingUpdates', { periodInMinutes: 0.5 }); // ~30s
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'pollCalendars') {
     pollAllCalendars().catch((err) => console.warn('[Poller] Error:', err.message));
+  }
+  if (alarm.name === 'pollTaskLists') {
+    pollAllTaskLists().catch((err) => console.warn('[TaskPoller] Error:', err.message));
   }
   if (alarm.name === 'pendingUpdates') {
     applyPendingUpdates().catch((err) => console.warn('[PendingUpdates] Error:', err.message));

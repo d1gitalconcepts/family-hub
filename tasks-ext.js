@@ -64,6 +64,40 @@ async function syncTasks(items) {
   }]);
 }
 
+// ── Poll all Google Task lists → Supabase ────────────────────────────────────
+
+async function pollAllTaskLists() {
+  if (!(await isAuthenticated())) return;
+
+  const res   = await googleGet(`${TASKS_BASE}/users/@me/lists`);
+  const lists = res.items || [];
+
+  const rows = [];
+  for (const list of lists) {
+    try {
+      const tasks = await googleGet(
+        `${TASKS_BASE}/lists/${list.id}/tasks?showCompleted=true&showHidden=true`
+      );
+      const items = (tasks.items || []).map((t) => ({
+        text:           t.title,
+        checked:        t.status === 'completed',
+        google_task_id: t.id,
+      }));
+      rows.push({
+        list_id:    list.id,
+        list_name:  list.title,
+        items,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.warn(`[Tasks] Failed to poll list "${list.title}":`, err.message);
+    }
+  }
+
+  if (rows.length) await sbUpsert('task_lists', rows);
+  console.log(`[Tasks] Polled ${rows.length} task list(s).`);
+}
+
 // ── Pending updates (hub checkbox → Google Tasks) ────────────────────────────
 
 async function applyPendingUpdates() {
