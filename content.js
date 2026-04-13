@@ -16,17 +16,30 @@ const TARGET_NOTES = [
 
 function scrapeNotes() {
   const results = [];
-  const seen = new Set(); // deduplicate notes that appear multiple times in the DOM
   const titleElements = document.querySelectorAll('div[role="textbox"]');
 
+  // Group all matching title elements by note title.
+  // When a note is open in the editor it appears twice in the DOM —
+  // once in the card list and once in the editor overlay (oT9UPb class).
+  // We prefer the editor version because it has the full untruncated content.
+  const byTitle = {};
   titleElements.forEach((titleEl) => {
     const title = titleEl.innerText.trim();
     if (!TARGET_NOTES.includes(title)) return;
-    if (seen.has(title)) return; // skip duplicate DOM entries (e.g. pinned + list)
-    seen.add(title);
+    const container = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
+    const isEditor = container?.classList?.contains('oT9UPb');
+    if (!byTitle[title] || isEditor) {
+      byTitle[title] = titleEl; // prefer editor over card
+    }
+  });
 
-    // Walk up to find the note's root container
+  Object.entries(byTitle).forEach(([title, titleEl]) => {
+    // Walk up to find the note's root container.
+    // The open editor container (oT9UPb) is 4 levels up and has full content;
+    // the card container is 3 levels up but may be truncated.
+    const p4 = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
     const noteContainer =
+      (p4?.classList?.contains('oT9UPb') ? p4 : null) ||
       titleEl.closest('[data-note]') ||
       titleEl.parentElement?.parentElement?.parentElement ||
       titleEl.parentElement?.parentElement;
