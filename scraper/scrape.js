@@ -340,14 +340,17 @@ async function main() {
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
       // This handles unpinned notes that aren't rendered due to virtual scrolling.
+      // Use page.locator() throughout — it re-queries the DOM on every call so
+      // it never holds a stale element reference after Keep redraws.
       if (!clicked) {
         console.log(`[${ts}] "${noteName}" not on screen — searching…`);
-        const searchInput = await page.$('input[aria-label="Search"]');
-        if (searchInput) {
+        const searchLocator = page.locator('input[aria-label="Search"]');
+        const searchVisible = await searchLocator.isVisible().catch(() => false);
+
+        if (searchVisible) {
           usedSearch = true;
-          await searchInput.click();
-          await searchInput.fill('');
-          await searchInput.type(noteName, { delay: 40 });
+          await searchLocator.click();
+          await searchLocator.fill(noteName);
           // Wait for search results to render
           await page.waitForFunction(
             () => document.querySelectorAll('div[role="textbox"]').length > 0,
@@ -362,15 +365,17 @@ async function main() {
             }
             return false;
           }, noteName);
+        } else {
+          console.warn(`[${ts}] Search bar not found — cannot search for "${noteName}"`);
         }
       }
 
       if (!clicked) {
         console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
         if (usedSearch) {
-          // Clear search so the next note starts from the main grid
-          const si = await page.$('input[aria-label="Search"]');
-          if (si) { await si.fill(''); await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
+          await page.locator('input[aria-label="Search"]').fill('').catch(() => {});
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(400);
         }
         continue;
       }
@@ -406,10 +411,13 @@ async function main() {
       await page.waitForTimeout(600);
 
       // If we used search to find this note, clear it so the next note
-      // starts from the main grid (important for pinned/visible notes)
+      // starts from the main grid (important for pinned/visible notes).
+      // Extra wait first — give Keep time to finish animating the editor closed.
       if (usedSearch) {
-        const si = await page.$('input[aria-label="Search"]');
-        if (si) { await si.fill(''); await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
+        await page.waitForTimeout(400);
+        await page.locator('input[aria-label="Search"]').fill('').catch(() => {});
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(400);
       }
     }
 
