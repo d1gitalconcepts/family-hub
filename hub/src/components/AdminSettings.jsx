@@ -41,6 +41,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { key: 'pressure',  label: 'Pressure' },
     { key: 'uv',        label: 'UV Index' },
     { key: 'solar',     label: 'Solar Radiation' },
+    { key: 'sunrise',   label: 'Sunrise' },
+    { key: 'sunset',    label: 'Sunset' },
   ];
 
   function saveWeatherKeys() {

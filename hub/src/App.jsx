@@ -262,7 +262,7 @@ export default function App() {
 
       {showSettings && (
         <AdminSettings
-          onClose={() => { setShowSettings(false); setViewKey((k) => k + 1); }}
+          onClose={() => window.location.reload()}
           theme={theme}
           onThemeChange={setTheme}
         />

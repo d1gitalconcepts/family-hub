@@ -1,5 +1,18 @@
 import { useConfig } from '../hooks/useConfig';
 
+function formatSunTime(isoLocal) {
+  // Open-Meteo returns local datetime strings like "2024-01-15T07:23"
+  if (!isoLocal) return '—';
+  const [, timePart] = isoLocal.split('T');
+  if (!timePart) return '—';
+  const [hStr, mStr] = timePart.split(':');
+  const h = parseInt(hStr, 10);
+  const m = mStr || '00';
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12  = h % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
+}
+
 const FIELD_LABELS = {
   temp:      { label: 'Temp',      format: (v) => `${Math.round(v)}°F` },
   feelsLike: { label: 'Feels Like',format: (v) => `${Math.round(v)}°F` },
@@ -10,6 +23,8 @@ const FIELD_LABELS = {
   pressure:  { label: 'Pressure',  format: (v) => `${v.toFixed(2)} inHg` },
   uv:        { label: 'UV',        format: (v) => `${Math.round(v)}` },
   solar:     { label: 'Solar',     format: (v) => `${Math.round(v)} W/m²` },
+  sunrise:   { label: 'Sunrise',   format: (v) => formatSunTime(v) },
+  sunset:    { label: 'Sunset',    format: (v) => formatSunTime(v) },
 };
 
 const DEFAULT_FIELDS = ['temp', 'feelsLike', 'humidity', 'windspeed', 'rain'];
