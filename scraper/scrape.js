@@ -351,12 +351,19 @@ async function main() {
           usedSearch = true;
           await searchLocator.click();
           await searchLocator.fill(noteName);
-          // Wait for search results to render
+          // Wait until the exact note title appears in the DOM — don't just
+          // check for any textbox, which may already exist from the main grid.
           await page.waitForFunction(
-            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            (name) => {
+              const els = document.querySelectorAll('div[role="textbox"]');
+              for (const el of els) {
+                if (el.innerText.trim() === name) return true;
+              }
+              return false;
+            },
+            noteName,
             { timeout: 8000, polling: 300 }
           ).catch(() => {});
-          await page.waitForTimeout(800);
 
           clicked = await page.evaluate((name) => {
             const els = document.querySelectorAll('div[role="textbox"]');
