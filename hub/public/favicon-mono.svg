@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- rounded square background -->
+  <rect width="32" height="32" rx="8" fill="#1a73e8"/>
+  <!-- H letterform -->
+  <path fill="white" d="M7 7h4.5v7.5h9V7H25v18h-4.5v-7H11.5v7H7z"/>
+</svg>

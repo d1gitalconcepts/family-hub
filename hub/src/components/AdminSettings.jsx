@@ -19,6 +19,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
+  const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -1036,6 +1037,35 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 onChange={(e) => setAppName(e.target.value || null)}
                 style={{ marginBottom: 20, fontSize: 14 }}
               />
+
+              {/* Favicon */}
+              <h3 style={{ marginBottom: 10 }}>App Icon</h3>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+                {[
+                  { id: 'house',    label: 'House',    src: '/favicon-house.svg'    },
+                  { id: 'calendar', label: 'Calendar', src: '/favicon-calendar.svg' },
+                  { id: 'hub',      label: 'Hub',      src: '/favicon-hub.svg'      },
+                  { id: 'mono',     label: 'Monogram', src: '/favicon-mono.svg'     },
+                  { id: 'bolt',     label: 'Bolt',     src: '/favicon.svg'          },
+                ].map(({ id, label, src }) => {
+                  const active = (faviconCfg || 'house') === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setFaviconCfg(id)}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                        padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                      }}
+                    >
+                      <img src={src} width="28" height="28" alt={label} style={{ display: 'block' }} />
+                      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Text Size */}
               <h3 style={{ marginBottom: 10 }}>Text Size</h3>

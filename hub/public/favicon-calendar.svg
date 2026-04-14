@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- card body -->
+  <rect x="2" y="5" width="28" height="25" rx="4" fill="#1a73e8"/>
+  <!-- header bar -->
+  <rect x="2" y="5" width="28" height="10" rx="4" fill="#1557b0"/>
+  <!-- handle knobs -->
+  <rect x="10" y="2" width="3" height="7" rx="1.5" fill="#1a73e8"/>
+  <rect x="19" y="2" width="3" height="7" rx="1.5" fill="#1a73e8"/>
+  <!-- grid dots -->
+  <rect x="7"  y="20" width="4" height="4" rx="1" fill="white" opacity="0.85"/>
+  <rect x="14" y="20" width="4" height="4" rx="1" fill="white" opacity="0.85"/>
+  <rect x="21" y="20" width="4" height="4" rx="1" fill="white" opacity="0.85"/>
+</svg>

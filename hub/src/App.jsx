@@ -25,6 +25,7 @@ export default function App() {
   const [accentColorCfg] = useConfig('accent_color');
   const [headerStyleCfg] = useConfig('header_style');
   const [fontSizeCfg]    = useConfig('font_size');
+  const [faviconCfg]     = useConfig('favicon');
   const [role, setRole]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -140,6 +141,25 @@ export default function App() {
       manualSyncPending.current = false;
     }, 30000);
   }, []);
+
+  useEffect(() => {
+    const FAVICON_SRCS = {
+      house:    '/favicon-house.svg',
+      calendar: '/favicon-calendar.svg',
+      hub:      '/favicon-hub.svg',
+      mono:     '/favicon-mono.svg',
+      bolt:     '/favicon.svg',
+    };
+    const src = FAVICON_SRCS[faviconCfg] || FAVICON_SRCS.house;
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      link.type = 'image/svg+xml';
+      document.head.appendChild(link);
+    }
+    link.href = src;
+  }, [faviconCfg]);
 
   useEffect(() => {
     if (theme === 'auto') {
