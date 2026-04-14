@@ -1,5 +1,4 @@
 import { pollAllCalendars, syncMealCalendar } from './calendar.js';
-import { pollAllTaskLists, syncTasksFromNote, applyPendingUpdates } from './tasks.js';
 import { pollWeather } from './weather.js';
 import { sbSelect, sbUpsert } from './supabase.js';
 
@@ -32,32 +31,23 @@ export default {
 async function runFullSync(env) {
   console.log('[Worker] Starting full sync...');
   try {
-    // Fetch both notes in a single Supabase call
-    const notes       = await sbSelect(env, 'notes', { key: 'in.(shopping-list,meal-planning)', select: 'key,data' });
-    const shoppingNote = notes.find((n) => n.key === 'shopping-list');
-    const mealNote     = notes.find((n) => n.key === 'meal-planning');
+    // Shopping list is now read directly from Keep (notes table).
+    // Google Tasks is no longer involved in the shopping list flow.
+    const notes   = await sbSelect(env, 'notes', { key: 'in.(meal-planning)', select: 'key,data' });
+    const mealNote = notes.find((n) => n.key === 'meal-planning');
 
-    // 1. (Keep → Google Tasks item sync disabled — handled by write-back + pending_updates)
-
-    // 2. Sync meal planning note → Google Calendar
+    // 1. Sync meal planning note → Google Calendar
     if (mealNote?.data?.lines?.length) {
       await syncMealCalendar(env, mealNote.data.lines);
     }
 
-    // 3. Poll all calendars → Supabase
+    // 2. Poll all calendars → Supabase
     await pollAllCalendars(env);
 
-    // 4. Apply any pending checkbox updates first so the poll below captures
-    //    the fully-applied state rather than a pre-update snapshot
-    await applyPendingUpdates(env);
-
-    // 5. Poll all task lists → Supabase (after pending updates are applied)
-    await pollAllTaskLists(env);
-
-    // 6. Poll weather station
+    // 3. Poll weather station
     await pollWeather(env);
 
-    // 7. Write last sync timestamp for the hub's sync button
+    // 4. Write last sync timestamp for the hub's sync button
     const now = new Date().toISOString();
     await sbUpsert(env, 'config', [{ key: 'last_calendar_sync', value: now, updated_at: now }]);
 
