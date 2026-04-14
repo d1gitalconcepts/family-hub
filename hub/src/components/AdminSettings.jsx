@@ -279,10 +279,11 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   ];
 
   const TABS = [
-    { id: 'calendars', label: 'Calendars' },
-    { id: 'lists',     label: 'Lists' },
-    { id: 'weather',   label: 'Weather' },
-    { id: 'display',   label: 'Display' },
+    { id: 'calendars',   label: 'Calendars' },
+    { id: 'eventicons',  label: 'Event Icons' },
+    { id: 'lists',       label: 'Lists' },
+    { id: 'weather',     label: 'Weather' },
+    { id: 'display',     label: 'Display' },
   ];
 
   return (
@@ -400,6 +401,65 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 </div>
               )}
             </>
+          )}
+
+          {/* ── Event Icons tab ───────────────────────────────── */}
+          {activeTab === 'eventicons' && (
+            <div className="settings-section">
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                <h3 style={{ flex: 1, margin: 0 }}>Event Icons</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={eventIconsCfg?.enabled ?? true}
+                    onChange={(e) => setEventIconsCfg({ ...(eventIconsCfg || { rules: DEFAULT_ICON_RULES }), enabled: e.target.checked })}
+                  />
+                  Enable
+                </label>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+                Keyword → emoji rules applied to event titles. First match wins. Separate multiple keywords with commas.
+              </p>
+              {(eventIconsCfg?.enabled ?? true) && (() => {
+                const rules = eventIconsCfg?.rules ?? DEFAULT_ICON_RULES;
+                function updateRule(i, field, val) {
+                  const next = rules.map((r, ri) => ri === i ? { ...r, [field]: val } : r);
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: next });
+                }
+                function removeRule(i) {
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: rules.filter((_, ri) => ri !== i) });
+                }
+                function addRule() {
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: [...rules, { keyword: '', icon: '' }] });
+                }
+                return (
+                  <>
+                    {rules.map((rule, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <input
+                          type="text"
+                          value={rule.icon}
+                          onChange={(e) => updateRule(i, 'icon', e.target.value.slice(0, 2))}
+                          placeholder="🎂"
+                          style={{ width: 40, textAlign: 'center', fontSize: 16, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px' }}
+                        />
+                        <input
+                          type="text"
+                          value={rule.keyword}
+                          onChange={(e) => updateRule(i, 'keyword', e.target.value)}
+                          placeholder="keyword, alias, ..."
+                          style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                        />
+                        <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>
+                      </div>
+                    ))}
+                    <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
+                      + Add rule
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
           )}
 
           {/* ── Lists tab ──────────────────────────────────────── */}
@@ -705,61 +765,6 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10, marginBottom: 20 }}>
                 Auto follows your device's system preference.
               </p>
-
-              {/* Event Icons */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                <h3 style={{ flex: 1, margin: 0 }}>Event Icons</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={eventIconsCfg?.enabled ?? true}
-                    onChange={(e) => setEventIconsCfg({ ...(eventIconsCfg || { rules: DEFAULT_ICON_RULES }), enabled: e.target.checked })}
-                  />
-                  Enable
-                </label>
-              </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
-                Keyword → emoji rules applied to event titles. First match wins.
-              </p>
-              {(eventIconsCfg?.enabled ?? true) && (() => {
-                const rules = eventIconsCfg?.rules ?? DEFAULT_ICON_RULES;
-                function updateRule(i, field, val) {
-                  const next = rules.map((r, ri) => ri === i ? { ...r, [field]: val } : r);
-                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: next });
-                }
-                function removeRule(i) {
-                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: rules.filter((_, ri) => ri !== i) });
-                }
-                function addRule() {
-                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: [...rules, { keyword: '', icon: '' }] });
-                }
-                return (
-                  <>
-                    {rules.map((rule, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                        <input
-                          type="text"
-                          value={rule.icon}
-                          onChange={(e) => updateRule(i, 'icon', e.target.value.slice(0, 2))}
-                          placeholder="🎂"
-                          style={{ width: 40, textAlign: 'center', fontSize: 16, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px' }}
-                        />
-                        <input
-                          type="text"
-                          value={rule.keyword}
-                          onChange={(e) => updateRule(i, 'keyword', e.target.value)}
-                          placeholder="keyword, alias, ..."
-                          style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
-                        />
-                        <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>
-                      </div>
-                    ))}
-                    <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
-                      + Add rule
-                    </button>
-                  </>
-                );
-              })()}
 
             </div>
           )}
