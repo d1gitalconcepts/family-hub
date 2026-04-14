@@ -1148,7 +1148,6 @@ html, body, #root {
     height: auto !important;
     line-height: 1.2 !important;
     margin: 0 !important;
-    font-size: 22px !important;
   }
   .day-cell.today     { background: none !important; }
   .day-cell.yesterday,
