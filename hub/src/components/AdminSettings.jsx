@@ -15,8 +15,9 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [fontSizeCfg,    setFontSizeCfg]   = useConfig('font_size');
   const [accentColorCfg,  setAccentColorCfg]  = useConfig('accent_color');
   const [headerStyleCfg,  setHeaderStyleCfg]  = useConfig('header_style');
-  const [eventIconsCfg,   setEventIconsCfg]   = useConfig('event_icons');
-  const [cardStyleCfg,    setCardStyleCfg]    = useConfig('card_style');
+  const [eventIconsCfg,    setEventIconsCfg]    = useConfig('event_icons');
+  const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
+  const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -304,12 +305,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   ];
 
   const TABS = [
-    { id: 'calendars',   label: 'Calendars' },
-    { id: 'eventicons',  label: 'Event Icons' },
-    { id: 'eventcards',  label: 'Event Cards' },
-    { id: 'lists',       label: 'Lists' },
-    { id: 'weather',     label: 'Weather' },
-    { id: 'display',     label: 'Display' },
+    { id: 'calendars',    label: 'Calendars'   },
+    { id: 'eventicons',   label: 'Event Icons' },
+    { id: 'eventcards',   label: 'Event Cards' },
+    { id: 'eventfilters', label: 'Filters'     },
+    { id: 'lists',        label: 'Lists'       },
+    { id: 'weather',      label: 'Weather'     },
+    { id: 'display',      label: 'Display'     },
   ];
 
   return (
@@ -639,6 +641,93 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   </div>
                 ))}
 
+              </div>
+            );
+          })()}
+
+          {/* ── Filters tab ───────────────────────────────────── */}
+          {activeTab === 'eventfilters' && (() => {
+            const rules = eventFiltersCfg?.rules ?? [];
+
+            function updateRule(i, field, val) {
+              const next = rules.map((r, ri) => ri === i ? { ...r, [field]: val } : r);
+              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: next });
+            }
+            function removeRule(i) {
+              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: rules.filter((_, ri) => ri !== i) });
+            }
+            function addRule() {
+              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: [...rules, { keyword: '', enabled: true }] });
+            }
+            function onFilterDragStart(e, idx) {
+              drag.current = { type: 'filter-rule', fromIdx: idx };
+              e.dataTransfer.effectAllowed = 'move';
+              e.stopPropagation();
+            }
+            function onFilterDrop(e, toIdx) {
+              e.preventDefault();
+              if (!drag.current || drag.current.type !== 'filter-rule') return;
+              const { fromIdx } = drag.current;
+              if (fromIdx !== toIdx) {
+                const next = [...rules];
+                const [moved] = next.splice(fromIdx, 1);
+                next.splice(toIdx, 0, moved);
+                setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: next });
+              }
+              drag.current = null;
+              setDropTarget(null);
+            }
+
+            return (
+              <div className="settings-section">
+                <h3 style={{ marginBottom: 6 }}>Hidden Event Rules</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
+                  Events whose title matches any active rule are hidden from the calendar.
+                  Separate multiple keywords with commas — any match will hide the event.
+                </p>
+
+                {rules.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: '8px 0' }}>
+                    No filters yet. Add one below.
+                  </p>
+                )}
+
+                {rules.map((rule, i) => {
+                  const isDropTgt = dropTarget?.type === 'filter-rule' && dropTarget?.beforeIdx === i;
+                  return (
+                    <div
+                      key={i}
+                      className={`cal-row${isDropTgt ? ' cal-row-drop-target' : ''}`}
+                      draggable
+                      onDragStart={(e) => onFilterDragStart(e, i)}
+                      onDragEnd={onDragEnd}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ type: 'filter-rule', beforeIdx: i }); }}
+                      onDrop={(e) => onFilterDrop(e, i)}
+                      style={{ gap: 8 }}
+                    >
+                      <span className="drag-handle">⠿</span>
+                      <input
+                        type="checkbox"
+                        checked={rule.enabled !== false}
+                        onChange={(e) => updateRule(i, 'enabled', e.target.checked)}
+                        title="Enable this filter"
+                        style={{ accentColor: 'var(--danger)', flexShrink: 0 }}
+                      />
+                      <input
+                        type="text"
+                        value={rule.keyword}
+                        onChange={(e) => updateRule(i, 'keyword', e.target.value)}
+                        placeholder="vitamin, reminder, daily check-in…"
+                        style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                      />
+                      <button className="btn-icon" style={{ fontSize: 13, color: 'var(--danger)' }} onClick={() => removeRule(i)}>✕</button>
+                    </div>
+                  );
+                })}
+
+                <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 8 }} onClick={addRule}>
+                  + Add filter rule
+                </button>
               </div>
             );
           })()}

@@ -3,7 +3,17 @@ import ForecastCard from './ForecastCard';
 
 const FORECAST_ID = '__weather_forecast';
 
-export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, cardStyle }) {
+function isEventHidden(event, filterRules) {
+  if (!filterRules?.length) return false;
+  const title = (event.summary || '').toLowerCase();
+  return filterRules.some((rule) => {
+    if (!rule.keyword || rule.enabled === false) return false;
+    const keywords = rule.keyword.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+    return keywords.some((k) => title.includes(k));
+  });
+}
+
+export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, cardStyle, filterRules }) {
   const calIds = new Set(section.calendarIds || []);
   const showForecast = calIds.has(FORECAST_ID);
 
@@ -24,6 +34,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
     return events
       .filter((e) => {
         if (!unfiltered && !visibleIds.has(e.calendar_id)) return false;
+        if (isEventHidden(e, filterRules)) return false;
         if (e.is_all_day) return e.start_date === dateStr;
         if (!e.start_at) return false;
         return new Date(e.start_at).toISOString().split('T')[0] === dateStr;
