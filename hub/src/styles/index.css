@@ -1137,15 +1137,18 @@ html, body, #root {
   .event-cal     { display: none !important; }
 
   /* No today highlight or yesterday dimming when printing */
+  .day-header.today {
+    color: var(--text-muted) !important;
+  }
   .day-header.today .day-date {
     background: none !important;
     color: var(--text) !important;
     border-radius: 0 !important;
     width: auto !important;
     height: auto !important;
-    line-height: inherit !important;
+    line-height: 1.2 !important;
     margin: 0 !important;
-    font-size: inherit !important;
+    font-size: 22px !important;
   }
   .day-cell.today     { background: none !important; }
   .day-cell.yesterday,
