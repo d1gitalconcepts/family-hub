@@ -347,30 +347,28 @@ async function main() {
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
       // This handles unpinned notes that aren't rendered due to virtual scrolling.
-      // Use page.locator() throughout — it re-queries the DOM on every call so
-      // it never holds a stale element reference after Keep redraws.
+      // Everything is done via page.evaluate() + keyboard to completely avoid
+      // Playwright's pointer-event actionability checks, which break when any
+      // overlay (e.g. Google Translate banner) intercepts pointer events.
       if (!clicked) {
         console.log(`[${ts}] "${noteName}" not on screen — searching…`);
-        const searchLocator = page.locator('input[aria-label="Search"]');
-        const searchVisible = await searchLocator.isVisible().catch(() => false);
 
-        if (searchVisible) {
+        const searchFocused = await page.evaluate(() => {
+          // Remove any overlays that intercept pointer events
+          document.querySelectorAll(
+            '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
+          ).forEach((el) => el.remove());
+
+          // Focus the search input directly — no click needed
+          const input = document.querySelector('input[aria-label="Search"]');
+          if (!input) return false;
+          input.value = '';
+          input.focus();
+          return true;
+        });
+
+        if (searchFocused) {
           usedSearch = true;
-
-          // Google Translate (and similar overlays) can intercept pointer events
-          // and block locator.click(). Remove any such overlays via JS first,
-          // then focus the input programmatically — no pointer events needed.
-          await page.evaluate(() => {
-            document.querySelectorAll(
-              '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
-            ).forEach((el) => el.remove());
-          }).catch(() => {});
-
-          // Focus + clear the search input via JS, then type with real keypresses
-          await page.evaluate(() => {
-            const input = document.querySelector('input[aria-label="Search"]');
-            if (input) { input.value = ''; input.focus(); }
-          });
           await page.keyboard.type(noteName, { delay: 40 }); // real keypresses to trigger Keep's search
           // Wait until the exact note title appears in the DOM — don't just
           // check for any textbox, which may already exist from the main grid.
