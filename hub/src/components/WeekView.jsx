@@ -46,7 +46,6 @@ export default function WeekView() {
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
 
   const today     = new Date();
-  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const days      = getWeekDays(anchor);
   const weekStart = days[0];
   const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
@@ -71,7 +70,7 @@ export default function WeekView() {
 
   const visibleDays  = isMobile ? [days[mobileDayIdx]] : days;
   const dayClasses   = days.map((d) =>
-    sameDay(d, today) ? 'today' : sameDay(d, yesterday) ? 'yesterday' : ''
+    sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );
 
   const calendars   = calConfig  || [];

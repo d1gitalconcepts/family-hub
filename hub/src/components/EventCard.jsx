@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 const DEFAULT_CARD_STYLE = {
   layout:          'standard',
@@ -116,7 +117,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         {renderCardContent()}
       </div>
 
-      {open && (
+      {open && createPortal(
         <div className="event-popout-overlay" onClick={() => setOpen(false)}>
           <div
             className="event-popout"
@@ -179,7 +180,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
             </div>
           </div>
         </div>
-      )}
+      , document.body))}
     </>
   );
 }

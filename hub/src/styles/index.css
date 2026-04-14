@@ -468,11 +468,11 @@ html, body, #root {
   background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
 
-.day-cell.yesterday {
+.day-cell.past {
   opacity: 0.45;
 }
 
-.day-header.yesterday {
+.day-header.past {
   opacity: 0.45;
 }
 
@@ -1414,8 +1414,8 @@ html, body, #root {
     margin: 0 !important;
   }
   .day-cell.today     { background: none !important; }
-  .day-cell.yesterday,
-  .day-header.yesterday { opacity: 1 !important; }
+  .day-cell.past,
+  .day-header.past { opacity: 1 !important; }
 
   /* Hide the forecast section */
   .section-row--forecast { display: none !important; }
