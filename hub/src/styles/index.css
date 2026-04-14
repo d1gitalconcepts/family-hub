@@ -362,6 +362,31 @@ html, body, #root {
   font-style: normal;
 }
 
+.event-time-inline {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.event-card--comfortable {
+  padding: 6px 8px;
+}
+
+.event-card--comfortable .event-title {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.event-desc-snippet {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Forecast card ─────────────────────────────────────────── */
 
 .forecast-card {

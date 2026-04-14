@@ -38,6 +38,7 @@ export default function WeekView() {
   const [sections]  = useConfig('calendar_sections');
   const [forecast]  = useConfig('weather_forecast');
   const [eventIconsCfg] = useConfig('event_icons');
+  const [cardStyleCfg]  = useConfig('card_style');
   const isMobile    = useIsMobile();
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
@@ -179,6 +180,7 @@ export default function WeekView() {
               gridStyle={isMobile ? undefined : cellsGridStyle}
               dayClasses={isMobile ? undefined : dayClasses}
               iconRules={iconRules}
+              cardStyle={cardStyleCfg}
             />
           ))}
         </div>

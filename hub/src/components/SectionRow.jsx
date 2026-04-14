@@ -3,7 +3,7 @@ import ForecastCard from './ForecastCard';
 
 const FORECAST_ID = '__weather_forecast';
 
-export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules }) {
+export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, cardStyle }) {
   const calIds = new Set(section.calendarIds || []);
   const showForecast = calIds.has(FORECAST_ID);
 
@@ -59,7 +59,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
               {forecastDay && <ForecastCard day={forecastDay} />}
               {dayEvents.map((e) => (
-                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} iconRules={iconRules} />
+                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} iconRules={iconRules} cardStyle={cardStyle} />
               ))}
               {isEmpty && <span className="day-cell-empty">—</span>}
             </div>

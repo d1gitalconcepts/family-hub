@@ -1,8 +1,28 @@
 import { useState } from 'react';
 
-export default function EventCard({ event, calColor, calEmoji, iconRules }) {
+const DEFAULT_CARD_STYLE = {
+  layout:          'standard',
+  showTime:        true,
+  showCalName:     true,
+  showDescSnippet: false,
+  popout: {
+    showDate:        true,
+    showTime:        true,
+    showLocation:    true,
+    showDescription: true,
+    showCalName:     true,
+  },
+};
+
+export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle }) {
   const [open, setOpen] = useState(false);
-  const color = calColor || event.cal_color || '#4285f4';
+  const color  = calColor || event.cal_color || '#4285f4';
+  const style  = {
+    ...DEFAULT_CARD_STYLE,
+    ...cardStyle,
+    popout: { ...DEFAULT_CARD_STYLE.popout, ...(cardStyle?.popout || {}) },
+  };
+  const layout = style.layout || 'standard';
 
   function formatTime(iso) {
     if (!iso) return '';
@@ -20,11 +40,9 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
   }
 
   function mapsUrl(location) {
-    const enc = encodeURIComponent(location);
-    return `https://www.google.com/maps/dir/?api=1&destination=${enc}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`;
   }
 
-  // Calendar emoji takes priority; fall back to first matching keyword rule
   function getKeywordIcon(title) {
     if (!iconRules?.length) return null;
     const lower = title.toLowerCase();
@@ -36,23 +54,66 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
     return null;
   }
 
-  const emoji = calEmoji || getKeywordIcon(event.summary || '');
+  const emoji   = calEmoji || getKeywordIcon(event.summary || '');
+  const titleEl = (
+    <span className="event-title">
+      {emoji && <span className="event-emoji">{emoji}</span>}
+      {event.summary}
+    </span>
+  );
+
+  const descSnippet = style.showDescSnippet && event.description
+    ? <span className="event-desc-snippet">{event.description.slice(0, 60)}{event.description.length > 60 ? '…' : ''}</span>
+    : null;
+
+  function renderCardContent() {
+    if (layout === 'minimal') {
+      return titleEl;
+    }
+    if (layout === 'inline') {
+      return (
+        <span className="event-title">
+          {style.showTime && !event.is_all_day && event.start_at && (
+            <span className="event-time-inline">{formatTime(event.start_at)} · </span>
+          )}
+          {emoji && <span className="event-emoji">{emoji}</span>}
+          {event.summary}
+        </span>
+      );
+    }
+    if (layout === 'comfortable') {
+      return (
+        <>
+          {titleEl}
+          {style.showTime && !event.is_all_day && event.start_at && (
+            <span className="event-time">{formatTime(event.start_at)}</span>
+          )}
+          {style.showCalName && <span className="event-cal">{event.cal_name}</span>}
+          {descSnippet}
+        </>
+      );
+    }
+    // standard (default)
+    return (
+      <>
+        {style.showTime && !event.is_all_day && event.start_at && (
+          <span className="event-time">{formatTime(event.start_at)}</span>
+        )}
+        {titleEl}
+        {style.showCalName && <span className="event-cal">{event.cal_name}</span>}
+        {descSnippet}
+      </>
+    );
+  }
 
   return (
     <>
       <div
-        className={`event-card${event.is_all_day ? ' all-day' : ''}`}
+        className={`event-card${event.is_all_day ? ' all-day' : ''} event-card--${layout}`}
         style={{ '--cal-color': color, cursor: 'pointer' }}
         onClick={() => setOpen(true)}
       >
-        {!event.is_all_day && (
-          <span className="event-time">{formatTime(event.start_at)}</span>
-        )}
-        <span className="event-title">
-          {emoji && <span className="event-emoji">{emoji}</span>}
-          {event.summary}
-        </span>
-        <span className="event-cal">{event.cal_name}</span>
+        {renderCardContent()}
       </div>
 
       {open && (
@@ -72,17 +133,21 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
               <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
             </div>
 
-            <div className="event-popout-meta">
-              <span className="event-popout-cal" style={{ color }}>● {event.cal_name}</span>
-            </div>
+            {style.popout.showCalName && (
+              <div className="event-popout-meta">
+                <span className="event-popout-cal" style={{ color }}>● {event.cal_name}</span>
+              </div>
+            )}
 
             <div className="event-popout-body">
-              <div className="event-popout-row">
-                <span className="event-popout-label">Date</span>
-                <span>{formatDate(event.start_at, event.start_date)}</span>
-              </div>
+              {style.popout.showDate && (
+                <div className="event-popout-row">
+                  <span className="event-popout-label">Date</span>
+                  <span>{formatDate(event.start_at, event.start_date)}</span>
+                </div>
+              )}
 
-              {!event.is_all_day && event.start_at && (
+              {style.popout.showTime && !event.is_all_day && event.start_at && (
                 <div className="event-popout-row">
                   <span className="event-popout-label">Time</span>
                   <span>
@@ -92,7 +157,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
                 </div>
               )}
 
-              {event.location && (
+              {style.popout.showLocation && event.location && (
                 <div className="event-popout-row">
                   <span className="event-popout-label">Where</span>
                   <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" className="event-popout-location-link">
@@ -101,7 +166,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
                 </div>
               )}
 
-              {event.description && (
+              {style.popout.showDescription && event.description && (
                 <div className="event-popout-row event-popout-desc">
                   <span className="event-popout-label">Details</span>
                   <span>

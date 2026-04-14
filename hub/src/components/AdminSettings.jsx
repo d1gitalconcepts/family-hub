@@ -15,6 +15,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [accentColorCfg,  setAccentColorCfg]  = useConfig('accent_color');
   const [headerStyleCfg,  setHeaderStyleCfg]  = useConfig('header_style');
   const [eventIconsCfg,   setEventIconsCfg]   = useConfig('event_icons');
+  const [cardStyleCfg,    setCardStyleCfg]    = useConfig('card_style');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -302,6 +303,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const TABS = [
     { id: 'calendars',   label: 'Calendars' },
     { id: 'eventicons',  label: 'Event Icons' },
+    { id: 'eventcards',  label: 'Event Cards' },
     { id: 'lists',       label: 'Lists' },
     { id: 'weather',     label: 'Weather' },
     { id: 'display',     label: 'Display' },
@@ -495,6 +497,148 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               })()}
             </div>
           )}
+
+          {/* ── Event Cards tab ───────────────────────────────── */}
+          {activeTab === 'eventcards' && (() => {
+            const cs = cardStyleCfg || {};
+            const popout = cs.popout || {};
+            function setCs(patch) { setCardStyleCfg({ ...cs, ...patch }); }
+            function setPopout(patch) { setCardStyleCfg({ ...cs, popout: { ...popout, ...patch } }); }
+
+            const LAYOUTS = [
+              {
+                id: 'standard', label: 'Standard',
+                preview: (
+                  <div style={{ lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 1 }}>3:00 PM</div>
+                    <div style={{ fontSize: 10, fontWeight: 600 }}>Event Title</div>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Calendar</div>
+                  </div>
+                ),
+              },
+              {
+                id: 'minimal', label: 'Minimal',
+                preview: (
+                  <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600 }}>Event Title</div>
+                  </div>
+                ),
+              },
+              {
+                id: 'inline', label: 'Inline',
+                preview: (
+                  <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+                    <div style={{ fontSize: 9 }}><span style={{ color: 'var(--text-muted)' }}>3pm · </span><strong>Event Title</strong></div>
+                  </div>
+                ),
+              },
+              {
+                id: 'comfortable', label: 'Comfortable',
+                preview: (
+                  <div style={{ lineHeight: 1.4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Event Title</div>
+                    <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>3:00 PM</div>
+                  </div>
+                ),
+              },
+            ];
+
+            const active = cs.layout || 'standard';
+
+            return (
+              <div className="settings-section">
+
+                {/* Layout */}
+                <h3 style={{ marginBottom: 12 }}>Card Layout</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+                  {LAYOUTS.map((l) => (
+                    <button
+                      key={l.id}
+                      onClick={() => setCs({ layout: l.id })}
+                      style={{
+                        border: `2px solid ${active === l.id ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 8,
+                        background: active === l.id ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      {/* mini card mockup */}
+                      <div style={{
+                        margin: 10,
+                        padding: '6px 8px',
+                        borderLeft: `3px solid ${active === l.id ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 3,
+                        background: 'var(--bg-secondary)',
+                        minHeight: 44,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        textAlign: 'left',
+                      }}>
+                        {l.preview}
+                      </div>
+                      <div style={{
+                        fontSize: 11, fontWeight: active === l.id ? 600 : 400,
+                        color: active === l.id ? 'var(--accent)' : 'var(--text-muted)',
+                        padding: '4px 8px 8px',
+                        textAlign: 'center',
+                        fontFamily: 'var(--font)',
+                      }}>
+                        {l.label}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Card elements */}
+                <h3 style={{ marginBottom: 10 }}>Card Elements</h3>
+                {[
+                  { key: 'showTime',        label: 'Event time',           note: 'e.g. 3:00 PM' },
+                  { key: 'showCalName',     label: 'Calendar name',        note: 'shown below the title' },
+                  { key: 'showDescSnippet', label: 'Description snippet',  note: 'first 60 characters' },
+                ].map(({ key, label, note }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <input
+                      type="checkbox"
+                      checked={cs[key] ?? true}
+                      onChange={(e) => setCs({ [key]: e.target.checked })}
+                      style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+                    />
+                    <span style={{ flex: 1, fontSize: 13 }}>{label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{note}</span>
+                  </div>
+                ))}
+
+                {/* Popout elements */}
+                <h3 style={{ marginBottom: 10, marginTop: 20 }}>Popout Elements</h3>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Shown when you tap or click an event card.
+                </p>
+                {[
+                  { key: 'showCalName',     label: 'Calendar name'  },
+                  { key: 'showDate',        label: 'Date'           },
+                  { key: 'showTime',        label: 'Time'           },
+                  { key: 'showLocation',    label: 'Location'       },
+                  { key: 'showDescription', label: 'Description'    },
+                ].map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <input
+                      type="checkbox"
+                      checked={popout[key] ?? true}
+                      onChange={(e) => setPopout({ [key]: e.target.checked })}
+                      style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+                    />
+                    <span style={{ fontSize: 13 }}>{label}</span>
+                  </div>
+                ))}
+
+              </div>
+            );
+          })()}
 
           {/* ── Lists tab ──────────────────────────────────────── */}
           {activeTab === 'lists' && (
