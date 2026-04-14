@@ -350,7 +350,8 @@ async function main() {
         if (searchVisible) {
           usedSearch = true;
           await searchLocator.click();
-          await searchLocator.fill(noteName);
+          await searchLocator.fill(''); // clear any previous search
+          await page.keyboard.type(noteName, { delay: 40 }); // real keypresses to trigger Keep's search
           // Wait until the exact note title appears in the DOM — don't just
           // check for any textbox, which may already exist from the main grid.
           await page.waitForFunction(
@@ -380,8 +381,7 @@ async function main() {
       if (!clicked) {
         console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
         if (usedSearch) {
-          await page.locator('input[aria-label="Search"]').fill('').catch(() => {});
-          await page.keyboard.press('Escape');
+          await page.keyboard.press('Escape'); // exits search mode in Keep
           await page.waitForTimeout(400);
         }
         continue;
@@ -422,8 +422,7 @@ async function main() {
       // Extra wait first — give Keep time to finish animating the editor closed.
       if (usedSearch) {
         await page.waitForTimeout(400);
-        await page.locator('input[aria-label="Search"]').fill('').catch(() => {});
-        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape'); // exits search mode, returns to main grid
         await page.waitForTimeout(400);
       }
     }
