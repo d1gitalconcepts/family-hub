@@ -5,8 +5,8 @@ import StatusBar from './StatusBar';
 
 export default function ShoppingList() {
   const items = useShoppingList();
-  // optimistic overrides keyed by item text
   const [optimistic, setOptimistic] = useState({});
+  const [doneOpen, setDoneOpen]     = useState(false);
 
   async function toggleItem(item) {
     const key        = item.text;
@@ -57,10 +57,12 @@ export default function ShoppingList() {
 
             {checked.length > 0 && (
               <>
-                <div style={{ padding: '6px 14px', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  Done
-                </div>
-                {checked.map((item) => (
+                <button className="done-toggle" onClick={() => setDoneOpen((o) => !o)}>
+                  <span>✓ Done</span>
+                  <span className="done-toggle-count">{checked.length}</span>
+                  <span className="done-toggle-chevron">{doneOpen ? '▲' : '▼'}</span>
+                </button>
+                {doneOpen && checked.map((item) => (
                   <TaskItem
                     key={item.text}
                     item={item}

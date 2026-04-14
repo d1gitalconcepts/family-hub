@@ -30,6 +30,9 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileList, setShowMobileList] = useState(false);
   const [showMenu, setShowMenu]       = useState(false);
+  const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem('fh_sidebar_pinned') !== 'false');
+  const [sidebarOpen,   setSidebarOpen]   = useState(() => localStorage.getItem('fh_sidebar_pinned') !== 'false');
+  const sidebarRef = useRef(null);
   const [viewKey, setViewKey]         = useState(0);
   const [theme, setTheme]             = useState(() => localStorage.getItem('fh_theme') || 'auto');
   const isMobile                      = useIsMobile();
@@ -57,6 +60,27 @@ export default function App() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showMenu]);
+
+  // Close unpinned sidebar on outside click
+  useEffect(() => {
+    if (!sidebarOpen || sidebarPinned) return;
+    function handleClick(e) {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) setSidebarOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [sidebarOpen, sidebarPinned]);
+
+  function handleSidebarToggle() {
+    setSidebarOpen((o) => !o);
+  }
+
+  function handleSidebarPin() {
+    const next = !sidebarPinned;
+    setSidebarPinned(next);
+    localStorage.setItem('fh_sidebar_pinned', next);
+    if (next) setSidebarOpen(true);
+  }
 
   // Load + live-update last sync timestamp written by the extension
   useEffect(() => {
@@ -236,7 +260,32 @@ export default function App() {
 
       <div className="app-body">
         <WeekView key={viewKey} />
-        {!isMobile && <ShoppingList />}
+        {!isMobile && (
+          <div
+            ref={sidebarRef}
+            className={`sidebar-wrap${sidebarOpen ? ' sidebar-wrap--open' : ''}`}
+          >
+            <div className="sidebar-rail">
+              <button
+                className="sidebar-rail-btn"
+                onClick={handleSidebarToggle}
+                title={sidebarOpen ? 'Hide list' : 'Show list'}
+              >
+                {sidebarOpen ? '›' : '‹'}
+              </button>
+              {sidebarOpen && (
+                <button
+                  className={`sidebar-rail-btn${sidebarPinned ? ' sidebar-rail-btn--pinned' : ''}`}
+                  onClick={handleSidebarPin}
+                  title={sidebarPinned ? 'Unpin (auto-close)' : 'Pin open'}
+                >
+                  📌
+                </button>
+              )}
+            </div>
+            <ShoppingList />
+          </div>
+        )}
       </div>
 
       {/* Mobile: floating list button */}

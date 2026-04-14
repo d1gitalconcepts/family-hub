@@ -160,9 +160,59 @@ html, body, #root {
   flex-direction: column;
 }
 
+/* ── Sidebar wrap + rail ────────────────────────────────────── */
+
+.sidebar-wrap {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  width: 28px;                    /* rail only when closed */
+  overflow: hidden;
+  transition: width 0.25s ease;
+  border-left: 1px solid var(--border);
+}
+
+.sidebar-wrap--open {
+  width: calc(28px + var(--sidebar-w));
+}
+
+.sidebar-rail {
+  width: 28px;
+  min-width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-rail-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.1s, color 0.1s;
+}
+
+.sidebar-rail-btn:hover { background: var(--border); color: var(--text); }
+
+.sidebar-rail-btn--pinned { color: var(--accent); }
+.sidebar-rail-btn--pinned:hover { color: var(--accent); }
+
 .sidebar {
   width: var(--sidebar-w);
-  border-left: 1px solid var(--border);
   background: var(--surface);
   display: flex;
   flex-direction: column;
@@ -850,6 +900,41 @@ html, body, #root {
   color: var(--text-muted);
 }
 
+/* ── Done section toggle ───────────────────────────────────── */
+
+.done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 14px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: var(--font);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.done-toggle:hover { background: var(--bg-secondary); }
+
+.done-toggle-count {
+  background: var(--border);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.done-toggle-chevron {
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+
 /* ── Task list sections (sidebar) ─────────────────────────── */
 
 .task-list-section {
@@ -1121,6 +1206,7 @@ html, body, #root {
 
 @media (max-width: 1024px) {
   .sidebar { width: 240px; }
+  .sidebar-wrap--open { width: calc(28px + 240px); }
 }
 
 /* ── Mobile floating list button ───────────────────────────── */
@@ -1211,7 +1297,7 @@ html, body, #root {
   .weather-bar,
   .week-nav .btn-icon,
   .week-nav .btn,
-  .sidebar,
+  .sidebar, .sidebar-wrap, .sidebar-rail,
   .status-bar,
   .mobile-list-fab,
   .mobile-drawer-overlay,
