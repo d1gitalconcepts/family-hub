@@ -175,7 +175,7 @@ html, body, #root {
 .week-nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-secondary);
@@ -186,6 +186,57 @@ html, body, #root {
   font-weight: 500;
   flex: 1;
   text-align: center;
+  font-size: 1rem;
+}
+
+/* Nav-specific button overrides — larger and more visually distinct */
+.week-nav .btn-icon {
+  font-size: 1.3rem;
+  padding: 6px 12px;
+  min-width: 40px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.week-nav .btn-icon:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.week-nav .btn {
+  font-size: 0.9rem;
+  padding: 6px 14px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .week-nav {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .week-nav .btn-icon {
+    font-size: 1.5rem;
+    padding: 8px 14px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .week-nav .btn {
+    font-size: 1rem;
+    padding: 8px 16px;
+    min-height: 48px;
+  }
 }
 
 .week-container {
