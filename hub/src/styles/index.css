@@ -1171,6 +1171,10 @@ html, body, #root {
 
 @media (min-width: 769px) {
   .event-popout-bar { display: none; }
+
+  .event-popout-header { padding: 22px 28px 6px; }
+  .event-popout-meta   { padding: 0 28px 12px;   }
+  .event-popout-body   { padding: 0 28px 28px;   }
 }
 
 .event-popout-header {
