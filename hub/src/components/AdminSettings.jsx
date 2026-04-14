@@ -18,6 +18,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [eventIconsCfg,    setEventIconsCfg]    = useConfig('event_icons');
   const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
+  const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -309,7 +310,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { id: 'eventicons',   label: 'Event Icons' },
     { id: 'eventcards',   label: 'Event Cards' },
     { id: 'eventfilters', label: 'Filters'     },
-    { id: 'lists',        label: 'Lists'       },
+    { id: 'keepnotes',    label: 'Keep Notes'  },
     { id: 'weather',      label: 'Weather'     },
     { id: 'display',      label: 'Display'     },
   ];
@@ -732,38 +733,134 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             );
           })()}
 
-          {/* ── Lists tab ──────────────────────────────────────── */}
-          {activeTab === 'lists' && (
-            <div className="settings-section">
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 14 }}>
-                Choose which Google Task lists appear in the sidebar. Lists are synced from Google Tasks every 5 minutes.
-              </p>
+          {/* ── Keep Notes tab ─────────────────────────────────── */}
+          {activeTab === 'keepnotes' && (() => {
+            const DEFAULT_KEEP_NOTES = [
+              { title: 'Shopping List', key: 'shopping-list', label: 'Shopping List', visible: true },
+            ];
+            const notes = (keepNotesCfg && keepNotesCfg.length > 0) ? keepNotesCfg : DEFAULT_KEEP_NOTES;
 
-              {listRows.length === 0 && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                  No task lists found. Open Google Keep or wait for a sync.
+            function slugify(str) {
+              return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+            }
+            function updateNote(i, field, val) {
+              const next = notes.map((n, ni) => ni === i ? { ...n, [field]: val } : n);
+              setKeepNotesCfg(next);
+            }
+            function removeNote(i) {
+              setKeepNotesCfg(notes.filter((_, ni) => ni !== i));
+            }
+            function addNote() {
+              setKeepNotesCfg([...notes, { title: '', key: '', label: '', visible: true }]);
+            }
+
+            return (
+              <div className="settings-section">
+                <h3 style={{ marginBottom: 6 }}>Google Keep Notes</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
+                  Configure which Google Keep notes the scraper reads and the sidebar displays.
+                  The <strong>Note Title</strong> must match the exact title in Google Keep.
+                  After adding a new note, the scraper will pick it up automatically on the next run.
                 </p>
-              )}
 
-              {listRows.map((row) => (
-                <div key={row.list_id} className="cal-row">
-                  <input
-                    type="checkbox"
-                    checked={row.visible}
-                    onChange={(e) => updateListRow(row.list_id, 'visible', e.target.checked)}
-                  />
-                  <input
-                    className="cal-name-input"
-                    value={row.name}
-                    onChange={(e) => updateListRow(row.list_id, 'name', e.target.value)}
-                  />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
-                    {row.itemCount} item{row.itemCount !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+                {notes.map((note, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        type="checkbox"
+                        checked={note.visible !== false}
+                        onChange={(e) => updateNote(i, 'visible', e.target.checked)}
+                        title="Show in sidebar"
+                        style={{ flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 160px' }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Note Title (exact match in Keep)</span>
+                          <input
+                            className="cal-name-input"
+                            value={note.title}
+                            onChange={(e) => {
+                              const title = e.target.value;
+                              const updates = { title };
+                              // Auto-fill key if it hasn't been manually set yet
+                              if (!note.key || note.key === slugify(notes[i]?.title || '')) {
+                                updates.key = slugify(title);
+                              }
+                              // Auto-fill label if it matches the old title
+                              if (!note.label || note.label === notes[i]?.title) {
+                                updates.label = title;
+                              }
+                              const next = notes.map((n, ni) => ni === i ? { ...n, ...updates } : n);
+                              setKeepNotesCfg(next);
+                            }}
+                            placeholder="Shopping List"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 140px' }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sidebar Label</span>
+                          <input
+                            className="cal-name-input"
+                            value={note.label || note.title}
+                            onChange={(e) => updateNote(i, 'label', e.target.value)}
+                            placeholder="Shopping List"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        className="btn-icon"
+                        style={{ fontSize: 13, color: 'var(--danger)', flexShrink: 0 }}
+                        onClick={() => removeNote(i)}
+                        title="Remove note"
+                      >✕</button>
+                    </div>
+                    <div style={{ paddingLeft: 24, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                      key: {note.key || <em style={{ fontFamily: 'var(--font)' }}>auto-generated from title</em>}
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  className="btn"
+                  style={{ fontSize: 12, padding: '4px 10px', marginTop: 12 }}
+                  onClick={addNote}
+                >
+                  + Add Keep note
+                </button>
+
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 16 }}>
+                  <strong>Note:</strong> Meal Planning is always scraped for calendar sync and does not need to be listed here unless you also want it shown in the sidebar.
+                </p>
+
+                {/* Task Lists sub-section */}
+                <h3 style={{ marginTop: 24, marginBottom: 6 }}>Google Task Lists</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+                  Choose which Google Task lists are visible. Synced every 5 minutes.
+                </p>
+                {listRows.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                    No task lists found. Wait for the next sync.
+                  </p>
+                )}
+                {listRows.map((row) => (
+                  <div key={row.list_id} className="cal-row">
+                    <input
+                      type="checkbox"
+                      checked={row.visible}
+                      onChange={(e) => updateListRow(row.list_id, 'visible', e.target.checked)}
+                    />
+                    <input
+                      className="cal-name-input"
+                      value={row.name}
+                      onChange={(e) => updateListRow(row.list_id, 'name', e.target.value)}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                      {row.itemCount} item{row.itemCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* ── Weather tab ───────────────────────────────────── */}
           {activeTab === 'weather' && (

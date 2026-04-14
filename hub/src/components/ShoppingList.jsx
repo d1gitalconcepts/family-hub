@@ -1,31 +1,17 @@
 import { useState } from 'react';
-import { useShoppingList } from '../hooks/useShoppingList';
+import { useChecklistNote } from '../hooks/useChecklistNote';
+import { useConfig } from '../hooks/useConfig';
 import { supabase } from '../supabaseClient';
 import StatusBar from './StatusBar';
 
+const DEFAULT_NOTES = [
+  { title: 'Shopping List', key: 'shopping-list', label: 'Shopping List', visible: true },
+];
+
 export default function ShoppingList({ pinned, onTogglePin }) {
-  const items = useShoppingList();
-  const [optimistic, setOptimistic] = useState({});
-  const [doneOpen, setDoneOpen]     = useState(false);
-
-  async function toggleItem(item) {
-    const key        = item.text;
-    const newChecked = !(optimistic[key] ?? item.checked);
-    setOptimistic((prev) => ({ ...prev, [key]: newChecked }));
-
-    const { error } = await supabase.from('keep_updates').insert({
-      note_key:  'shopping-list',
-      item_text: item.text,
-      checked:   newChecked,
-    });
-    if (error) {
-      console.warn('[Hub] Failed to queue Keep update:', error.message);
-      setOptimistic((prev) => ({ ...prev, [key]: item.checked }));
-    }
-  }
-
-  const unchecked = items.filter((i) => !(optimistic[i.text] ?? i.checked));
-  const checked   = items.filter((i) =>  (optimistic[i.text] ?? i.checked));
+  const [keepNotesCfg] = useConfig('keep_notes');
+  const notes = (keepNotesCfg && keepNotesCfg.length > 0) ? keepNotesCfg : DEFAULT_NOTES;
+  const visibleNotes = notes.filter((n) => n.visible !== false);
 
   return (
     <div className="sidebar">
@@ -45,53 +31,90 @@ export default function ShoppingList({ pinned, onTogglePin }) {
         </div>
       )}
 
+      {visibleNotes.length === 0 && (
+        <div style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          No lists configured. Add Keep notes in Settings → Keep Notes.
+        </div>
+      )}
+
+      {visibleNotes.map((note) => (
+        <ChecklistSection key={note.key} note={note} />
+      ))}
+
+      <StatusBar />
+    </div>
+  );
+}
+
+function ChecklistSection({ note }) {
+  const items = useChecklistNote(note.key);
+  const [optimistic, setOptimistic] = useState({});
+  const [doneOpen, setDoneOpen] = useState(false);
+
+  async function toggleItem(item) {
+    const key        = item.text;
+    const newChecked = !(optimistic[key] ?? item.checked);
+    setOptimistic((prev) => ({ ...prev, [key]: newChecked }));
+
+    const { error } = await supabase.from('keep_updates').insert({
+      note_key:  note.key,
+      item_text: item.text,
+      checked:   newChecked,
+    });
+    if (error) {
+      console.warn('[Hub] Failed to queue Keep update:', error.message);
+      setOptimistic((prev) => ({ ...prev, [key]: item.checked }));
+    }
+  }
+
+  const unchecked = items.filter((i) => !(optimistic[i.text] ?? i.checked));
+  const checked   = items.filter((i) =>  (optimistic[i.text] ?? i.checked));
+
+  return (
+    <div className="task-list-section">
+      <div className="sidebar-header">
+        {note.label || note.title}
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+          {unchecked.length} left
+        </span>
+      </div>
+
       {items.length === 0 && (
-        <div style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: 13 }}>
+        <div style={{ padding: '8px 14px 12px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           No items.
         </div>
       )}
 
-      {(unchecked.length > 0 || checked.length > 0) && (
-        <div className="task-list-section">
-          <div className="sidebar-header">
-            Shopping List
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {unchecked.length} left
-            </span>
-          </div>
+      {items.length > 0 && (
+        <div className="task-list">
+          {unchecked.map((item) => (
+            <TaskItem
+              key={item.text}
+              item={item}
+              checked={false}
+              onToggle={() => toggleItem(item)}
+            />
+          ))}
 
-          <div className="task-list">
-            {unchecked.map((item) => (
-              <TaskItem
-                key={item.text}
-                item={item}
-                checked={false}
-                onToggle={() => toggleItem(item)}
-              />
-            ))}
-
-            {checked.length > 0 && (
-              <>
-                <button className="done-toggle" onClick={() => setDoneOpen((o) => !o)}>
-                  <span>✓ Done</span>
-                  <span className="done-toggle-count">{checked.length}</span>
-                  <span className="done-toggle-chevron">{doneOpen ? '▲' : '▼'}</span>
-                </button>
-                {doneOpen && checked.map((item) => (
-                  <TaskItem
-                    key={item.text}
-                    item={item}
-                    checked={true}
-                    onToggle={() => toggleItem(item)}
-                  />
-                ))}
-              </>
-            )}
-          </div>
+          {checked.length > 0 && (
+            <>
+              <button className="done-toggle" onClick={() => setDoneOpen((o) => !o)}>
+                <span>✓ Done</span>
+                <span className="done-toggle-count">{checked.length}</span>
+                <span className="done-toggle-chevron">{doneOpen ? '▲' : '▼'}</span>
+              </button>
+              {doneOpen && checked.map((item) => (
+                <TaskItem
+                  key={item.text}
+                  item={item}
+                  checked={true}
+                  onToggle={() => toggleItem(item)}
+                />
+              ))}
+            </>
+          )}
         </div>
       )}
-
-      <StatusBar />
     </div>
   );
 }

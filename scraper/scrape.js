@@ -12,7 +12,10 @@ const fs   = require('fs');
 
 const CONFIG       = require('./config');
 const SESSION_FILE = path.join(__dirname, '.session', 'state.json');
-const TARGET_NOTES = ['Shopping List', 'Meal Planning'];
+
+// Default notes to scrape if config is not set in Supabase.
+// Meal Planning is always included (used for calendar sync).
+const DEFAULT_NOTE_TITLES = ['Shopping List', 'Meal Planning'];
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +93,37 @@ async function clearPendingKeepUpdates(ids) {
   if (!res.ok) {
     console.warn(`[Hub] Failed to clear keep_updates: ${await res.text()}`);
   }
+}
+
+// Fetch the keep_notes config from Supabase to know which notes to scrape.
+// Returns an array of note titles (e.g. ['Shopping List', 'Packing List']).
+// Meal Planning is always appended so calendar sync always works.
+async function fetchKeepNotesTitles() {
+  await supabaseAuth();
+  const res = await fetch(
+    `${CONFIG.SUPABASE_URL}/rest/v1/config?key=eq.keep_notes&select=value`,
+    {
+      headers: {
+        'apikey':        CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${_jwt}`,
+      },
+    }
+  );
+  if (!res.ok) {
+    console.warn(`[Scraper] Could not fetch keep_notes config — using defaults`);
+    return DEFAULT_NOTE_TITLES;
+  }
+  const rows = await res.json();
+  if (!rows.length || !Array.isArray(rows[0]?.value)) return DEFAULT_NOTE_TITLES;
+
+  const configured = rows[0].value
+    .filter((n) => n.title && n.title.trim())
+    .map((n) => n.title.trim());
+
+  // Always include Meal Planning for calendar sync; preserve order, deduplicate
+  const withMeal = [...configured];
+  if (!withMeal.includes('Meal Planning')) withMeal.push('Meal Planning');
+  return withMeal.length ? withMeal : DEFAULT_NOTE_TITLES;
 }
 
 // ── Keep write-back ───────────────────────────────────────────────────────────
@@ -248,6 +282,13 @@ async function main() {
     console.error(`[${ts}] No session found. Run: node setup.js`);
     process.exit(1);
   }
+
+  // Determine which notes to scrape (from Supabase config, with fallback)
+  const TARGET_NOTES = await fetchKeepNotesTitles().catch((err) => {
+    console.warn(`[${ts}] Failed to fetch note config: ${err.message} — using defaults`);
+    return DEFAULT_NOTE_TITLES;
+  });
+  console.log(`[${ts}] Target notes: ${TARGET_NOTES.join(', ')}`);
 
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ storageState: SESSION_FILE });
