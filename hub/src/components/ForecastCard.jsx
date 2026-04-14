@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useConfig } from '../hooks/useConfig';
 
 // WMO weather interpretation codes → emoji + label
 const WMO = {
@@ -64,8 +65,143 @@ function formatDate(dateStr) {
   return new Date(y, mo - 1, d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
+function hourLabel(hhmm) {
+  const h = parseInt(hhmm.split(':')[0], 10);
+  if (h === 0)  return '12a';
+  if (h === 12) return '12p';
+  return h < 12 ? `${h}a` : `${h - 12}p`;
+}
+
+// ── SVG bar + temperature chart ───────────────────────────────
+function HourlyChart({ hourly }) {
+  if (!hourly?.length) return null;
+
+  const W = 340, H = 110;
+  const PT = 22, PB = 20, PL = 6, PR = 6;
+  const cW = W - PL - PR;
+  const cH = H - PT - PB;
+
+  const n    = hourly.length;            // typically 24
+  const slotW = cW / n;
+  const barW  = Math.max(slotW * 0.72, 3);
+
+  // Temperature range for normalising the line
+  const temps   = hourly.map((h) => h.temp);
+  const minTemp = Math.min(...temps);
+  const maxTemp = Math.max(...temps);
+  const tRange  = maxTemp - minTemp || 1;
+
+  // Map a temperature value → Y coordinate
+  // Constrain the line to the upper 75% of the chart so it stays readable
+  // even when precip bars are tall.
+  const tempY = (t) => PT + cH * 0.05 + (1 - (t - minTemp) / tRange) * cH * 0.70;
+
+  // Precip bar: height proportional to probability, growing up from bottom
+  const barH   = (p) => (p / 100) * cH;
+  const barX   = (i) => PL + i * slotW + (slotW - barW) / 2;
+  const barTop = (p) => PT + cH - barH(p);
+
+  // Temperature polyline
+  const tempPts = hourly
+    .map((h, i) => `${PL + i * slotW + slotW / 2},${tempY(h.temp)}`)
+    .join(' ');
+
+  // Indices to label: every 6 hours (0, 6, 12, 18)
+  const labelIdxs = hourly.reduce((acc, h, i) => {
+    if (parseInt(h.hour) % 6 === 0) acc.push(i);
+    return acc;
+  }, []);
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
+      aria-hidden="true"
+    >
+      {/* Subtle grid lines at 25 / 50 / 75 % precip */}
+      {[25, 50, 75].map((pct) => (
+        <line
+          key={pct}
+          x1={PL} y1={PT + cH - barH(pct)}
+          x2={W - PR} y2={PT + cH - barH(pct)}
+          stroke="var(--border)"
+          strokeWidth="0.5"
+          strokeDasharray="3 3"
+        />
+      ))}
+
+      {/* Precip bars */}
+      {hourly.map((h, i) => (
+        <rect
+          key={i}
+          x={barX(i)}
+          y={barTop(h.precip)}
+          width={barW}
+          height={barH(h.precip)}
+          fill="#4fc3f7"
+          opacity={h.precip > 0 ? 0.25 + (h.precip / 100) * 0.65 : 0.08}
+          rx={1.5}
+        />
+      ))}
+
+      {/* Temperature polyline area fill */}
+      <polyline
+        points={tempPts}
+        fill="none"
+        stroke="#ff8c42"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {/* Temperature dots + labels at every 6 hours */}
+      {labelIdxs.map((i) => {
+        const h = hourly[i];
+        const cx = PL + i * slotW + slotW / 2;
+        const cy = tempY(h.temp);
+        return (
+          <g key={i}>
+            <circle cx={cx} cy={cy} r={2.8} fill="#ff8c42" />
+            <text
+              x={cx} y={cy - 5}
+              textAnchor="middle"
+              fontSize="8"
+              fontFamily="system-ui, sans-serif"
+              fill="#ff8c42"
+              fontWeight="600"
+            >{h.temp}°</text>
+          </g>
+        );
+      })}
+
+      {/* Hour axis labels */}
+      {labelIdxs.map((i) => {
+        const h = hourly[i];
+        const x = PL + i * slotW + slotW / 2;
+        return (
+          <text
+            key={`lbl-${i}`}
+            x={x} y={H - 4}
+            textAnchor="middle"
+            fontSize="8"
+            fontFamily="system-ui, sans-serif"
+            fill="var(--text-muted)"
+          >{hourLabel(h.hour)}</text>
+        );
+      })}
+
+      {/* Y-axis precip % label (right side) */}
+      <text x={W - PR} y={PT + cH - barH(100) - 3} textAnchor="end" fontSize="7" fontFamily="system-ui, sans-serif" fill="#4fc3f7" opacity="0.8">100%</text>
+      <text x={W - PR} y={PT + cH - barH(50)  - 3} textAnchor="end" fontSize="7" fontFamily="system-ui, sans-serif" fill="#4fc3f7" opacity="0.8">50%</text>
+    </svg>
+  );
+}
+
 export default function ForecastCard({ day }) {
   const [open, setOpen] = useState(false);
+  const [weatherConfig] = useConfig('weather_config');
+  const layout = weatherConfig?.forecastLayout || 'list';
+
   if (!day) return null;
   const { emoji, label } = wmo(day.code);
 
@@ -135,8 +271,18 @@ export default function ForecastCard({ day }) {
               </div>
             )}
 
-            {/* Hourly strip */}
-            {hourlySlots.length > 0 && (
+            {/* Hourly: chart or list */}
+            {day.hourly?.length > 0 && layout === 'chart' && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4, paddingRight: 4 }}>
+                  <span style={{ color: '#4fc3f7' }}>■ Precip chance</span>
+                  <span style={{ color: '#ff8c42' }}>— Temperature</span>
+                </div>
+                <HourlyChart hourly={day.hourly} />
+              </div>
+            )}
+
+            {hourlySlots.length > 0 && layout === 'list' && (
               <div className="forecast-popout-hourly">
                 {hourlySlots.map((h) => {
                   const { emoji: hEmoji } = wmo(h.code);
@@ -155,7 +301,7 @@ export default function ForecastCard({ day }) {
               </div>
             )}
 
-            {hourlySlots.length === 0 && (
+            {!day.hourly?.length && (
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
                 Hourly data not yet available — sync the worker to load it.
               </p>
