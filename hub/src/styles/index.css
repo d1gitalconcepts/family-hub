@@ -1153,6 +1153,10 @@ html, body, #root {
     border-radius: 12px;
     border-top: none;
     border-left: 4px solid var(--cal-color, #4285f4);
+    max-width: 640px;
+    max-height: 85vh;
+    width: 50vw;
+    min-width: 480px;
   }
 }
 
