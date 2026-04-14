@@ -74,6 +74,27 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     setDropTarget(null);
   }
 
+  function onIconRuleDragStart(e, idx) {
+    drag.current = { type: 'icon-rule', fromIdx: idx };
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  }
+
+  function onIconRuleDrop(e, toIdx) {
+    e.preventDefault();
+    if (!drag.current || drag.current.type !== 'icon-rule') return;
+    const { fromIdx } = drag.current;
+    if (fromIdx !== toIdx) {
+      const rules = eventIconsCfg?.rules ?? DEFAULT_ICON_RULES;
+      const next = [...rules];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      setEventIconsCfg({ ...(eventIconsCfg || {}), rules: next });
+    }
+    drag.current = null;
+    setDropTarget(null);
+  }
+
   // dropTarget: null | 'unassigned' | `section-${id}` | { sectionId, beforeIdx }
   const [dropTarget, setDropTarget] = useState(null);
   const drag = useRef(null);
@@ -434,14 +455,26 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 }
                 return (
                   <>
-                    {rules.map((rule, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                    {rules.map((rule, i) => {
+                      const isDropTarget = dropTarget?.type === 'icon-rule' && dropTarget?.beforeIdx === i;
+                      return (
+                      <div
+                        key={i}
+                        className={`cal-row${isDropTarget ? ' cal-row-drop-target' : ''}`}
+                        draggable
+                        onDragStart={(e) => onIconRuleDragStart(e, i)}
+                        onDragEnd={onDragEnd}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ type: 'icon-rule', beforeIdx: i }); }}
+                        onDrop={(e) => onIconRuleDrop(e, i)}
+                        style={{ gap: 6 }}
+                      >
+                        <span className="drag-handle">⠿</span>
                         <input
                           type="text"
                           value={rule.icon}
                           onChange={(e) => updateRule(i, 'icon', e.target.value.slice(0, 2))}
                           placeholder="🎂"
-                          style={{ width: 40, textAlign: 'center', fontSize: 16, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px' }}
+                          style={{ width: 40, textAlign: 'center', fontSize: 16, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px', flexShrink: 0 }}
                         />
                         <input
                           type="text"
@@ -452,7 +485,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         />
                         <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>
                       </div>
-                    ))}
+                      );
+                    })}
                     <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
                       + Add rule
                     </button>
