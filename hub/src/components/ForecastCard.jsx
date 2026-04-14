@@ -273,8 +273,8 @@ export default function ForecastCard({ day }) {
 
             {/* Hourly: chart or list */}
             {day.hourly?.length > 0 && layout === 'chart' && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4, paddingRight: 4 }}>
+              <div className="forecast-popout-chart-wrap">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 4 }}>
                   <span style={{ color: '#4fc3f7' }}>■ Precip chance</span>
                   <span style={{ color: '#ff8c42' }}>— Temperature</span>
                 </div>
