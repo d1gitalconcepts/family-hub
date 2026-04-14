@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function EventCard({ event, calColor }) {
+export default function EventCard({ event, calColor, calEmoji, iconRules }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -24,6 +24,19 @@ export default function EventCard({ event, calColor }) {
     return `https://www.google.com/maps/dir/?api=1&destination=${enc}`;
   }
 
+  // Calendar emoji takes priority; fall back to first matching keyword rule
+  function getKeywordIcon(title) {
+    if (!iconRules?.length) return null;
+    const lower = title.toLowerCase();
+    for (const rule of iconRules) {
+      if (rule.icon && rule.keyword && lower.includes(rule.keyword.toLowerCase())) {
+        return rule.icon;
+      }
+    }
+    return null;
+  }
+
+  const emoji = calEmoji || getKeywordIcon(event.summary || '');
 
   return (
     <>
@@ -35,7 +48,10 @@ export default function EventCard({ event, calColor }) {
         {!event.is_all_day && (
           <span className="event-time">{formatTime(event.start_at)}</span>
         )}
-        <span className="event-title">{event.summary}</span>
+        <span className="event-title">
+          {emoji && <span className="event-emoji">{emoji}</span>}
+          {event.summary}
+        </span>
         <span className="event-cal">{event.cal_name}</span>
       </div>
 
@@ -49,7 +65,10 @@ export default function EventCard({ event, calColor }) {
             <div className="event-popout-bar" />
 
             <div className="event-popout-header">
-              <div className="event-popout-title">{event.summary}</div>
+              <div className="event-popout-title">
+                {emoji && <span style={{ marginRight: 6 }}>{emoji}</span>}
+                {event.summary}
+              </div>
               <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
             </div>
 

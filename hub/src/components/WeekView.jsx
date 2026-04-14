@@ -37,6 +37,7 @@ export default function WeekView() {
   const [calConfig] = useConfig('visible_calendars');
   const [sections]  = useConfig('calendar_sections');
   const [forecast]  = useConfig('weather_forecast');
+  const [eventIconsCfg] = useConfig('event_icons');
   const isMobile    = useIsMobile();
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
@@ -78,6 +79,33 @@ export default function WeekView() {
   const unassigned  = calendars.filter((c) => !assignedIds.has(c.id) && c.visible !== false);
 
   const seen = new Set();
+
+  const DEFAULT_ICON_RULES = [
+    { keyword: 'birthday',  icon: '🎂' },
+    { keyword: 'dinner',    icon: '🍽️' },
+    { keyword: 'lunch',     icon: '🥗' },
+    { keyword: 'breakfast', icon: '🍳' },
+    { keyword: 'gym',       icon: '🏋️' },
+    { keyword: 'workout',   icon: '💪' },
+    { keyword: 'run',       icon: '🏃' },
+    { keyword: 'flight',    icon: '✈️' },
+    { keyword: 'travel',    icon: '🧳' },
+    { keyword: 'school',    icon: '📚' },
+    { keyword: 'doctor',    icon: '🩺' },
+    { keyword: 'dentist',   icon: '🦷' },
+    { keyword: 'meeting',   icon: '💼' },
+    { keyword: 'party',     icon: '🎉' },
+    { keyword: 'game',      icon: '⚽' },
+    { keyword: 'practice',  icon: '🏃' },
+    { keyword: 'movie',     icon: '🎬' },
+    { keyword: 'date',      icon: '💕' },
+    { keyword: 'hair',      icon: '✂️' },
+    { keyword: 'holiday',   icon: '🏖️' },
+  ];
+  const iconRules = (eventIconsCfg?.enabled ?? true)
+    ? (eventIconsCfg?.rules ?? DEFAULT_ICON_RULES)
+    : [];
+
   const deduped = sectionList.map((s) => ({
     ...s,
     calendarIds: (s.calendarIds || []).filter((id) => !seen.has(id) && seen.add(id)),
@@ -150,6 +178,7 @@ export default function WeekView() {
               isMobile={isMobile}
               gridStyle={isMobile ? undefined : cellsGridStyle}
               dayClasses={isMobile ? undefined : dayClasses}
+              iconRules={iconRules}
             />
           ))}
         </div>

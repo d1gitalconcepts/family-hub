@@ -12,6 +12,9 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [weatherConfig,  setWeatherConfig] = useConfig('weather_config');
   const [weatherForecast]                  = useConfig('weather_forecast');
   const [appName,        setAppName]       = useConfig('app_name');
+  const [accentColorCfg,  setAccentColorCfg]  = useConfig('accent_color');
+  const [headerStyleCfg,  setHeaderStyleCfg]  = useConfig('header_style');
+  const [eventIconsCfg,   setEventIconsCfg]   = useConfig('event_icons');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -233,6 +236,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               onChange={(e) => updateCalendar(cal.id, 'color', e.target.value)}
             />
             <input
+              type="text"
+              value={cal.emoji || ''}
+              onChange={(e) => updateCalendar(cal.id, 'emoji', e.target.value.slice(0, 2) || null)}
+              placeholder="✦"
+              title="Calendar emoji (optional)"
+              style={{ width: 32, textAlign: 'center', fontSize: 15, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
+            />
+            <input
               className="cal-name-input"
               value={cal.name || ''}
               onChange={(e) => updateCalendar(cal.id, 'name', e.target.value)}
@@ -243,6 +254,29 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       </div>
     );
   }
+
+  const DEFAULT_ICON_RULES = [
+    { keyword: 'birthday',  icon: '🎂' },
+    { keyword: 'dinner',    icon: '🍽️' },
+    { keyword: 'lunch',     icon: '🥗' },
+    { keyword: 'breakfast', icon: '🍳' },
+    { keyword: 'gym',       icon: '🏋️' },
+    { keyword: 'workout',   icon: '💪' },
+    { keyword: 'run',       icon: '🏃' },
+    { keyword: 'flight',    icon: '✈️' },
+    { keyword: 'travel',    icon: '🧳' },
+    { keyword: 'school',    icon: '📚' },
+    { keyword: 'doctor',    icon: '🩺' },
+    { keyword: 'dentist',   icon: '🦷' },
+    { keyword: 'meeting',   icon: '💼' },
+    { keyword: 'party',     icon: '🎉' },
+    { keyword: 'game',      icon: '⚽' },
+    { keyword: 'practice',  icon: '🏃' },
+    { keyword: 'movie',     icon: '🎬' },
+    { keyword: 'date',      icon: '💕' },
+    { keyword: 'hair',      icon: '✂️' },
+    { keyword: 'holiday',   icon: '🏖️' },
+  ];
 
   const TABS = [
     { id: 'calendars', label: 'Calendars' },
@@ -534,6 +568,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           {/* ── Display tab ───────────────────────────────────── */}
           {activeTab === 'display' && (
             <div className="settings-section">
+
+              {/* App Name */}
               <h3 style={{ marginBottom: 8 }}>App Name</h3>
               <input
                 type="text"
@@ -541,10 +577,108 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 value={appName ?? ''}
                 placeholder="Family Hub"
                 onChange={(e) => setAppName(e.target.value || null)}
-                style={{ marginBottom: 16, fontSize: 14 }}
+                style={{ marginBottom: 20, fontSize: 14 }}
               />
 
-              <h3 style={{ marginBottom: 12 }}>Theme</h3>
+              {/* Accent Color */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                <h3 style={{ flex: 1, margin: 0 }}>Accent Color</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={accentColorCfg?.enabled ?? false}
+                    onChange={(e) => setAccentColorCfg({ ...(accentColorCfg || {}), enabled: e.target.checked })}
+                  />
+                  Enable
+                </label>
+              </div>
+              {accentColorCfg?.enabled && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                  <input
+                    type="color"
+                    className="cal-color-input"
+                    value={accentColorCfg?.color || '#1a73e8'}
+                    onChange={(e) => setAccentColorCfg({ ...(accentColorCfg || {}), enabled: true, color: e.target.value })}
+                  />
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>
+                    Replaces the default blue on buttons, highlights, and today's date.
+                  </span>
+                  <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }}
+                    onClick={() => setAccentColorCfg({ ...(accentColorCfg || {}), color: '#1a73e8' })}>
+                    Reset
+                  </button>
+                </div>
+              )}
+              {!(accentColorCfg?.enabled) && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 20 }}>
+                  Uses the default blue accent. Enable to override.
+                </p>
+              )}
+
+              {/* Header Style */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                <h3 style={{ flex: 1, margin: 0 }}>Header Style</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={headerStyleCfg?.enabled ?? false}
+                    onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || { preset: 'sunrise' }), enabled: e.target.checked })}
+                  />
+                  Enable
+                </label>
+              </div>
+              {headerStyleCfg?.enabled && (() => {
+                const PRESETS = [
+                  { id: 'sunrise',  label: '🌅 Sunrise',  bg: 'linear-gradient(135deg,#ffecd2,#fcb69f)' },
+                  { id: 'ocean',    label: '🌊 Ocean',    bg: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)' },
+                  { id: 'forest',   label: '🌿 Forest',   bg: 'linear-gradient(135deg,#d4fc79,#96e6a1)' },
+                  { id: 'twilight', label: '🌆 Twilight', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)' },
+                  { id: 'slate',    label: '🩶 Slate',    bg: 'linear-gradient(135deg,#e0eafc,#cfdef3)' },
+                  { id: 'custom',   label: '🎨 Custom',   bg: null },
+                ];
+                const active = headerStyleCfg?.preset || 'sunrise';
+                return (
+                  <>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {PRESETS.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setHeaderStyleCfg({ ...(headerStyleCfg || {}), preset: p.id })}
+                          style={{
+                            padding: '6px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+                            border: `2px solid ${active === p.id ? 'var(--accent)' : 'var(--border)'}`,
+                            background: p.bg || (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
+                            color: 'var(--text)', fontFamily: 'var(--font)',
+                            fontWeight: active === p.id ? 600 : 400,
+                          }}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    {active === 'custom' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <input type="color" className="cal-color-input"
+                          value={headerStyleCfg?.color1 || '#a1c4fd'}
+                          onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || {}), color1: e.target.value })} />
+                        <span style={{ color: 'var(--text-muted)' }}>→</span>
+                        <input type="color" className="cal-color-input"
+                          value={headerStyleCfg?.color2 || '#c2e9fb'}
+                          onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || {}), color2: e.target.value })} />
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gradient colors</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              {!(headerStyleCfg?.enabled) && (
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 20 }}>
+                  Solid header. Enable to add a gradient.
+                </p>
+              )}
+
+              {/* Theme */}
+              <h3 style={{ marginBottom: 12, marginTop: headerStyleCfg?.enabled ? 16 : 0 }}>Theme</h3>
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
                   { value: 'auto',  icon: '🌓', label: 'Auto'  },
@@ -555,20 +689,12 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     key={value}
                     onClick={() => onThemeChange(value)}
                     style={{
-                      flex: 1,
-                      padding: '14px 8px',
-                      borderRadius: 'var(--radius)',
+                      flex: 1, padding: '14px 8px', borderRadius: 'var(--radius)', cursor: 'pointer',
                       border: `2px solid ${theme === value ? 'var(--accent)' : 'var(--border)'}`,
                       background: theme === value ? 'color-mix(in srgb, var(--accent) 10%, var(--surface))' : 'var(--surface)',
                       color: theme === value ? 'var(--accent)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font)',
-                      fontWeight: theme === value ? 600 : 400,
-                      fontSize: 13,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: 6,
+                      fontFamily: 'var(--font)', fontWeight: theme === value ? 600 : 400, fontSize: 13,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                     }}
                   >
                     <span style={{ fontSize: 24 }}>{icon}</span>
@@ -576,9 +702,65 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10, marginBottom: 20 }}>
                 Auto follows your device's system preference.
               </p>
+
+              {/* Event Icons */}
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                <h3 style={{ flex: 1, margin: 0 }}>Event Icons</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={eventIconsCfg?.enabled ?? true}
+                    onChange={(e) => setEventIconsCfg({ ...(eventIconsCfg || { rules: DEFAULT_ICON_RULES }), enabled: e.target.checked })}
+                  />
+                  Enable
+                </label>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+                Keyword → emoji rules applied to event titles. First match wins.
+              </p>
+              {(eventIconsCfg?.enabled ?? true) && (() => {
+                const rules = eventIconsCfg?.rules ?? DEFAULT_ICON_RULES;
+                function updateRule(i, field, val) {
+                  const next = rules.map((r, ri) => ri === i ? { ...r, [field]: val } : r);
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: next });
+                }
+                function removeRule(i) {
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: rules.filter((_, ri) => ri !== i) });
+                }
+                function addRule() {
+                  setEventIconsCfg({ ...(eventIconsCfg || {}), enabled: true, rules: [...rules, { keyword: '', icon: '' }] });
+                }
+                return (
+                  <>
+                    {rules.map((rule, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <input
+                          type="text"
+                          value={rule.icon}
+                          onChange={(e) => updateRule(i, 'icon', e.target.value.slice(0, 2))}
+                          placeholder="🎂"
+                          style={{ width: 40, textAlign: 'center', fontSize: 16, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px' }}
+                        />
+                        <input
+                          type="text"
+                          value={rule.keyword}
+                          onChange={(e) => updateRule(i, 'keyword', e.target.value)}
+                          placeholder="keyword"
+                          style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                        />
+                        <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>
+                      </div>
+                    ))}
+                    <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
+                      + Add rule
+                    </button>
+                  </>
+                );
+              })()}
+
             </div>
           )}
 

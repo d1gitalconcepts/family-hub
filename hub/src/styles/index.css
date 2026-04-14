@@ -354,6 +354,11 @@ html, body, #root {
   font-size: 11px;
 }
 
+.event-emoji {
+  margin-right: 4px;
+  font-style: normal;
+}
+
 /* ── Forecast card ─────────────────────────────────────────── */
 
 .forecast-card {

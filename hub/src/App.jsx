@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import LoginScreen from './components/LoginScreen';
 import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
@@ -22,6 +22,8 @@ function useIsMobile() {
 
 export default function App() {
   const [appName]                      = useConfig('app_name');
+  const [accentColorCfg] = useConfig('accent_color');
+  const [headerStyleCfg] = useConfig('header_style');
   const [role, setRole]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -123,6 +125,28 @@ export default function App() {
     localStorage.setItem('fh_theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (accentColorCfg?.enabled && accentColorCfg?.color) {
+      document.documentElement.style.setProperty('--accent', accentColorCfg.color);
+    } else {
+      document.documentElement.style.removeProperty('--accent');
+    }
+  }, [accentColorCfg]);
+
+  const headerBg = useMemo(() => {
+    if (!headerStyleCfg?.enabled) return {};
+    const PRESETS = {
+      sunrise:  'linear-gradient(135deg,#ffecd2,#fcb69f)',
+      ocean:    'linear-gradient(135deg,#a1c4fd,#c2e9fb)',
+      forest:   'linear-gradient(135deg,#d4fc79,#96e6a1)',
+      twilight: 'linear-gradient(135deg,#a18cd1,#fbc2eb)',
+      slate:    'linear-gradient(135deg,#e0eafc,#cfdef3)',
+      custom:   `linear-gradient(135deg,${headerStyleCfg.color1 || '#a1c4fd'},${headerStyleCfg.color2 || '#c2e9fb'})`,
+    };
+    const bg = PRESETS[headerStyleCfg.preset || 'sunrise'];
+    return bg ? { background: bg } : {};
+  }, [headerStyleCfg]);
+
   // Close mobile list when switching to desktop
   useEffect(() => {
     if (!isMobile) setShowMobileList(false);
@@ -138,7 +162,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header" style={headerBg}>
         <h1>{appName || 'Family Hub'}</h1>
         <WeatherWidget position="in-header" />
         <div className="header-actions" ref={menuRef}>
