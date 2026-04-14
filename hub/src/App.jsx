@@ -221,7 +221,15 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header" style={headerBg}>
-        <h1>{appName || 'Family Hub'}</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <img
+            src={faviconCfg === 'bolt' ? '/favicon.svg' : `/favicon-${faviconCfg || 'house'}.svg`}
+            width="22" height="22"
+            alt=""
+            style={{ display: 'block', flexShrink: 0 }}
+          />
+          {appName || 'Family Hub'}
+        </h1>
         <WeatherWidget position="in-header" />
         <div className="header-actions" ref={menuRef}>
           <button
