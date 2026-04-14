@@ -328,23 +328,9 @@ async function main() {
         console.log(`[${ts}] ${pendingUpdates.length} pending Keep update(s) for "${noteName}"`);
       }
 
-      // Use Keep's search bar to find the note regardless of scroll position.
-      // This handles unpinned notes that aren't rendered in the initial viewport.
-      const searchInput = await page.$('input[aria-label="Search"]');
-      if (searchInput) {
-        await searchInput.click();
-        await searchInput.fill('');
-        await searchInput.type(noteName, { delay: 40 });
-        // Wait for search results to render
-        await page.waitForFunction(
-          () => document.querySelectorAll('div[role="textbox"]').length > 0,
-          { timeout: 8000, polling: 300 }
-        ).catch(() => {});
-        await page.waitForTimeout(800);
-      }
-
-      // Click the note title to open it in editor view
-      const clicked = await page.evaluate((name) => {
+      // Try to click the note directly if it's already visible on screen (e.g. pinned notes).
+      let usedSearch = false;
+      let clicked = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
           if (el.innerText.trim() === name) { el.click(); return true; }
@@ -352,10 +338,40 @@ async function main() {
         return false;
       }, noteName);
 
+      // Fallback: use Keep's search bar to surface notes not in the initial viewport.
+      // This handles unpinned notes that aren't rendered due to virtual scrolling.
+      if (!clicked) {
+        console.log(`[${ts}] "${noteName}" not on screen — searching…`);
+        const searchInput = await page.$('input[aria-label="Search"]');
+        if (searchInput) {
+          usedSearch = true;
+          await searchInput.click();
+          await searchInput.fill('');
+          await searchInput.type(noteName, { delay: 40 });
+          // Wait for search results to render
+          await page.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 8000, polling: 300 }
+          ).catch(() => {});
+          await page.waitForTimeout(800);
+
+          clicked = await page.evaluate((name) => {
+            const els = document.querySelectorAll('div[role="textbox"]');
+            for (const el of els) {
+              if (el.innerText.trim() === name) { el.click(); return true; }
+            }
+            return false;
+          }, noteName);
+        }
+      }
+
       if (!clicked) {
         console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
-        // Clear search before moving to next note
-        if (searchInput) { await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
+        if (usedSearch) {
+          // Clear search so the next note starts from the main grid
+          const si = await page.$('input[aria-label="Search"]');
+          if (si) { await si.fill(''); await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
+        }
         continue;
       }
 
@@ -389,11 +405,11 @@ async function main() {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(600);
 
-      // Clear the search so the next note search starts from a clean state
-      if (searchInput) {
-        await searchInput.fill('');
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(400);
+      // If we used search to find this note, clear it so the next note
+      // starts from the main grid (important for pinned/visible notes)
+      if (usedSearch) {
+        const si = await page.$('input[aria-label="Search"]');
+        if (si) { await si.fill(''); await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
       }
     }
 
