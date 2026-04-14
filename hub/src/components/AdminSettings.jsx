@@ -748,7 +748,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           type="text"
                           value={rule.keyword}
                           onChange={(e) => updateRule(i, 'keyword', e.target.value)}
-                          placeholder="keyword"
+                          placeholder="keyword, alias, ..."
                           style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
                         />
                         <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>

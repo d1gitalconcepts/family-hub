@@ -29,9 +29,9 @@ export default function EventCard({ event, calColor, calEmoji, iconRules }) {
     if (!iconRules?.length) return null;
     const lower = title.toLowerCase();
     for (const rule of iconRules) {
-      if (rule.icon && rule.keyword && lower.includes(rule.keyword.toLowerCase())) {
-        return rule.icon;
-      }
+      if (!rule.icon || !rule.keyword) continue;
+      const keywords = rule.keyword.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+      if (keywords.some((k) => lower.includes(k))) return rule.icon;
     }
     return null;
   }
