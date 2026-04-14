@@ -633,6 +633,13 @@ html, body, #root {
   letter-spacing: 0.05em;
   color: var(--text-muted);
 }
+.weather-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
 .weather-value {
   font-size: 1rem;
   font-weight: 500;
@@ -645,6 +652,25 @@ html, body, #root {
   margin-left: auto;
   padding-left: 14px;
   white-space: nowrap;
+}
+
+/* Mobile weather bar — full width row, compact, horizontal scroll */
+.weather-bar--mobile {
+  padding: 0 8px;
+}
+.weather-bar--mobile .weather-item {
+  padding: 6px 10px;
+}
+.weather-bar--mobile .weather-label,
+.weather-bar--mobile .weather-icon {
+  font-size: 0.65rem;
+}
+.weather-bar--mobile .weather-value {
+  font-size: 0.9rem;
+}
+.weather-bar--mobile .weather-age {
+  font-size: 0.7rem;
+  padding-left: 8px;
 }
 
 /* In-header inline variant */

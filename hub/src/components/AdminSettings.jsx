@@ -691,6 +691,36 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
               </div>
 
+              {/* Label style */}
+              <h3 style={{ marginBottom: 10 }}>Label Style</h3>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                {[
+                  { id: 'text', label: 'Text', desc: 'Feels Like, Humidity…' },
+                  { id: 'icon', label: 'Icons', desc: 'Single-colour SVG icons' },
+                ].map(({ id, label, desc }) => {
+                  const active = (weatherConfig?.labelMode || 'text') === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setWeatherConfig({ ...weatherConfig, labelMode: id })}
+                      style={{
+                        flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                        color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
+                      <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 18 }}>
+                On mobile the widget always appears below the header regardless of the position setting.
+              </p>
+
               {/* Widget position */}
               <h3 style={{ marginBottom: 8 }}>Widget Position</h3>
               <div style={{ marginBottom: 18 }}>
