@@ -6,6 +6,7 @@ import AdminSettings from './components/AdminSettings';
 import WeatherWidget from './components/WeatherWidget';
 import { getSession, getRole, saveRole, logout } from './auth';
 import { supabase } from './supabaseClient';
+import { useConfig } from './hooks/useConfig';
 import './styles/index.css';
 
 function useIsMobile() {
@@ -20,6 +21,7 @@ function useIsMobile() {
 }
 
 export default function App() {
+  const [appName]                      = useConfig('app_name');
   const [role, setRole]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -137,7 +139,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>Family Hub</h1>
+        <h1>{appName || 'Family Hub'}</h1>
         <WeatherWidget position="in-header" />
         <div className="header-actions" ref={menuRef}>
           <button

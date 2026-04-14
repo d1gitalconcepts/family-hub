@@ -11,6 +11,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [weatherKeys,    setWeatherKeys]   = useConfig('weather_keys');
   const [weatherConfig,  setWeatherConfig] = useConfig('weather_config');
   const [weatherForecast]                  = useConfig('weather_forecast');
+  const [appName,        setAppName]       = useConfig('app_name');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,   setAwApiKey]   = useState('');
@@ -533,6 +534,16 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           {/* ── Display tab ───────────────────────────────────── */}
           {activeTab === 'display' && (
             <div className="settings-section">
+              <h3 style={{ marginBottom: 8 }}>App Name</h3>
+              <input
+                type="text"
+                className="login-input"
+                value={appName ?? ''}
+                placeholder="Family Hub"
+                onChange={(e) => setAppName(e.target.value || null)}
+                style={{ marginBottom: 16, fontSize: 14 }}
+              />
+
               <h3 style={{ marginBottom: 12 }}>Theme</h3>
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
