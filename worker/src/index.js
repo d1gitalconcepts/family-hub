@@ -37,10 +37,7 @@ async function runFullSync(env) {
     const shoppingNote = notes.find((n) => n.key === 'shopping-list');
     const mealNote     = notes.find((n) => n.key === 'meal-planning');
 
-    // 1. Sync shopping list note → Google Tasks (diff-based, minimal API calls)
-    if (shoppingNote?.data?.items?.length) {
-      await syncTasksFromNote(env, shoppingNote.data.items);
-    }
+    // 1. (Keep → Google Tasks item sync disabled — handled by write-back + pending_updates)
 
     // 2. Sync meal planning note → Google Calendar
     if (mealNote?.data?.lines?.length) {
