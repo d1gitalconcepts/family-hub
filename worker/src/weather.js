@@ -87,6 +87,7 @@ async function pollForecast(env, lat, lon) {
     latitude:   lat,
     longitude:  lon,
     daily:      'temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,windspeed_10m_max,sunrise,sunset',
+    hourly:     'precipitation_probability,temperature_2m,weathercode,windspeed_10m',
     temperature_unit: 'fahrenheit',
     windspeed_unit:   'mph',
     timezone:   'auto',
@@ -113,6 +114,23 @@ async function pollForecast(env, lat, lon) {
     return;
   }
 
+  // Group hourly data by date so we can attach it to each day
+  const h = data.hourly;
+  const hourlyByDate = {};
+  if (h?.time?.length) {
+    h.time.forEach((isoTime, i) => {
+      const date = isoTime.split('T')[0];
+      if (!hourlyByDate[date]) hourlyByDate[date] = [];
+      hourlyByDate[date].push({
+        hour:   isoTime.split('T')[1].slice(0, 5),          // "HH:MM"
+        temp:   Math.round(h.temperature_2m[i]            ?? 0),
+        precip: h.precipitation_probability[i]             ?? 0,
+        wind:   Math.round(h.windspeed_10m[i]             ?? 0),
+        code:   h.weathercode[i]                           ?? 0,
+      });
+    });
+  }
+
   const forecast = d.time.map((date, i) => ({
     date,
     high:    Math.round(d.temperature_2m_max[i]              ?? 0),
@@ -122,6 +140,7 @@ async function pollForecast(env, lat, lon) {
     code:    d.weathercode[i]                                ?? 0,
     sunrise: d.sunrise?.[i]                                  ?? null,
     sunset:  d.sunset?.[i]                                   ?? null,
+    hourly:  hourlyByDate[date]                              ?? [],
   }));
 
   // Expose today's sunrise/sunset in weather_current so the widget can show them

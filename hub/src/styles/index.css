@@ -603,6 +603,96 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+/* ── Forecast popout ───────────────────────────────────────── */
+
+.forecast-popout {
+  max-width: 380px;
+}
+
+.forecast-popout-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.forecast-popout-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.forecast-popout-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forecast-popout-stat-val {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.forecast-popout-sun {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 6px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.forecast-popout-hourly {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.forecast-hourly-slot {
+  display: grid;
+  grid-template-columns: 64px 28px 44px 56px;
+  align-items: center;
+  padding: 5px 4px;
+  border-radius: 4px;
+  gap: 4px;
+}
+
+.forecast-hourly-slot:nth-child(odd) {
+  background: var(--bg-secondary);
+}
+
+.forecast-hourly-time {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.forecast-hourly-emoji {
+  font-size: 1rem;
+  text-align: center;
+}
+
+.forecast-hourly-temp {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.forecast-hourly-precip {
+  font-size: 0.8rem;
+  color: #1a73e8;
+}
+
 /* ── Settings: sections ────────────────────────────────────── */
 
 .settings-section-block {
