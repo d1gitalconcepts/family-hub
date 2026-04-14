@@ -312,6 +312,13 @@ async function main() {
     // Extra settle time for note content to fully render
     await page.waitForTimeout(2000);
 
+    // Dismiss Google Translate or similar overlays that intercept pointer events
+    await page.evaluate(() => {
+      document.querySelectorAll(
+        '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
+      ).forEach((el) => el.remove());
+    }).catch(() => {});
+
     // Open every target note in the editor one at a time so we get full content.
     // - Text notes: card view truncates long content with "…"; editor shows all.
     // - Checklist notes: card view caps visible items (~10-15); editor shows all,
@@ -349,8 +356,21 @@ async function main() {
 
         if (searchVisible) {
           usedSearch = true;
-          await searchLocator.click();
-          await searchLocator.fill(''); // clear any previous search
+
+          // Google Translate (and similar overlays) can intercept pointer events
+          // and block locator.click(). Remove any such overlays via JS first,
+          // then focus the input programmatically — no pointer events needed.
+          await page.evaluate(() => {
+            document.querySelectorAll(
+              '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
+            ).forEach((el) => el.remove());
+          }).catch(() => {});
+
+          // Focus + clear the search input via JS, then type with real keypresses
+          await page.evaluate(() => {
+            const input = document.querySelector('input[aria-label="Search"]');
+            if (input) { input.value = ''; input.focus(); }
+          });
           await page.keyboard.type(noteName, { delay: 40 }); // real keypresses to trigger Keep's search
           // Wait until the exact note title appears in the DOM — don't just
           // check for any textbox, which may already exist from the main grid.
