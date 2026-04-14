@@ -50,11 +50,12 @@ async function runFullSync(env) {
     // 3. Poll all calendars → Supabase
     await pollAllCalendars(env);
 
-    // 4. Poll all task lists → Supabase
-    await pollAllTaskLists(env);
-
-    // 5. Apply any pending checkbox updates
+    // 4. Apply any pending checkbox updates first so the poll below captures
+    //    the fully-applied state rather than a pre-update snapshot
     await applyPendingUpdates(env);
+
+    // 5. Poll all task lists → Supabase (after pending updates are applied)
+    await pollAllTaskLists(env);
 
     // 6. Poll weather station
     await pollWeather(env);

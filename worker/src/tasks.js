@@ -45,26 +45,23 @@ export async function syncTasksFromNote(env, items) {
     toDelete.map((t) => googleDelete(env, `${TASKS_BASE}/lists/${listId}/tasks/${t.id}`))
   );
 
-  // Create new items or patch status on existing ones
-  let created = 0, patched = 0;
+  // Create tasks that exist in Keep but not yet in Google Tasks.
+  // Checked status is intentionally NOT patched here — it is owned exclusively
+  // by applyPendingUpdates (hub-initiated) + Keep write-back (scraper).
+  // Patching status here from stale Keep note data caused race conditions where
+  // a manual sync mid-write-back would temporarily flip items to the wrong state.
+  let created = 0;
   for (const item of items) {
-    const desired = item.checked ? 'completed' : 'needsAction';
-    const existing = currentByTitle.get(item.text);
-    if (!existing) {
+    if (!currentByTitle.has(item.text)) {
       await googlePost(env, `${TASKS_BASE}/lists/${listId}/tasks`, {
-        title: item.text, status: desired,
+        title: item.text, status: 'needsAction',
       });
       created++;
-    } else if (existing.status !== desired) {
-      await googlePatch(env, `${TASKS_BASE}/lists/${listId}/tasks/${existing.id}`, {
-        status: desired,
-      });
-      patched++;
     }
   }
 
-  if (toDelete.length || created || patched) {
-    console.log(`[Tasks] Shopping sync: +${created} created, ~${patched} patched, -${toDelete.length} deleted.`);
+  if (toDelete.length || created) {
+    console.log(`[Tasks] Shopping sync: +${created} created, -${toDelete.length} deleted.`);
   } else {
     console.log('[Tasks] Shopping list unchanged, no Google Tasks updates needed.');
   }
