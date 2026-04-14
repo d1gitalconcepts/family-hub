@@ -277,6 +277,7 @@ export default function App() {
                     : <polyline points="8,1 1,8 8,15" />
                   }
                 </svg>
+                {!sidebarOpen && <span className="sidebar-rail-label">List</span>}
               </button>
             </div>
             <ShoppingList pinned={sidebarPinned} onTogglePin={handleSidebarPin} />

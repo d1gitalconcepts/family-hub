@@ -205,6 +205,18 @@ html, body, #root {
   color: var(--accent);
 }
 
+.sidebar-rail-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 10px;
+  user-select: none;
+}
+
 /* ── Sidebar pin toggle (inside sidebar) ───────────────────── */
 
 .sidebar-pinbar {
