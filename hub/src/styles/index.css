@@ -1068,3 +1068,77 @@ html, body, #root {
     min-height: 48px;
   }
 }
+
+/* ── Print ─────────────────────────────────────────────────── */
+
+@media print {
+  @page { size: landscape; margin: 0.6cm; }
+
+  /* Force light theme regardless of user preference */
+  :root, [data-theme='dark'] {
+    --bg:           #ffffff !important;
+    --bg-secondary: #f5f5f5 !important;
+    --surface:      #ffffff !important;
+    --border:       #cccccc !important;
+    --text:         #111111 !important;
+    --text-muted:   #555555 !important;
+    --accent:       #1a73e8 !important;
+  }
+
+  /* Remove height constraints so everything renders */
+  html, body, #root { height: auto !important; overflow: visible !important; }
+
+  .app-shell  { height: auto !important; }
+  .app-body   { overflow: visible !important; height: auto !important; }
+
+  /* Hide everything that isn't the calendar */
+  .header-actions,
+  .weather-bar,
+  .week-nav .btn-icon,
+  .week-nav .btn,
+  .sidebar,
+  .status-bar,
+  .mobile-list-fab,
+  .mobile-drawer-overlay,
+  .settings-overlay,
+  .event-popout-overlay,
+  .scrape-alert { display: none !important; }
+
+  /* Keep the week-nav strip for the date label, just hide the buttons */
+  .week-nav { justify-content: center; border-bottom: 1px solid var(--border); }
+
+  /* Slim down the header */
+  .app-header {
+    height: auto !important;
+    padding: 6px 12px !important;
+    border-bottom: 2px solid var(--border) !important;
+  }
+  .app-header h1 { font-size: 15px !important; }
+
+  /* Remove all overflow/scroll so the full grid prints */
+  .week-container,
+  .sections-body,
+  .day-headers { overflow: visible !important; }
+
+  /* Equal-width columns — override the inline gridTemplateColumns */
+  .day-headers  { grid-template-columns: var(--label-w) repeat(8, 1fr) !important; }
+  .section-cells { grid-template-columns: repeat(8, 1fr) !important; }
+
+  /* Tighter cells for print */
+  .day-header   { padding: 4px 4px 2px !important; font-size: 11px !important; }
+  .day-date     { font-size: 16px !important; }
+  .day-cell     { padding: 3px !important; gap: 2px !important; min-height: 24px !important; }
+
+  /* Smaller event cards */
+  .event-card,
+  .forecast-card { font-size: 10px !important; padding: 3px 5px !important; }
+  .event-title   { font-size: 10px !important; }
+  .event-time    { font-size: 9px !important; }
+  .event-cal     { display: none !important; }
+
+  /* Keep calendar colors but ensure they print */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Don't break sections across pages */
+  .section-row { break-inside: avoid; }
+}

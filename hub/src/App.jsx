@@ -173,6 +173,10 @@ export default function App() {
                   <span className="header-menu-item-label">Settings</span>
                 </button>
               )}
+              <button className="header-menu-item" onClick={() => { setShowMenu(false); window.print(); }}>
+                <span>🖨</span>
+                <span className="header-menu-item-label">Print calendar</span>
+              </button>
               <button className="header-menu-item header-menu-item--danger" onClick={handleLogout}>
                 <span>⎋</span>
                 <span className="header-menu-item-label">Sign out</span>
