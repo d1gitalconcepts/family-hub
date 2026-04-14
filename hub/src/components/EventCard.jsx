@@ -180,7 +180,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
             </div>
           </div>
         </div>
-      , document.body))}
+      , document.body)}
     </>
   );
 }
