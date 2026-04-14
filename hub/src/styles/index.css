@@ -182,34 +182,84 @@ html, body, #root {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
-  gap: 6px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
 }
 
 .sidebar-rail-btn {
-  width: 22px;
-  height: 22px;
+  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: none;
   border: none;
-  border-radius: 4px;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
   padding: 0;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.15s, color 0.15s;
 }
 
-.sidebar-rail-btn:hover { background: var(--border); color: var(--text); }
+.sidebar-rail-btn:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+  color: var(--accent);
+}
 
-.sidebar-rail-btn--pinned { color: var(--accent); }
-.sidebar-rail-btn--pinned:hover { color: var(--accent); }
+/* ── Sidebar pin toggle (inside sidebar) ───────────────────── */
+
+.sidebar-pinbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.sidebar-pinbar-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.sidebar-pin-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-pin-track {
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  background: var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  transition: background 0.2s;
+}
+
+.sidebar-pin-toggle--on .sidebar-pin-track {
+  background: var(--accent);
+}
+
+.sidebar-pin-thumb {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.sidebar-pin-toggle--on .sidebar-pin-thumb {
+  transform: translateX(14px);
+}
 
 .sidebar {
   width: var(--sidebar-w);

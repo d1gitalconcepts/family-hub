@@ -3,7 +3,7 @@ import { useShoppingList } from '../hooks/useShoppingList';
 import { supabase } from '../supabaseClient';
 import StatusBar from './StatusBar';
 
-export default function ShoppingList() {
+export default function ShoppingList({ pinned, onTogglePin }) {
   const items = useShoppingList();
   const [optimistic, setOptimistic] = useState({});
   const [doneOpen, setDoneOpen]     = useState(false);
@@ -13,7 +13,6 @@ export default function ShoppingList() {
     const newChecked = !(optimistic[key] ?? item.checked);
     setOptimistic((prev) => ({ ...prev, [key]: newChecked }));
 
-    // Queue Keep checkbox update — scraper applies this on next run
     const { error } = await supabase.from('keep_updates').insert({
       note_key:  'shopping-list',
       item_text: item.text,
@@ -30,6 +29,22 @@ export default function ShoppingList() {
 
   return (
     <div className="sidebar">
+      {/* Pin toggle — only shown on desktop where sidebar can be pinned */}
+      {onTogglePin !== undefined && (
+        <div className="sidebar-pinbar">
+          <span className="sidebar-pinbar-label">Keep open</span>
+          <button
+            className={`sidebar-pin-toggle${pinned ? ' sidebar-pin-toggle--on' : ''}`}
+            onClick={onTogglePin}
+            title={pinned ? 'Pinned — click to auto-close' : 'Click to pin open'}
+          >
+            <span className="sidebar-pin-track">
+              <span className="sidebar-pin-thumb" />
+            </span>
+          </button>
+        </div>
+      )}
+
       {items.length === 0 && (
         <div style={{ padding: '16px 14px', color: 'var(--text-muted)', fontSize: 13 }}>
           No items.

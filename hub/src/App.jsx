@@ -271,19 +271,15 @@ export default function App() {
                 onClick={handleSidebarToggle}
                 title={sidebarOpen ? 'Hide list' : 'Show list'}
               >
-                {sidebarOpen ? '›' : '‹'}
+                <svg width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {sidebarOpen
+                    ? <polyline points="2,1 9,8 2,15" />
+                    : <polyline points="8,1 1,8 8,15" />
+                  }
+                </svg>
               </button>
-              {sidebarOpen && (
-                <button
-                  className={`sidebar-rail-btn${sidebarPinned ? ' sidebar-rail-btn--pinned' : ''}`}
-                  onClick={handleSidebarPin}
-                  title={sidebarPinned ? 'Unpin (auto-close)' : 'Pin open'}
-                >
-                  📌
-                </button>
-              )}
             </div>
-            <ShoppingList />
+            <ShoppingList pinned={sidebarPinned} onTogglePin={handleSidebarPin} />
           </div>
         )}
       </div>
