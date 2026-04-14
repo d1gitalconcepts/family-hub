@@ -44,7 +44,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   if (!hasContent) return null;
 
   return (
-    <div className="section-row">
+    <div className={`section-row${showForecast ? ' section-row--forecast' : ''}`}>
       <div className="section-row-label">
         {section.name && <span>{section.name}</span>}
       </div>

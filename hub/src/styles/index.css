@@ -1136,6 +1136,24 @@ html, body, #root {
   .event-time    { font-size: 9px !important; }
   .event-cal     { display: none !important; }
 
+  /* No today highlight or yesterday dimming when printing */
+  .day-header.today .day-date {
+    background: none !important;
+    color: var(--text) !important;
+    border-radius: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    line-height: inherit !important;
+    margin: 0 !important;
+    font-size: inherit !important;
+  }
+  .day-cell.today     { background: none !important; }
+  .day-cell.yesterday,
+  .day-header.yesterday { opacity: 1 !important; }
+
+  /* Hide the forecast section */
+  .section-row--forecast { display: none !important; }
+
   /* Keep calendar colors but ensure they print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
