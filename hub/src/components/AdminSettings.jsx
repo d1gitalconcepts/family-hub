@@ -12,6 +12,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [weatherConfig,  setWeatherConfig] = useConfig('weather_config');
   const [weatherForecast]                  = useConfig('weather_forecast');
   const [appName,        setAppName]       = useConfig('app_name');
+  const [fontSizeCfg,    setFontSizeCfg]   = useConfig('font_size');
   const [accentColorCfg,  setAccentColorCfg]  = useConfig('accent_color');
   const [headerStyleCfg,  setHeaderStyleCfg]  = useConfig('header_style');
   const [eventIconsCfg,   setEventIconsCfg]   = useConfig('event_icons');
@@ -817,6 +818,39 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 onChange={(e) => setAppName(e.target.value || null)}
                 style={{ marginBottom: 20, fontSize: 14 }}
               />
+
+              {/* Text Size */}
+              <h3 style={{ marginBottom: 10 }}>Text Size</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24 }}>
+                {[
+                  { id: 'compact', label: 'Compact', sample: '11px' },
+                  { id: 'default', label: 'Default', sample: '13px' },
+                  { id: 'large',   label: 'Large',   sample: '14px' },
+                  { id: 'xl',      label: 'XL',      sample: '15px' },
+                ].map(({ id, label, sample }) => {
+                  const active = (fontSizeCfg || 'default') === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setFontSizeCfg(id)}
+                      style={{
+                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                        borderRadius: 8,
+                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                        cursor: 'pointer',
+                        padding: '10px 8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <span style={{ fontSize: sample, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text)', lineHeight: 1 }}>Aa</span>
+                      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Accent Color */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>

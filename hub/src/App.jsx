@@ -24,6 +24,7 @@ export default function App() {
   const [appName]                      = useConfig('app_name');
   const [accentColorCfg] = useConfig('accent_color');
   const [headerStyleCfg] = useConfig('header_style');
+  const [fontSizeCfg]    = useConfig('font_size');
   const [role, setRole]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -132,6 +133,19 @@ export default function App() {
       document.documentElement.style.removeProperty('--accent');
     }
   }, [accentColorCfg]);
+
+  useEffect(() => {
+    const SIZES = {
+      compact:  { app: '13px', card: '11px', meta: '10px' },
+      default:  { app: '14px', card: '13px', meta: '11px' },
+      large:    { app: '15px', card: '14px', meta: '12px' },
+      xl:       { app: '16px', card: '15px', meta: '13px' },
+    };
+    const s = SIZES[fontSizeCfg || 'default'];
+    document.documentElement.style.setProperty('--app-font-size',  s.app);
+    document.documentElement.style.setProperty('--card-font',      s.card);
+    document.documentElement.style.setProperty('--card-meta-font', s.meta);
+  }, [fontSizeCfg]);
 
   const headerBg = useMemo(() => {
     if (!headerStyleCfg?.enabled) return {};

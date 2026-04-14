@@ -1,20 +1,24 @@
 /* Family Hub — CSS variables, layout, theme */
 
 :root {
-  --bg:           #ffffff;
-  --bg-secondary: #f5f5f5;
-  --surface:      #ffffff;
-  --border:       #e0e0e0;
-  --text:         #202124;
-  --text-muted:   #5f6368;
-  --accent:       #1a73e8;
-  --danger:       #d93025;
-  --success:      #188038;
-  --radius:       8px;
-  --sidebar-w:    280px;
-  --header-h:     56px;
-  --label-w:      38px;
-  --font:         'Google Sans', Roboto, system-ui, sans-serif;
+  --bg:             #ffffff;
+  --bg-secondary:   #f5f5f5;
+  --surface:        #ffffff;
+  --border:         #e0e0e0;
+  --text:           #202124;
+  --text-muted:     #5f6368;
+  --accent:         #1a73e8;
+  --danger:         #d93025;
+  --success:        #188038;
+  --radius:         8px;
+  --sidebar-w:      280px;
+  --header-h:       56px;
+  --label-w:        38px;
+  --font:           'Google Sans', Roboto, system-ui, sans-serif;
+  /* Font size system — overridden by Display settings */
+  --app-font-size:  14px;
+  --card-font:      13px;
+  --card-meta-font: 11px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,7 +58,7 @@
 html, body, #root {
   height: 100%;
   font-family: var(--font);
-  font-size: 14px;
+  font-size: var(--app-font-size, 14px);
   background: var(--bg);
   color: var(--text);
 }
@@ -322,12 +326,13 @@ html, body, #root {
 .event-card {
   border-radius: 4px;
   padding: 4px 6px;
-  font-size: 12px;
+  font-size: var(--card-font, 13px);
   line-height: 1.3;
   cursor: default;
   border-left: 3px solid;
   background: color-mix(in srgb, var(--cal-color, #4285f4) 15%, var(--surface));
   border-color: var(--cal-color, #4285f4);
+  color: var(--text);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -341,7 +346,7 @@ html, body, #root {
 
 .event-time {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--card-meta-font, 11px);
   display: block;
   margin-bottom: 1px;
 }
@@ -354,7 +359,7 @@ html, body, #root {
 
 .event-cal {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--card-meta-font, 11px);
 }
 
 .event-emoji {
@@ -364,7 +369,7 @@ html, body, #root {
 
 .event-time-inline {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--card-meta-font, 11px);
   font-weight: 400;
 }
 
@@ -373,13 +378,13 @@ html, body, #root {
 }
 
 .event-card--comfortable .event-title {
-  font-size: 13px;
+  font-size: calc(var(--card-font, 13px) + 1px);
   margin-bottom: 2px;
 }
 
 .event-desc-snippet {
   display: block;
-  font-size: 10px;
+  font-size: calc(var(--card-meta-font, 11px) - 1px);
   color: var(--text-muted);
   margin-top: 2px;
   overflow: hidden;
