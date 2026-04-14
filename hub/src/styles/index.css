@@ -898,8 +898,8 @@ html, body, #root {
 .settings-panel {
   background: var(--surface);
   border-radius: 12px;
-  width: min(760px, 95vw);
-  height: min(700px, 90vh);
+  width: min(1000px, 95vw);
+  height: min(85vh, 900px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
