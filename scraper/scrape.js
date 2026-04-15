@@ -352,6 +352,14 @@ async function main() {
         console.log(`[${ts}] ${pendingUpdates.length} pending Keep update(s) for "${noteName}"`);
       }
 
+      // Remove any overlays that could intercept mouse clicks (Google Translate banner, etc.)
+      // Do this before every note click attempt, not just in the search fallback.
+      await page.evaluate(() => {
+        document.querySelectorAll(
+          '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
+        ).forEach((el) => el.remove());
+      });
+
       // Try to click the note directly if it's already visible on screen (e.g. pinned notes).
       // Return coordinates so we can use page.mouse.click() (trusted event) instead of
       // el.click() (synthetic/untrusted, may be ignored by Keep's React handlers).
@@ -437,7 +445,9 @@ async function main() {
       }
 
       // Wait for the editor overlay (.oT9UPb) to appear
-      await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
+      const editorOpened = await page.waitForSelector('.oT9UPb', { timeout: 5000 })
+        .then(() => true).catch(() => false);
+      if (!editorOpened) console.warn(`[${ts}] Editor did not open for "${noteName}" — write-back skipped`);
       await page.waitForTimeout(800);
 
       // Apply any pending checkbox updates while the editor is open
