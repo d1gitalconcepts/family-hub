@@ -140,9 +140,13 @@ async function applyKeepUpdates(page, updates) {
     // and Keep's React handlers may silently ignore it.
     const result = await page.evaluate(({ itemText, desiredChecked }) => {
       const editor = document.querySelector('.oT9UPb');
-      if (!editor) return null; // editor not open
+      if (!editor) return { debug: 'no-editor' };
 
       const checkboxes = Array.from(editor.querySelectorAll('div[role="checkbox"]'));
+      if (!checkboxes.length) return { debug: 'no-checkboxes' };
+
+      // Collect all found item texts for diagnosis
+      const found = [];
       for (const cb of checkboxes) {
         const row      = cb.parentElement?.parentElement;
         const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
@@ -156,6 +160,7 @@ async function applyKeepUpdates(page, updates) {
           text = clone.innerText?.trim();
         }
 
+        if (text) found.push(text);
         if (!text || text.toLowerCase() !== itemText.toLowerCase()) continue;
 
         const isChecked = cb.getAttribute('aria-checked') === 'true';
@@ -165,11 +170,12 @@ async function applyKeepUpdates(page, updates) {
         const r = cb.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }
-      return null; // item not found in editor
+      return { debug: 'not-found', found }; // item not found in editor
     }, { itemText: update.item_text, desiredChecked: update.checked });
 
-    if (result === null) {
-      // Item not found — leave in queue to retry next cycle
+    if (result?.debug) {
+      console.warn(`[${ts}] applyKeepUpdates debug (${result.debug}) for "${update.item_text}"${result.found ? ` — found: [${result.found.join(', ')}]` : ''}`);
+      // Leave in queue to retry next cycle
       continue;
     }
 
