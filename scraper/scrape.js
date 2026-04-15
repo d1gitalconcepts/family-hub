@@ -368,8 +368,14 @@ async function main() {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
           if (el.innerText.trim() === name) {
-            const r = el.getBoundingClientRect();
-            return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+            // Clicking the title textbox puts Keep in inline-edit mode.
+            // We need to click the card body to open the modal editor.
+            // Walk up to the note card container and click its content area.
+            const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
+            const target = card || el;
+            const r = target.getBoundingClientRect();
+            // Click at 65% down the card to land in the content area, not the title
+            return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
           }
         }
         return null;
@@ -421,8 +427,10 @@ async function main() {
             const els = document.querySelectorAll('div[role="textbox"]');
             for (const el of els) {
               if (el.innerText.trim() === name) {
-                const r = el.getBoundingClientRect();
-                return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
+                const target = card || el;
+                const r = target.getBoundingClientRect();
+                return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
               }
             }
             return null;
