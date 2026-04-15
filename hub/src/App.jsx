@@ -249,16 +249,6 @@ export default function App() {
                   : 'Sync now'}
               </span>
             </button>
-            {role === 'admin' && (
-              <button
-                className="btn-icon"
-                onClick={() => setShowSettings(true)}
-                title="Settings"
-                style={{ fontSize: 18 }}
-              >
-                ⚙
-              </button>
-            )}
           </div>
         )}
 
@@ -273,34 +263,33 @@ export default function App() {
           </button>
           {showMenu && (
             <div className="header-menu">
-              {/* Mobile-only: sync + settings in menu */}
+              {/* Mobile-only: sync in menu */}
               {isMobile && (
-                <>
-                  <button
-                    className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
-                    onClick={requestSync}
-                    disabled={syncing}
-                  >
-                    <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
-                    <span>
-                      <span className="header-menu-item-label">{syncing ? 'Syncing…' : 'Sync now'}</span>
-                      {lastSync && !syncing && (
-                        <span className="header-menu-item-sub">
-                          Last synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                  {role === 'admin' && (
-                    <button
-                      className="header-menu-item"
-                      onClick={() => { setShowSettings(true); setShowMenu(false); }}
-                    >
-                      <span>⚙</span>
-                      <span className="header-menu-item-label">Settings</span>
-                    </button>
-                  )}
-                </>
+                <button
+                  className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
+                  onClick={requestSync}
+                  disabled={syncing}
+                >
+                  <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
+                  <span>
+                    <span className="header-menu-item-label">{syncing ? 'Syncing…' : 'Sync now'}</span>
+                    {lastSync && !syncing && (
+                      <span className="header-menu-item-sub">
+                        Last synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )}
+              {/* Settings — always in hamburger (mobile and desktop) */}
+              {role === 'admin' && (
+                <button
+                  className="header-menu-item"
+                  onClick={() => { setShowSettings(true); setShowMenu(false); }}
+                >
+                  <span>⚙</span>
+                  <span className="header-menu-item-label">Settings</span>
+                </button>
               )}
               <button className="header-menu-item" onClick={() => { setShowMenu(false); window.print(); }}>
                 <span>🖨</span>
