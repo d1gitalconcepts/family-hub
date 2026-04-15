@@ -364,23 +364,26 @@ async function main() {
       // Return coordinates so we can use page.mouse.click() (trusted event) instead of
       // el.click() (synthetic/untrusted, may be ignored by Keep's React handlers).
       let usedSearch = false;
+      // Scroll the note into view and get its card body coordinates.
+      // page.mouse.click() only works on viewport-visible coordinates — if the
+      // note card is scrolled out of view, the click lands nowhere.
       let noteCoords = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
           if (el.innerText.trim() === name) {
-            // Clicking the title textbox puts Keep in inline-edit mode.
-            // We need to click the card body to open the modal editor.
-            // Walk up to the note card container and click its content area.
             const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
             const target = card || el;
+            // Scroll into view first so getBoundingClientRect returns on-screen coords
+            target.scrollIntoView({ behavior: 'instant', block: 'center' });
             const r = target.getBoundingClientRect();
-            // Click at 65% down the card to land in the content area, not the title
             return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
           }
         }
         return null;
       }, noteName);
 
+      // Brief pause for scroll to settle before clicking
+      if (noteCoords) await page.waitForTimeout(300);
       if (noteCoords) await page.mouse.click(noteCoords.x, noteCoords.y);
       let clicked = !!noteCoords;
 
