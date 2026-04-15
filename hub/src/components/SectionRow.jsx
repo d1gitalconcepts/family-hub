@@ -68,7 +68,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
           const isEmpty     = dayEvents.length === 0 && !forecastDay;
           return (
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
-              {forecastDay && <ForecastCard day={forecastDay} />}
+              {forecastDay && <ForecastCard day={forecastDay} cardStyle={cardStyle} />}
               {dayEvents.map((e) => (
                 <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} iconRules={iconRules} cardStyle={cardStyle} />
               ))}

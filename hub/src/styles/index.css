@@ -761,6 +761,12 @@ html, body, #root {
   flex: 1;
 }
 
+.forecast-card--chip {
+  background: color-mix(in srgb, #4fc3f7 16%, var(--surface));
+  border: none;
+  border-radius: 6px;
+}
+
 .forecast-emoji { font-size: 1.1rem; flex-shrink: 0; }
 
 .forecast-label {

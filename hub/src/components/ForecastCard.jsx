@@ -197,7 +197,7 @@ function HourlyChart({ hourly }) {
   );
 }
 
-export default function ForecastCard({ day }) {
+export default function ForecastCard({ day, cardStyle }) {
   const [open, setOpen] = useState(false);
   const [weatherConfig] = useConfig('weather_config');
   const layout = weatherConfig?.forecastLayout || 'list';
@@ -213,7 +213,7 @@ export default function ForecastCard({ day }) {
 
   return (
     <>
-      <div className="forecast-card" onClick={() => setOpen(true)} style={{ cursor: 'pointer' }}>
+      <div className={`forecast-card${cardStyle?.chipStyle ? ' forecast-card--chip' : ''}`} onClick={() => setOpen(true)} style={{ cursor: 'pointer' }}>
         <span className="forecast-emoji">{emoji}</span>
         <span className="forecast-label">{label}</span>
         <span className="forecast-temps">
