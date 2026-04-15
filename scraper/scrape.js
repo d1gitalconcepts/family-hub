@@ -446,6 +446,8 @@ async function main() {
 
       // Wait for the editor overlay to appear — try semantic role first, fall back to old class
       await page.waitForTimeout(1500);
+      // Take a screenshot so we can see what Keep looks like after the click
+      await page.screenshot({ path: `/tmp/keep-debug-${slugify(noteName)}.png` });
       const editorInfo = await page.evaluate(() => {
         const byRole   = document.querySelector('[role="dialog"]');
         const byOldCls = document.querySelector('.oT9UPb');
