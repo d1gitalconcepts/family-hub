@@ -276,7 +276,7 @@ async function scrapeKeep(page, targetNotes) {
           }
           if (text) items.push({ text, checked });
         });
-        results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toLocaleString() });
+        results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toISOString() });
       } else {
         // Plain text note
         const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
@@ -294,7 +294,7 @@ async function scrapeKeep(page, targetNotes) {
             }
           });
         }
-        results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toLocaleString() });
+        results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toISOString() });
       }
     });
 
