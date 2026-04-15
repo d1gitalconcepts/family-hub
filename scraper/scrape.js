@@ -371,16 +371,16 @@ async function main() {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
           if (el.innerText.trim() === name) {
-            const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
-            const target = card || el;
-            // Scroll into view first so getBoundingClientRect returns on-screen coords
-            target.scrollIntoView({ behavior: 'instant', block: 'center' });
-            const r = target.getBoundingClientRect();
-            return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
+            // Scroll the textbox itself into view (not a container which may be huge)
+            el.scrollIntoView({ behavior: 'instant', block: 'center' });
+            const r = el.getBoundingClientRect();
+            // Click ~60px below the textbox center to land in the card body, not the title
+            return { x: r.x + r.width / 2, y: r.y + 60, debug: { elY: r.y, elH: r.height } };
           }
         }
         return null;
       }, noteName);
+      if (noteCoords) console.log(`[${ts}] Note coords for "${noteName}": x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)} (textbox at y=${Math.round(noteCoords.debug.elY)} h=${Math.round(noteCoords.debug.elH)})`);
 
       // Brief pause for scroll to settle before clicking
       if (noteCoords) await page.waitForTimeout(300);
