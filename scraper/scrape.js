@@ -391,12 +391,11 @@ async function main() {
             el.scrollIntoView({ behavior: 'instant', block: 'center' });
             const r = el.getBoundingClientRect();
             // Click ~60px below the textbox center to land in the card body, not the title
-            return { x: r.x + r.width / 2, y: r.y + 60, debug: { elY: r.y, elH: r.height } };
+            return { x: r.x + r.width / 2, y: r.y + 60 };
           }
         }
         return null;
       }, noteName);
-      if (noteCoords) console.log(`[${ts}] Note coords for "${noteName}": x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)} (textbox at y=${Math.round(noteCoords.debug.elY)} h=${Math.round(noteCoords.debug.elH)})`);
 
       // Apply checkbox updates FIRST — before any note-open click.
       // The note-open click triggers Keep's overlay/dimmed state which intercepts
