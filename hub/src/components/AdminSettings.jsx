@@ -577,41 +577,66 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             function setCs(patch) { setCardStyleCfg({ ...cs, ...patch }); }
             function setPopout(patch) { setCardStyleCfg({ ...cs, popout: { ...popout, ...patch } }); }
 
+            // Shared preview card styles — use accent as sample calendar colour
+            const previewCard = (borderLeft, borderRadius, children) => (
+              <div style={{
+                margin: 10, padding: '6px 8px', minHeight: 44, textAlign: 'left',
+                borderLeft, borderRadius,
+                background: 'var(--accent)',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              }}>
+                {children}
+              </div>
+            );
+            const W  = { color: '#fff', lineHeight: 1.4 };
+            const WM = { color: 'rgba(255,255,255,0.68)' };
+
             const LAYOUTS = [
               {
                 id: 'standard', label: 'Standard',
-                preview: (
-                  <div style={{ lineHeight: 1.4 }}>
-                    <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 1 }}>3:00 PM</div>
-                    <div style={{ fontSize: 10, fontWeight: 600 }}>Event Title</div>
-                    <div style={{ fontSize: 8, color: 'var(--text-muted)', marginTop: 1 }}>Calendar</div>
+                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
+                  <div style={W}>
+                    <div style={{ fontSize: 8, marginBottom: 1, ...WM }}>3:00 PM</div>
+                    <div style={{ fontSize: 10, fontWeight: 600 }}>Team Meeting</div>
+                    <div style={{ fontSize: 8, marginTop: 1, ...WM }}>Work</div>
                   </div>
-                ),
+                )),
               },
               {
                 id: 'minimal', label: 'Minimal',
+                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>Team Meeting</div>
+                )),
+              },
+              {
+                id: 'chip', label: 'Chip',
                 preview: (
-                  <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                    <div style={{ fontSize: 10, fontWeight: 600 }}>Event Title</div>
+                  <div style={{
+                    margin: 10, padding: '6px 8px', minHeight: 44, textAlign: 'left',
+                    borderRadius: 6, background: 'var(--accent)',
+                    display: 'flex', alignItems: 'center',
+                  }}>
+                    <div style={{ fontSize: 9, color: '#fff' }}>
+                      <span style={WM}>3pm · </span><strong>Team Meeting</strong>
+                    </div>
                   </div>
                 ),
               },
               {
-                id: 'inline', label: 'Inline',
-                preview: (
-                  <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-                    <div style={{ fontSize: 9 }}><span style={{ color: 'var(--text-muted)' }}>3pm · </span><strong>Event Title</strong></div>
+                id: 'logo', label: 'Logo',
+                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <svg viewBox="0 0 32 32" width="26" height="26" style={{ flexShrink: 0 }}>
+                      <circle cx="16" cy="16" r="15" fill="rgba(255,255,255,0.2)" />
+                      <circle cx="16" cy="16" r="15" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" />
+                      <text x="16" y="21" textAnchor="middle" fontSize="15" fill="white">📅</text>
+                    </svg>
+                    <div style={W}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>Team Meeting</div>
+                      <div style={{ fontSize: 8, ...WM }}>3:00 PM</div>
+                    </div>
                   </div>
-                ),
-              },
-              {
-                id: 'comfortable', label: 'Comfortable',
-                preview: (
-                  <div style={{ lineHeight: 1.4 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Event Title</div>
-                    <div style={{ fontSize: 8, color: 'var(--text-muted)' }}>3:00 PM</div>
-                  </div>
-                ),
+                )),
               },
             ];
 
@@ -638,21 +663,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         flexDirection: 'column',
                       }}
                     >
-                      {/* mini card mockup */}
-                      <div style={{
-                        margin: 10,
-                        padding: '6px 8px',
-                        borderLeft: `3px solid ${active === l.id ? 'var(--accent)' : 'var(--border)'}`,
-                        borderRadius: 3,
-                        background: 'var(--bg-secondary)',
-                        minHeight: 44,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        textAlign: 'left',
-                      }}>
-                        {l.preview}
-                      </div>
+                      {/* mini card mockup — preview includes its own container */}
+                      {l.preview}
                       <div style={{
                         fontSize: 11, fontWeight: active === l.id ? 600 : 400,
                         color: active === l.id ? 'var(--accent)' : 'var(--text-muted)',

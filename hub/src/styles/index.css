@@ -537,13 +537,35 @@ html, body, #root {
   font-weight: 400;
 }
 
-.event-card--comfortable {
-  padding: 6px 8px;
+/* Chip — solid calendar colour, white text, no left border */
+.event-card--chip {
+  background: var(--cal-color, #4285f4);
+  border-left: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+}
+.event-card--chip .event-title,
+.event-card--chip .event-time-inline {
+  color: #fff;
+}
+.event-card--chip .event-time-inline {
+  color: rgba(255, 255, 255, 0.72);
 }
 
-.event-card--comfortable .event-title {
-  font-size: calc(var(--card-font, 13px) + 1px);
-  margin-bottom: 2px;
+/* Logo — circle badge on left, details on right */
+.event-card--logo {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+}
+.event-logo-circle {
+  flex-shrink: 0;
+}
+.event-logo-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .event-desc-snippet {

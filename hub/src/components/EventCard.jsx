@@ -82,15 +82,33 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         </span>
       );
     }
-    if (layout === 'comfortable') {
+    if (layout === 'chip') {
+      return (
+        <span className="event-title">
+          {style.showTime && !event.is_all_day && event.start_at && (
+            <span className="event-time-inline">{formatTime(event.start_at)} · </span>
+          )}
+          {emoji && <span className="event-emoji">{emoji}</span>}
+          {event.summary}
+        </span>
+      );
+    }
+    if (layout === 'logo') {
+      // Use emoji, or first character of cal name, or '●' as fallback
+      const badge = emoji || (event.cal_name || event.summary || '●')[0];
       return (
         <>
-          {titleEl}
-          {style.showTime && !event.is_all_day && event.start_at && (
-            <span className="event-time">{formatTime(event.start_at)}</span>
-          )}
-          {style.showCalName && <span className="event-cal">{event.cal_name}</span>}
-          {descSnippet}
+          <svg className="event-logo-circle" viewBox="0 0 32 32" width="26" height="26">
+            <circle cx="16" cy="16" r="15" fill="var(--cal-color, #4285f4)" opacity="0.25" />
+            <circle cx="16" cy="16" r="15" fill="none" stroke="var(--cal-color, #4285f4)" strokeWidth="1.5" opacity="0.5" />
+            <text x="16" y="21" textAnchor="middle" fontSize="15" fill="var(--cal-color, #4285f4)">{badge}</text>
+          </svg>
+          <div className="event-logo-text">
+            {titleEl}
+            {style.showTime && !event.is_all_day && event.start_at && (
+              <span className="event-time">{formatTime(event.start_at)}</span>
+            )}
+          </div>
         </>
       );
     }
