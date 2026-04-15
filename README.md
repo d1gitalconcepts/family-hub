@@ -127,9 +127,16 @@ Log in as admin, open Settings (gear icon), and configure:
 
 ---
 
+---
+
+> ⚠️ **Everything below this point is for the standalone scraper only.**
+> If you are setting up the full dashboard, stop here — you already covered the scraper as part of Step 2 above. The sections below are a self-contained guide for people who only want Google Keep data in Supabase and are not deploying the hub or worker at all.
+
+---
+
 ## Scraper standalone setup
 
-> Just want Google Keep data in Supabase and don't need the full dashboard? Start here.
+> Just want Google Keep data in Supabase and don't need the full dashboard? This is the only section you need.
 
 The scraper is a self-contained Node.js script that runs headlessly (no visible browser window), logs into Google Keep, and writes your checklist notes into a Supabase database as structured JSON. From there you can query the data however you like — build your own app, use it in a spreadsheet via the Supabase API, trigger automations, etc.
 
