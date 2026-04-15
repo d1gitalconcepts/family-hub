@@ -20,11 +20,16 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
   const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
+  const [weatherSource,    setWeatherSource]    = useConfig('weather_source');
+  const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
   const allTaskLists = useTaskLists();
 
-  const [awApiKey,   setAwApiKey]   = useState('');
-  const [awAppKey,   setAwAppKey]   = useState('');
-  const [keysSaved,  setKeysSaved]  = useState(false);
+  const [awApiKey,       setAwApiKey]       = useState('');
+  const [awAppKey,       setAwAppKey]       = useState('');
+  const [keysSaved,      setKeysSaved]      = useState(false);
+  const [zipInput,       setZipInput]       = useState('');
+  const [locationStatus, setLocationStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
+  const [locationMsg,    setLocationMsg]    = useState('');
 
   // Sync inputs when weatherKeys loads from Supabase
   useEffect(() => {
@@ -47,6 +52,66 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { key: 'sunrise',   label: 'Sunrise' },
     { key: 'sunset',    label: 'Sunset' },
   ];
+
+  async function lookupZip() {
+    const zip = zipInput.trim();
+    if (!zip) return;
+    setLocationStatus('loading');
+    setLocationMsg('');
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(zip)}&countrycodes=us&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'en', 'User-Agent': 'FamilyHub/1.0' } }
+      );
+      const data = await res.json();
+      if (!data?.length) throw new Error('Zip code not found');
+      const { lat, lon, display_name } = data[0];
+      // Shorten label to "City, ST"
+      const parts = display_name.split(', ');
+      const label = parts.length >= 2 ? `${parts[0]}, ${parts[parts.length - 2]}` : display_name;
+      setWeatherLocation({ lat: parseFloat(lat), lon: parseFloat(lon), label, source: 'zip' });
+      setWeatherSource('openmeteo');
+      setLocationStatus('ok');
+      setLocationMsg(`📍 ${label}`);
+    } catch (e) {
+      setLocationStatus('error');
+      setLocationMsg(e.message || 'Lookup failed');
+    }
+  }
+
+  function useDeviceLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setLocationMsg('Geolocation not supported by this browser');
+      return;
+    }
+    setLocationStatus('loading');
+    setLocationMsg('');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        // Reverse geocode for a human-readable label
+        let label = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+            { headers: { 'Accept-Language': 'en', 'User-Agent': 'FamilyHub/1.0' } }
+          );
+          const data = await res.json();
+          const a = data.address;
+          if (a) label = [a.city || a.town || a.village, a.state].filter(Boolean).join(', ') || label;
+        } catch {}
+        setWeatherLocation({ lat, lon, label, source: 'device' });
+        setWeatherSource('openmeteo');
+        setLocationStatus('ok');
+        setLocationMsg(`📍 ${label}`);
+      },
+      (err) => {
+        setLocationStatus('error');
+        setLocationMsg(err.message || 'Could not get location');
+      }
+    );
+  }
 
   function saveWeatherKeys() {
     setWeatherKeys({ api_key: awApiKey.trim(), app_key: awAppKey.trim() });
@@ -878,6 +943,98 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
               </div>
 
+              {/* Weather source */}
+              <h3 style={{ marginBottom: 10 }}>Weather Source</h3>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {[
+                  { id: 'ambient',   label: 'Ambient Weather', desc: 'Personal weather station' },
+                  { id: 'openmeteo', label: 'Open-Meteo',      desc: 'No station required'      },
+                ].map(({ id, label, desc }) => {
+                  const active = (weatherSource || 'ambient') === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setWeatherSource(id)}
+                      style={{
+                        flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                        color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
+                      <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Open-Meteo location picker */}
+              {(weatherSource || 'ambient') === 'openmeteo' && (
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
+                  <h3 style={{ margin: '0 0 10px' }}>Location</h3>
+
+                  {weatherLocation?.label && (
+                    <div style={{ fontSize: 13, color: 'var(--accent)', marginBottom: 12, fontWeight: 500 }}>
+                      📍 Current: {weatherLocation.label}
+                    </div>
+                  )}
+
+                  {/* Device location */}
+                  <button
+                    className="btn"
+                    style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
+                    onClick={useDeviceLocation}
+                    disabled={locationStatus === 'loading'}
+                  >
+                    {locationStatus === 'loading' ? 'Detecting…' : '📡 Use device location'}
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                  </div>
+
+                  {/* Zip code */}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="cal-name-input"
+                      style={{ flex: 1, fontSize: 13 }}
+                      type="text"
+                      value={zipInput}
+                      onChange={(e) => setZipInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && lookupZip()}
+                      placeholder="US zip code, e.g. 78701"
+                      maxLength={10}
+                    />
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: 13, padding: '5px 14px', flexShrink: 0 }}
+                      onClick={lookupZip}
+                      disabled={locationStatus === 'loading' || !zipInput.trim()}
+                    >
+                      Look up
+                    </button>
+                  </div>
+
+                  {locationMsg && (
+                    <div style={{
+                      marginTop: 8, fontSize: 12, padding: '6px 10px', borderRadius: 6,
+                      background: locationStatus === 'error' ? 'color-mix(in srgb, var(--danger) 12%, var(--surface))' : 'color-mix(in srgb, var(--accent) 12%, var(--surface))',
+                      color: locationStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
+                    }}>
+                      {locationMsg}
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, marginBottom: 0 }}>
+                    Location is used for the forecast and current conditions. US zip codes only for the zip lookup; device location works worldwide.
+                  </p>
+                </div>
+              )}
+
               {/* Label style */}
               <h3 style={{ marginBottom: 10 }}>Label Style</h3>
               <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -949,44 +1106,48 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 </select>
               </div>
 
-              {/* API Keys */}
-              <h3 style={{ marginBottom: 10 }}>Ambient Weather API Keys</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-                Get these from <strong>ambientweather.net → Account → API Keys</strong>.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-                <label style={{ fontSize: 13 }}>
-                  API Key
-                  <input
-                    className="cal-name-input"
-                    style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
-                    type="password"
-                    value={awApiKey}
-                    onChange={(e) => setAwApiKey(e.target.value)}
-                    placeholder="Your API key"
-                    autoComplete="off"
-                  />
-                </label>
-                <label style={{ fontSize: 13 }}>
-                  Application Key
-                  <input
-                    className="cal-name-input"
-                    style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
-                    type="password"
-                    value={awAppKey}
-                    onChange={(e) => setAwAppKey(e.target.value)}
-                    placeholder="Your application key"
-                    autoComplete="off"
-                  />
-                </label>
-                <button
-                  className="btn btn-primary"
-                  style={{ alignSelf: 'flex-start', marginTop: 4 }}
-                  onClick={saveWeatherKeys}
-                >
-                  {keysSaved ? '✓ Saved' : 'Save Keys'}
-                </button>
-              </div>
+              {/* API Keys — only shown when using Ambient Weather */}
+              {(weatherSource || 'ambient') === 'ambient' && (
+                <>
+                  <h3 style={{ marginBottom: 10 }}>Ambient Weather API Keys</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+                    Get these from <strong>ambientweather.net → Account → API Keys</strong>.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                    <label style={{ fontSize: 13 }}>
+                      API Key
+                      <input
+                        className="cal-name-input"
+                        style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+                        type="password"
+                        value={awApiKey}
+                        onChange={(e) => setAwApiKey(e.target.value)}
+                        placeholder="Your API key"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label style={{ fontSize: 13 }}>
+                      Application Key
+                      <input
+                        className="cal-name-input"
+                        style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
+                        type="password"
+                        value={awAppKey}
+                        onChange={(e) => setAwAppKey(e.target.value)}
+                        placeholder="Your application key"
+                        autoComplete="off"
+                      />
+                    </label>
+                    <button
+                      className="btn btn-primary"
+                      style={{ alignSelf: 'flex-start', marginTop: 4 }}
+                      onClick={saveWeatherKeys}
+                    >
+                      {keysSaved ? '✓ Saved' : 'Save Keys'}
+                    </button>
+                  </div>
+                </>
+              )}
 
               {/* Display options */}
               <h3 style={{ marginBottom: 8 }}>Display Options</h3>
