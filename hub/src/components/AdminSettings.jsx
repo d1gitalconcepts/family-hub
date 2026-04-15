@@ -587,6 +587,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const chipStyle    = cs.chipStyle    || false;
   const emojiAsBadge = cs.emojiAsBadge || false;
   const align        = cs.align        || 'left';
+  const valign       = cs.valign       || 'top';
 
   const SAMPLE_COLOR = '#4285f4';
   const SAMPLE_EMOJI = '📅';
@@ -604,6 +605,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     if (el.key === 'desc')    return <span key="desc"    style={{ fontSize: 11, color: previewMeta, fontStyle: 'italic' }}>Q3 planning session…</span>;
     return null;
   }
+
+  const valignMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
 
   function renderPreviewContent() {
     const textCol = (
@@ -625,6 +628,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     }
     return <div style={{ width: '100%' }}>{textCol}</div>;
   }
+
+  const POPOUT_SAMPLES = {
+    calName:     { label: 'Calendar',  value: '● Work',                  color: SAMPLE_COLOR },
+    date:        { label: 'Date',      value: 'Tuesday, April 14'        },
+    time:        { label: 'Time',      value: '3:00 PM – 4:00 PM'        },
+    location:    { label: 'Where',     value: '123 Main St'              },
+    description: { label: 'Details',   value: 'Q3 planning session…'     },
+  };
 
   function onElemDragStart(e, idx) {
     drag.current = { type: 'card-element', fromIdx: idx };
@@ -685,7 +696,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     <div className="settings-section">
 
       {/* ── Live preview ── */}
-      <h3 style={{ marginBottom: 10 }}>Preview</h3>
+      <h3 style={{ marginBottom: 10 }}>Card Preview</h3>
       <div style={{
         background: chipStyle ? 'rgba(66,133,244,0.14)' : 'var(--surface)',
         borderTop:    `1px solid ${chipStyle ? 'rgba(66,133,244,0.25)' : 'var(--border)'}`,
@@ -695,11 +706,18 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         borderRadius: 8,
         padding: '12px 16px',
         marginBottom: 24,
-        minHeight: 72,
+        height: 88,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'stretch',
       }}>
-        {renderPreviewContent()}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: valignMap[valign] || 'flex-start',
+          width: '100%',
+        }}>
+          {renderPreviewContent()}
+        </div>
       </div>
 
       {/* ── Card background style ── */}
@@ -777,34 +795,68 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>from icon rules</span>
       </div>
 
-      {/* ── Alignment ── */}
-      <h3 style={{ marginBottom: 10, marginTop: 20 }}>Text Alignment</h3>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[['left', '← Left'], ['center', 'Center'], ['right', 'Right →']].map(([val, lbl]) => {
-          const active = align === val;
+      {/* ── Alignment 3×3 grid ── */}
+      <h3 style={{ marginBottom: 10, marginTop: 20 }}>Alignment</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 24, maxWidth: 200 }}>
+        {[
+          ['top','left','↖'],['top','center','↑'],['top','right','↗'],
+          ['middle','left','←'],['middle','center','·'],['middle','right','→'],
+          ['bottom','left','↙'],['bottom','center','↓'],['bottom','right','↘'],
+        ].map(([v, h, icon]) => {
+          const active = valign === v && align === h;
           return (
             <button
-              key={val}
-              onClick={() => setCs({ align: val })}
+              key={`${v}-${h}`}
+              onClick={() => setCs({ align: h, valign: v })}
+              title={`${v} ${h}`}
               style={{
-                flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
-                fontFamily: 'var(--font)',
+                padding: '10px 0', borderRadius: 6, fontSize: 16, cursor: 'pointer',
+                fontFamily: 'var(--font)', lineHeight: 1,
                 border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                color: active ? 'var(--accent)' : 'var(--text)',
-                fontWeight: active ? 600 : 400,
+                background: active ? 'color-mix(in srgb, var(--accent) 12%, var(--surface))' : 'var(--surface)',
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
               }}
             >
-              {lbl}
+              {icon}
             </button>
           );
         })}
       </div>
 
+      {/* ── Popout preview ── */}
+      <h3 style={{ marginBottom: 10, marginTop: 4 }}>Popout Preview</h3>
+      <div style={{
+        border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: 24,
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '10px 14px', borderBottom: '1px solid var(--border)',
+          background: `color-mix(in srgb, ${SAMPLE_COLOR} 8%, var(--surface))`,
+        }}>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>{SAMPLE_EMOJI} Team Meeting</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>✕</span>
+        </div>
+        <div style={{ padding: '4px 0' }}>
+          {popoutElements.filter(e => e.visible !== false).map((el) => {
+            const s = POPOUT_SAMPLES[el.key];
+            if (!s) return null;
+            return (
+              <div key={el.key} style={{
+                display: 'flex', gap: 12, padding: '6px 14px',
+                fontSize: 12, borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{s.label}</span>
+                <span style={{ color: s.color || 'var(--text)' }}>{s.value}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* ── Popout elements ── */}
       <h3 style={{ marginBottom: 4 }}>Popout Elements</h3>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-        Shown when you tap or click an event card. Drag to reorder · toggle to show or hide.
+        Drag to reorder · toggle to show or hide.
       </p>
       {popoutElements.map((el, i) => {
         const isTarget = dropTarget === `popout-elem-${i}`;

@@ -71,11 +71,13 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const chipStyle    = style.chipStyle    || false;
   const emojiAsBadge = style.emojiAsBadge || false;
   const align        = style.align        || 'left';
+  const valign       = style.valign       || 'top';
   const elements     = resolveElements(style);
   const visible      = elements.filter(e => e.visible !== false);
 
-  const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
-  const justifyContent = justifyMap[align] || 'flex-start';
+  const hJustify = { left: 'flex-start', center: 'center', right: 'flex-end' };
+  const vJustify = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+  const justifyContent = hJustify[align] || 'flex-start';
 
   function formatTime(iso) {
     if (!iso) return '';
@@ -167,7 +169,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     <>
       <div
         className={cardClass}
-        style={{ '--cal-color': color, cursor: 'pointer' }}
+        style={{ '--cal-color': color, cursor: 'pointer', justifyContent: vJustify[valign] || 'flex-start' }}
         onClick={() => setOpen(true)}
       >
         {renderCardContent()}

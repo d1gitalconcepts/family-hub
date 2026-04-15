@@ -721,10 +721,10 @@ html, body, #root {
   border-radius: 0 4px 4px 0;
 }
 
-/* Chip style — tinted pastel, not full bleed color */
+/* Chip style — tinted pastel, no border */
 .event-card--chip {
   background: color-mix(in srgb, var(--cal-color, #4285f4) 16%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--cal-color, #4285f4) 30%, var(--border));
+  border: none;
   border-radius: 6px;
 }
 .event-card--chip .event-title    { color: var(--cal-color, #4285f4); }
