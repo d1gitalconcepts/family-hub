@@ -37,7 +37,7 @@ async function supabaseAuth() {
 
 async function upsertNotes(notes) {
   await supabaseAuth();
-  const now  = new Date().toLocaleString();
+  const now  = new Date().toISOString(); // must be ISO for Postgres timestamptz
   const rows = notes.map((note) => ({
     key:        note.id,
     data:       note,
