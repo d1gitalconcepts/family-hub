@@ -929,287 +929,211 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           })()}
 
           {/* ── Weather tab ───────────────────────────────────── */}
-          {activeTab === 'weather' && (
-            <div className="settings-section">
-
-              {/* Enable toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                <input
-                  type="checkbox"
-                  id="weather-enabled"
-                  checked={weatherEnabled}
-                  onChange={(e) => setWeatherConfig({ ...weatherConfig, enabled: e.target.checked })}
-                />
-                <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
+          {activeTab === 'weather' && (() => {
+            const src = weatherSource || 'ambient';
+            const SectionDivider = ({ label }) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 16px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{label}</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               </div>
-
-              {/* Weather source */}
-              <h3 style={{ marginBottom: 10 }}>Weather Source</h3>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                {[
-                  { id: 'ambient',   label: 'Ambient Weather', desc: 'Personal weather station' },
-                  { id: 'openmeteo', label: 'Open-Meteo',      desc: 'No station required'      },
-                ].map(({ id, label, desc }) => {
-                  const active = (weatherSource || 'ambient') === id;
+            );
+            const OptionPicker = ({ options, value, onChange }) => (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                {options.map(({ id, label, desc }) => {
+                  const active = value === id;
                   return (
-                    <button
-                      key={id}
-                      onClick={() => setWeatherSource(id)}
-                      style={{
-                        flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
-                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                        color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
-                      <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Open-Meteo location picker */}
-              {(weatherSource || 'ambient') === 'openmeteo' && (
-                <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
-                  <h3 style={{ margin: '0 0 10px' }}>Location</h3>
-
-                  {weatherLocation?.label && (
-                    <div style={{ fontSize: 13, color: 'var(--accent)', marginBottom: 12, fontWeight: 500 }}>
-                      📍 Current: {weatherLocation.label}
-                    </div>
-                  )}
-
-                  {/* Device location */}
-                  <button
-                    className="btn"
-                    style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
-                    onClick={useDeviceLocation}
-                    disabled={locationStatus === 'loading'}
-                  >
-                    {locationStatus === 'loading' ? 'Detecting…' : '📡 Use device location'}
-                  </button>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or</span>
-                    <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                  </div>
-
-                  {/* Zip code */}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      className="cal-name-input"
-                      style={{ flex: 1, fontSize: 13 }}
-                      type="text"
-                      value={zipInput}
-                      onChange={(e) => setZipInput(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && lookupZip()}
-                      placeholder="US zip code, e.g. 78701"
-                      maxLength={10}
-                    />
-                    <button
-                      className="btn btn-primary"
-                      style={{ fontSize: 13, padding: '5px 14px', flexShrink: 0 }}
-                      onClick={lookupZip}
-                      disabled={locationStatus === 'loading' || !zipInput.trim()}
-                    >
-                      Look up
-                    </button>
-                  </div>
-
-                  {locationMsg && (
-                    <div style={{
-                      marginTop: 8, fontSize: 12, padding: '6px 10px', borderRadius: 6,
-                      background: locationStatus === 'error' ? 'color-mix(in srgb, var(--danger) 12%, var(--surface))' : 'color-mix(in srgb, var(--accent) 12%, var(--surface))',
-                      color: locationStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
+                    <button key={id} onClick={() => onChange(id)} style={{
+                      flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+                      border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                      color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                     }}>
-                      {locationMsg}
-                    </div>
-                  )}
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
+                      {desc && <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            );
 
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, marginBottom: 0 }}>
-                    Location is used for the forecast and current conditions. US zip codes only for the zip lookup; device location works worldwide.
-                  </p>
+            return (
+              <div className="settings-section">
+
+                {/* ── Enable ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    id="weather-enabled"
+                    checked={weatherEnabled}
+                    onChange={(e) => setWeatherConfig({ ...weatherConfig, enabled: e.target.checked })}
+                  />
+                  <label htmlFor="weather-enabled" style={{ fontWeight: 500 }}>Show weather widget</label>
                 </div>
-              )}
 
-              {/* Label style */}
-              <h3 style={{ marginBottom: 10 }}>Label Style</h3>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                {[
-                  { id: 'text', label: 'Text', desc: 'Feels Like, Humidity…' },
-                  { id: 'icon', label: 'Icons', desc: 'Single-colour SVG icons' },
-                ].map(({ id, label, desc }) => {
-                  const active = (weatherConfig?.labelMode || 'text') === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setWeatherConfig({ ...weatherConfig, labelMode: id })}
-                      style={{
-                        flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
-                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                        color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
-                      <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>
+                {/* ════ DATA SOURCE ════ */}
+                <SectionDivider label="Data Source" />
+
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Choose where current conditions come from. The 7-day forecast always uses Open-Meteo.
+                </p>
+                <OptionPicker
+                  options={[
+                    { id: 'ambient',   label: 'Ambient Weather', desc: 'Personal weather station' },
+                    { id: 'openmeteo', label: 'Open-Meteo',      desc: 'No station required'      },
+                  ]}
+                  value={src}
+                  onChange={setWeatherSource}
+                />
+
+                {/* Ambient API keys */}
+                {src === 'ambient' && (
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginTop: 4 }}>
+                    <h3 style={{ margin: '0 0 6px' }}>API Keys</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+                      From <strong>ambientweather.net → Account → API Keys</strong>. Location is read automatically from your station.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 13 }}>
+                        API Key
+                        <input className="cal-name-input" type="password" value={awApiKey}
+                          onChange={(e) => setAwApiKey(e.target.value)} placeholder="Your API key"
+                          autoComplete="off"
+                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }} />
+                      </label>
+                      <label style={{ fontSize: 13 }}>
+                        Application Key
+                        <input className="cal-name-input" type="password" value={awAppKey}
+                          onChange={(e) => setAwAppKey(e.target.value)} placeholder="Your application key"
+                          autoComplete="off"
+                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }} />
+                      </label>
+                      <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={saveWeatherKeys}>
+                        {keysSaved ? '✓ Saved' : 'Save Keys'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Open-Meteo location */}
+                {src === 'openmeteo' && (
+                  <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginTop: 4 }}>
+                    <h3 style={{ margin: '0 0 6px' }}>Location</h3>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                      Used for both current conditions and the forecast. Device location works worldwide; zip lookup is US only.
+                    </p>
+                    {weatherLocation?.label && (
+                      <div style={{ fontSize: 13, color: 'var(--accent)', marginBottom: 12, fontWeight: 500 }}>
+                        📍 Current: {weatherLocation.label}
+                      </div>
+                    )}
+                    <button className="btn" style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
+                      onClick={useDeviceLocation} disabled={locationStatus === 'loading'}>
+                      {locationStatus === 'loading' ? 'Detecting…' : '📡 Use device location'}
                     </button>
-                  );
-                })}
-              </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 18 }}>
-                On mobile the widget always appears below the header regardless of the position setting.
-              </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or enter a zip code</span>
+                      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input className="cal-name-input" type="text" value={zipInput}
+                        onChange={(e) => setZipInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && lookupZip()}
+                        placeholder="e.g. 78701" maxLength={10} style={{ flex: 1, fontSize: 13 }} />
+                      <button className="btn btn-primary" style={{ fontSize: 13, padding: '5px 14px', flexShrink: 0 }}
+                        onClick={lookupZip} disabled={locationStatus === 'loading' || !zipInput.trim()}>
+                        Look up
+                      </button>
+                    </div>
+                    {locationMsg && (
+                      <div style={{
+                        marginTop: 8, fontSize: 12, padding: '6px 10px', borderRadius: 6,
+                        background: locationStatus === 'error' ? 'color-mix(in srgb, var(--danger) 12%, var(--surface))' : 'color-mix(in srgb, var(--accent) 12%, var(--surface))',
+                        color: locationStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
+                      }}>{locationMsg}</div>
+                    )}
+                  </div>
+                )}
 
-              {/* Forecast popout layout */}
-              <h3 style={{ marginBottom: 10 }}>Forecast Detail Layout</h3>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                {[
-                  { id: 'list',  label: 'List',  desc: 'Rows by hour'       },
-                  { id: 'chart', label: 'Chart', desc: 'Bar graph + temp line' },
-                ].map(({ id, label, desc }) => {
-                  const active = (weatherConfig?.forecastLayout || 'list') === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setWeatherConfig({ ...weatherConfig, forecastLayout: id })}
-                      style={{
-                        flex: 1, padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
-                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                        color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
-                      <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                {/* ════ CURRENT CONDITIONS WIDGET ════ */}
+                <SectionDivider label="Current Conditions Widget" />
 
-              {/* Widget position */}
-              <h3 style={{ marginBottom: 8 }}>Widget Position</h3>
-              <div style={{ marginBottom: 18 }}>
-                <select
-                  className="cal-name-input"
-                  style={{ fontSize: 13, padding: '5px 8px' }}
+                <h3 style={{ marginBottom: 8 }}>Position</h3>
+                <select className="cal-name-input" style={{ fontSize: 13, padding: '5px 8px', marginBottom: 18 }}
                   value={weatherConfig?.position || 'below-header'}
-                  onChange={(e) => setWeatherConfig({ ...weatherConfig, position: e.target.value })}
-                >
+                  onChange={(e) => setWeatherConfig({ ...weatherConfig, position: e.target.value })}>
                   <option value="below-header">Below header bar</option>
                   <option value="in-header">Inside header bar</option>
                 </select>
-              </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 16 }}>
+                  On mobile the widget always appears below the header.
+                </p>
 
-              {/* API Keys — only shown when using Ambient Weather */}
-              {(weatherSource || 'ambient') === 'ambient' && (
-                <>
-                  <h3 style={{ marginBottom: 10 }}>Ambient Weather API Keys</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-                    Get these from <strong>ambientweather.net → Account → API Keys</strong>.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
-                    <label style={{ fontSize: 13 }}>
-                      API Key
-                      <input
-                        className="cal-name-input"
-                        style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
-                        type="password"
-                        value={awApiKey}
-                        onChange={(e) => setAwApiKey(e.target.value)}
-                        placeholder="Your API key"
-                        autoComplete="off"
-                      />
-                    </label>
-                    <label style={{ fontSize: 13 }}>
-                      Application Key
-                      <input
-                        className="cal-name-input"
-                        style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }}
-                        type="password"
-                        value={awAppKey}
-                        onChange={(e) => setAwAppKey(e.target.value)}
-                        placeholder="Your application key"
-                        autoComplete="off"
-                      />
-                    </label>
-                    <button
-                      className="btn btn-primary"
-                      style={{ alignSelf: 'flex-start', marginTop: 4 }}
-                      onClick={saveWeatherKeys}
-                    >
-                      {keysSaved ? '✓ Saved' : 'Save Keys'}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* Display options */}
-              <h3 style={{ marginBottom: 8 }}>Display Options</h3>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-                <input
-                  type="checkbox"
-                  id="hide-rain-zero"
-                  checked={weatherConfig?.hideRainIfZero !== false}
-                  onChange={(e) => setWeatherConfig({ ...weatherConfig, hideRainIfZero: e.target.checked })}
+                <h3 style={{ marginBottom: 8 }}>Label Style</h3>
+                <OptionPicker
+                  options={[
+                    { id: 'text', label: 'Text', desc: 'Feels Like, Humidity…' },
+                    { id: 'icon', label: 'Icons', desc: 'Single-colour SVG icons' },
+                  ]}
+                  value={weatherConfig?.labelMode || 'text'}
+                  onChange={(v) => setWeatherConfig({ ...weatherConfig, labelMode: v })}
                 />
-                <label htmlFor="hide-rain-zero" style={{ fontSize: 13 }}>
-                  Hide "Rain Today" when there has been no rain
-                </label>
-              </div>
 
-              {/* Reorderable fields list */}
-              <h3 style={{ marginBottom: 6 }}>Display Fields</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
-                Check fields to show them. Use arrows to reorder.
-              </p>
-
-              {/* Enabled fields in order — draggable */}
-              {weatherFields.map((key, idx) => {
-                const def = ALL_WEATHER_FIELDS.find((f) => f.key === key);
-                if (!def) return null;
-                const isDropTarget = dropTarget?.type === 'weather-field' && dropTarget?.beforeIdx === idx;
-                return (
-                  <div
-                    key={key}
-                    className={`cal-row${isDropTarget ? ' cal-row-drop-target' : ''}`}
-                    draggable
-                    onDragStart={(e) => onWeatherDragStart(e, idx)}
-                    onDragEnd={onDragEnd}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ type: 'weather-field', beforeIdx: idx }); }}
-                    onDrop={(e) => onWeatherDrop(e, idx)}
-                  >
-                    <span className="drag-handle">⠿</span>
-                    <input
-                      type="checkbox"
-                      checked={true}
-                      onChange={() => toggleWeatherField(key)}
-                    />
-                    <span style={{ fontSize: 13 }}>{def.label}</span>
-                  </div>
-                );
-              })}
-
-              {/* Disabled fields — click checkbox to add to bottom of list */}
-              {ALL_WEATHER_FIELDS.filter(({ key }) => !weatherFields.includes(key)).map(({ key, label }) => (
-                <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.5 }}>
-                  <span className="drag-handle" style={{ visibility: 'hidden' }}>⠿</span>
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={() => toggleWeatherField(key)}
-                  />
-                  <span style={{ fontSize: 13 }}>{label}</span>
+                <h3 style={{ marginBottom: 6 }}>Fields</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+                  Drag to reorder. Check to show, uncheck to hide.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <input type="checkbox" id="hide-rain-zero"
+                    checked={weatherConfig?.hideRainIfZero !== false}
+                    onChange={(e) => setWeatherConfig({ ...weatherConfig, hideRainIfZero: e.target.checked })} />
+                  <label htmlFor="hide-rain-zero" style={{ fontSize: 13 }}>Hide Rain Today when value is zero</label>
                 </div>
-              ))}
 
-            </div>
-          )}
+                {weatherFields.map((key, idx) => {
+                  const def = ALL_WEATHER_FIELDS.find((f) => f.key === key);
+                  if (!def) return null;
+                  const isDropTarget = dropTarget?.type === 'weather-field' && dropTarget?.beforeIdx === idx;
+                  return (
+                    <div key={key} className={`cal-row${isDropTarget ? ' cal-row-drop-target' : ''}`}
+                      draggable onDragStart={(e) => onWeatherDragStart(e, idx)} onDragEnd={onDragEnd}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget({ type: 'weather-field', beforeIdx: idx }); }}
+                      onDrop={(e) => onWeatherDrop(e, idx)}>
+                      <span className="drag-handle">⠿</span>
+                      <input type="checkbox" checked={true} onChange={() => toggleWeatherField(key)} />
+                      <span style={{ fontSize: 13 }}>{def.label}</span>
+                    </div>
+                  );
+                })}
+                {ALL_WEATHER_FIELDS.filter(({ key }) => !weatherFields.includes(key)).map(({ key, label }) => (
+                  <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.5 }}>
+                    <span className="drag-handle" style={{ visibility: 'hidden' }}>⠿</span>
+                    <input type="checkbox" checked={false} onChange={() => toggleWeatherField(key)} />
+                    <span style={{ fontSize: 13 }}>{label}</span>
+                  </div>
+                ))}
+
+                {/* ════ FORECAST ════ */}
+                <SectionDivider label="Forecast" />
+
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  The 7-day forecast appears on the calendar. Tap any day's card to see the hourly detail.
+                </p>
+                <h3 style={{ marginBottom: 8 }}>Hourly Detail Layout</h3>
+                <OptionPicker
+                  options={[
+                    { id: 'list',  label: 'List',  desc: 'Rows by hour' },
+                    { id: 'chart', label: 'Chart', desc: 'Bar graph + temp line' },
+                  ]}
+                  value={weatherConfig?.forecastLayout || 'list'}
+                  onChange={(v) => setWeatherConfig({ ...weatherConfig, forecastLayout: v })}
+                />
+
+              </div>
+            );
+          })()}
 
           {/* ── Display tab ───────────────────────────────────── */}
           {activeTab === 'display' && (
