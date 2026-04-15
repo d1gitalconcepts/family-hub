@@ -139,7 +139,7 @@ async function applyKeepUpdates(page, updates) {
     // (a trusted event). Synthetic cb.click() from page.evaluate() is untrusted
     // and Keep's React handlers may silently ignore it.
     const result = await page.evaluate(({ itemText, desiredChecked }) => {
-      const editor = document.querySelector('.oT9UPb');
+      const editor = document.querySelector('[role="dialog"]') || document.querySelector('.oT9UPb');
       if (!editor) return { debug: 'no-editor' };
 
       const checkboxes = Array.from(editor.querySelectorAll('div[role="checkbox"]'));
@@ -444,11 +444,20 @@ async function main() {
         continue;
       }
 
-      // Wait for the editor overlay (.oT9UPb) to appear
-      const editorOpened = await page.waitForSelector('.oT9UPb', { timeout: 5000 })
-        .then(() => true).catch(() => false);
-      if (!editorOpened) console.warn(`[${ts}] Editor did not open for "${noteName}" — write-back skipped`);
-      await page.waitForTimeout(800);
+      // Wait for the editor overlay to appear — try semantic role first, fall back to old class
+      await page.waitForTimeout(1500);
+      const editorInfo = await page.evaluate(() => {
+        const byRole   = document.querySelector('[role="dialog"]');
+        const byOldCls = document.querySelector('.oT9UPb');
+        const el = byRole || byOldCls;
+        return el ? { selector: byRole ? '[role="dialog"]' : '.oT9UPb', className: el.className } : null;
+      });
+      if (!editorInfo) {
+        console.warn(`[${ts}] Editor did not open for "${noteName}" — write-back skipped`);
+      } else {
+        console.log(`[${ts}] Editor found via "${editorInfo.selector}" (class: ${editorInfo.className.slice(0,60)})`);
+      }
+      await page.waitForTimeout(300);
 
       // Apply any pending checkbox updates while the editor is open
       if (pendingUpdates.length) {
