@@ -135,10 +135,12 @@ async function applyKeepUpdates(page, updates) {
   const appliedIds = [];
 
   for (const update of updates) {
-    const applied = await page.evaluate(({ itemText, desiredChecked }) => {
-      // Find all checkboxes in the open editor (.oT9UPb)
+    // Return the checkbox's screen coordinates so we can use page.mouse.click()
+    // (a trusted event). Synthetic cb.click() from page.evaluate() is untrusted
+    // and Keep's React handlers may silently ignore it.
+    const result = await page.evaluate(({ itemText, desiredChecked }) => {
       const editor = document.querySelector('.oT9UPb');
-      if (!editor) return false;
+      if (!editor) return null; // editor not open
 
       const checkboxes = Array.from(editor.querySelectorAll('div[role="checkbox"]'));
       for (const cb of checkboxes) {
@@ -157,19 +159,27 @@ async function applyKeepUpdates(page, updates) {
         if (!text || text.toLowerCase() !== itemText.toLowerCase()) continue;
 
         const isChecked = cb.getAttribute('aria-checked') === 'true';
-        if (isChecked !== desiredChecked) {
-          cb.click();
-          return true;  // clicked
-        }
-        return false;   // already in correct state — no click needed
+        if (isChecked === desiredChecked) return { alreadyCorrect: true };
+
+        // Return coordinates for a real mouse click outside of evaluate()
+        const r = cb.getBoundingClientRect();
+        return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }
-      return false; // item not found
+      return null; // item not found in editor
     }, { itemText: update.item_text, desiredChecked: update.checked });
 
-    if (applied !== null) {
-      // Whether we clicked or it was already correct, the update is resolved
-      appliedIds.push(update.id);
+    if (result === null) {
+      // Item not found — leave in queue to retry next cycle
+      continue;
     }
+
+    if (!result.alreadyCorrect) {
+      // Use real mouse event (trusted) so Keep's React handlers fire correctly
+      await page.mouse.click(result.x, result.y);
+      await page.waitForTimeout(300);
+    }
+
+    appliedIds.push(update.id);
   }
 
   return appliedIds;
