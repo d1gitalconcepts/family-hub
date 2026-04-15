@@ -93,7 +93,7 @@ async function start() {
 }
 
 function ts() {
-  return new Date().toISOString();
+  return new Date().toLocaleString();
 }
 
 // ── Entrypoint ────────────────────────────────────────────────────────────────

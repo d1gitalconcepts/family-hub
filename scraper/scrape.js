@@ -37,7 +37,7 @@ async function supabaseAuth() {
 
 async function upsertNotes(notes) {
   await supabaseAuth();
-  const now  = new Date().toISOString();
+  const now  = new Date().toLocaleString();
   const rows = notes.map((note) => ({
     key:        note.id,
     data:       note,
@@ -174,7 +174,7 @@ async function applyKeepUpdates(page, updates) {
     }, { itemText: update.item_text, desiredChecked: update.checked });
 
     if (result?.debug) {
-      const now = new Date().toISOString();
+      const now = new Date().toLocaleString();
       console.warn(`[${now}] applyKeepUpdates debug (${result.debug}) for "${update.item_text}"${result.found ? ` — found: [${result.found.join(', ')}]` : ''}`);
       // Leave in queue to retry next cycle
       continue;
@@ -260,7 +260,7 @@ async function scrapeKeep(page, targetNotes) {
           }
           if (text) items.push({ text, checked });
         });
-        results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toISOString() });
+        results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toLocaleString() });
       } else {
         // Plain text note
         const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
@@ -278,7 +278,7 @@ async function scrapeKeep(page, targetNotes) {
             }
           });
         }
-        results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toISOString() });
+        results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toLocaleString() });
       }
     });
 
@@ -293,7 +293,7 @@ function slugify(str) {
 }
 
 async function main() {
-  const ts = new Date().toISOString();
+  const ts = new Date().toLocaleString();
 
   if (!fs.existsSync(SESSION_FILE)) {
     console.error(`[${ts}] No session found. Run: node setup.js`);
@@ -353,14 +353,22 @@ async function main() {
       }
 
       // Try to click the note directly if it's already visible on screen (e.g. pinned notes).
+      // Return coordinates so we can use page.mouse.click() (trusted event) instead of
+      // el.click() (synthetic/untrusted, may be ignored by Keep's React handlers).
       let usedSearch = false;
-      let clicked = await page.evaluate((name) => {
+      let noteCoords = await page.evaluate((name) => {
         const els = document.querySelectorAll('div[role="textbox"]');
         for (const el of els) {
-          if (el.innerText.trim() === name) { el.click(); return true; }
+          if (el.innerText.trim() === name) {
+            const r = el.getBoundingClientRect();
+            return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+          }
         }
-        return false;
+        return null;
       }, noteName);
+
+      if (noteCoords) await page.mouse.click(noteCoords.x, noteCoords.y);
+      let clicked = !!noteCoords;
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
       // This handles unpinned notes that aren't rendered due to virtual scrolling.
@@ -401,13 +409,19 @@ async function main() {
             { timeout: 8000, polling: 300 }
           ).catch(() => {});
 
-          clicked = await page.evaluate((name) => {
+          noteCoords = await page.evaluate((name) => {
             const els = document.querySelectorAll('div[role="textbox"]');
             for (const el of els) {
-              if (el.innerText.trim() === name) { el.click(); return true; }
+              if (el.innerText.trim() === name) {
+                const r = el.getBoundingClientRect();
+                return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+              }
             }
-            return false;
+            return null;
           }, noteName);
+
+          if (noteCoords) await page.mouse.click(noteCoords.x, noteCoords.y);
+          clicked = !!noteCoords;
         } else {
           console.warn(`[${ts}] Search bar not found — cannot search for "${noteName}"`);
         }
@@ -479,6 +493,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(`[${new Date().toISOString()}] Fatal error:`, err.message);
+  console.error(`[${new Date().toLocaleString()}] Fatal error:`, err.message);
   process.exit(1);
 });
