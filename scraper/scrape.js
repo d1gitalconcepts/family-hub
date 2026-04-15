@@ -130,29 +130,44 @@ async function fetchKeepNotesTitles() {
 
 // Apply pending checkbox updates while the note editor is open.
 // Returns the ids of successfully applied updates.
-async function applyKeepUpdates(page, updates) {
+async function applyKeepUpdates(page, updates, noteName) {
   if (!updates.length) return [];
   const appliedIds = [];
 
   for (const update of updates) {
-    // Return the checkbox's screen coordinates so we can use page.mouse.click()
-    // (a trusted event). Synthetic cb.click() from page.evaluate() is untrusted
-    // and Keep's React handlers may silently ignore it.
-    const result = await page.evaluate(({ itemText, desiredChecked }) => {
+    // Find the checkbox in the editor modal if open, otherwise fall back to the
+    // card view in the main grid (which is always rendered for visible/pinned notes).
+    // Scraping already reads from card view successfully — write-back can too.
+    const result = await page.evaluate(({ itemText, desiredChecked, noteName }) => {
+      // Prefer open editor, fall back to note card in grid
       const editor = document.querySelector('[role="dialog"]') || document.querySelector('.oT9UPb');
-      if (!editor) return { debug: 'no-editor' };
+      let container = editor;
 
-      const checkboxes = Array.from(editor.querySelectorAll('div[role="checkbox"]'));
+      if (!container) {
+        // Find the card by matching the note title textbox
+        const titleEls = document.querySelectorAll('div[role="textbox"]');
+        for (const t of titleEls) {
+          if (t.innerText.trim() === noteName) {
+            // Walk up to the card container
+            container = t.parentElement?.parentElement?.parentElement?.parentElement
+              || t.parentElement?.parentElement?.parentElement
+              || t.parentElement;
+            break;
+          }
+        }
+      }
+
+      if (!container) return { debug: 'no-container' };
+
+      const checkboxes = Array.from(container.querySelectorAll('div[role="checkbox"]'));
       if (!checkboxes.length) return { debug: 'no-checkboxes' };
 
-      // Collect all found item texts for diagnosis
       const found = [];
       for (const cb of checkboxes) {
         const row      = cb.parentElement?.parentElement;
         const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
         let   text     = textSpan?.innerText?.trim();
 
-        // Fallback: clone row, strip checkbox, read text
         if (!text && row) {
           const clone = row.cloneNode(true);
           const cbClone = clone.querySelector('[role="checkbox"]');
@@ -166,12 +181,13 @@ async function applyKeepUpdates(page, updates) {
         const isChecked = cb.getAttribute('aria-checked') === 'true';
         if (isChecked === desiredChecked) return { alreadyCorrect: true };
 
-        // Return coordinates for a real mouse click outside of evaluate()
+        // Scroll checkbox into view and return coordinates for page.mouse.click()
+        cb.scrollIntoView({ behavior: 'instant', block: 'center' });
         const r = cb.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
       }
-      return { debug: 'not-found', found }; // item not found in editor
-    }, { itemText: update.item_text, desiredChecked: update.checked });
+      return { debug: 'not-found', found };
+    }, { itemText: update.item_text, desiredChecked: update.checked, noteName });
 
     if (result?.debug) {
       const now = new Date().toLocaleString();
@@ -382,9 +398,10 @@ async function main() {
       }, noteName);
       if (noteCoords) console.log(`[${ts}] Note coords for "${noteName}": x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)} (textbox at y=${Math.round(noteCoords.debug.elY)} h=${Math.round(noteCoords.debug.elH)})`);
 
-      // Brief pause for scroll to settle before clicking
-      if (noteCoords) await page.waitForTimeout(300);
-      if (noteCoords) await page.mouse.click(noteCoords.x, noteCoords.y);
+      if (noteCoords) {
+        await page.waitForTimeout(300);
+        await page.mouse.click(noteCoords.x, noteCoords.y);
+      }
       let clicked = !!noteCoords;
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
@@ -455,26 +472,11 @@ async function main() {
         continue;
       }
 
-      // Wait for the editor overlay to appear — try semantic role first, fall back to old class
-      await page.waitForTimeout(1500);
-      // Take a screenshot so we can see what Keep looks like after the click
-      await page.screenshot({ path: `/tmp/keep-debug-${slugify(noteName)}.png` });
-      const editorInfo = await page.evaluate(() => {
-        const byRole   = document.querySelector('[role="dialog"]');
-        const byOldCls = document.querySelector('.oT9UPb');
-        const el = byRole || byOldCls;
-        return el ? { selector: byRole ? '[role="dialog"]' : '.oT9UPb', className: el.className } : null;
-      });
-      if (!editorInfo) {
-        console.warn(`[${ts}] Editor did not open for "${noteName}" — write-back skipped`);
-      } else {
-        console.log(`[${ts}] Editor found via "${editorInfo.selector}" (class: ${editorInfo.className.slice(0,60)})`);
-      }
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(400);
 
-      // Apply any pending checkbox updates while the editor is open
+      // Apply any pending checkbox updates
       if (pendingUpdates.length) {
-        const appliedIds = await applyKeepUpdates(page, pendingUpdates);
+        const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
         if (appliedIds.length) {
           console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
           await clearPendingKeepUpdates(appliedIds);
