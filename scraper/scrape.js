@@ -174,7 +174,8 @@ async function applyKeepUpdates(page, updates) {
     }, { itemText: update.item_text, desiredChecked: update.checked });
 
     if (result?.debug) {
-      console.warn(`[${ts}] applyKeepUpdates debug (${result.debug}) for "${update.item_text}"${result.found ? ` — found: [${result.found.join(', ')}]` : ''}`);
+      const now = new Date().toISOString();
+      console.warn(`[${now}] applyKeepUpdates debug (${result.debug}) for "${update.item_text}"${result.found ? ` — found: [${result.found.join(', ')}]` : ''}`);
       // Leave in queue to retry next cycle
       continue;
     }
