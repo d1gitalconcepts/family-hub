@@ -690,36 +690,47 @@ html, body, #root {
   font-weight: 400;
 }
 
-/* Chip — solid calendar colour, white text, no left border */
+/* Card body — flex column to stack elements */
+.event-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Border style (default) */
+.event-card--border {
+  border-left: 3px solid var(--cal-color, #4285f4);
+  background: color-mix(in srgb, var(--cal-color, #4285f4) 8%, var(--surface));
+  border-radius: 0 4px 4px 0;
+}
+
+/* Chip / solid style */
 .event-card--chip {
   background: var(--cal-color, #4285f4);
   border-left: none;
   border-radius: 6px;
-  padding: 5px 8px;
 }
 .event-card--chip .event-title,
-.event-card--chip .event-time-inline {
-  color: #fff;
-}
-.event-card--chip .event-time-inline {
-  color: rgba(255, 255, 255, 0.72);
-}
+.event-card--chip .event-time,
+.event-card--chip .event-cal,
+.event-card--chip .event-desc-snippet { color: #fff; }
+.event-card--chip .event-time,
+.event-card--chip .event-cal,
+.event-card--chip .event-desc-snippet { color: rgba(255,255,255,0.72); }
 
-/* Logo — circle badge on left, details on right */
-.event-card--logo {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-}
-.event-logo-circle {
-  flex-shrink: 0;
-}
-.event-logo-text {
+/* Badge row for emoji circle */
+.event-badge-row {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  gap: 7px;
 }
+.event-logo-circle { flex-shrink: 0; }
+
+/* Chip style: white-tinted SVG badge */
+.event-card--chip .event-logo-circle circle { fill: rgba(255,255,255,0.2); stroke: rgba(255,255,255,0.5); }
+.event-card--chip .event-logo-circle text  { fill: white; }
 
 .event-desc-snippet {
   display: block;

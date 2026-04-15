@@ -572,157 +572,234 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
           {/* ── Event Cards tab ───────────────────────────────── */}
           {activeTab === 'eventcards' && (() => {
-            const cs = cardStyleCfg || {};
-            const popout = cs.popout || {};
-            function setCs(patch) { setCardStyleCfg({ ...cs, ...patch }); }
-            function setPopout(patch) { setCardStyleCfg({ ...cs, popout: { ...popout, ...patch } }); }
+  const cs = cardStyleCfg || {};
+  const popout = cs.popout || {};
+  function setCs(patch) { setCardStyleCfg({ ...cs, ...patch }); }
+  function setPopout(patch) { setCardStyleCfg({ ...cs, popout: { ...popout, ...patch } }); }
 
-            // Shared preview card styles — use accent as sample calendar colour
-            const previewCard = (borderLeft, borderRadius, children) => (
-              <div style={{
-                margin: 10, padding: '6px 8px', minHeight: 44, textAlign: 'left',
-                borderLeft, borderRadius,
-                background: 'var(--accent)',
-                display: 'flex', flexDirection: 'column', justifyContent: 'center',
-              }}>
-                {children}
+  const DEFAULT_ELEMENTS = [
+    { key: 'time',    label: 'Time',        visible: true  },
+    { key: 'title',   label: 'Title',       visible: true  },
+    { key: 'calName', label: 'Calendar',    visible: true  },
+    { key: 'desc',    label: 'Description', visible: false },
+  ];
+  const cardElements = cs.cardElements || DEFAULT_ELEMENTS;
+  const chipStyle    = cs.chipStyle    || false;
+  const emojiAsBadge = cs.emojiAsBadge || false;
+  const align        = cs.align        || 'left';
+
+  const SAMPLE_COLOR = '#4285f4';
+  const SAMPLE_EMOJI = '📅';
+  const visibleElems = cardElements.filter(e => e.visible !== false);
+  const justifyMap   = { left: 'flex-start', center: 'center', right: 'flex-end' };
+
+  function renderPreviewContent() {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: align, width: '100%' }}>
+        {visibleElems.map((el) => {
+          if (el.key === 'time') return (
+            <span key="time" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.72)' : 'rgba(66,133,244,0.8)' }}>3:00 PM</span>
+          );
+          if (el.key === 'title') {
+            const titleColor = chipStyle ? '#fff' : '#4285f4';
+            const titleStyle = { fontSize: 13, fontWeight: 600, color: titleColor };
+            if (emojiAsBadge) return (
+              <div key="title" style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: justifyMap[align] }}>
+                <svg viewBox="0 0 32 32" width="28" height="28" style={{ flexShrink: 0 }}>
+                  <circle cx="16" cy="16" r="15" fill={chipStyle ? 'rgba(255,255,255,0.2)' : 'rgba(66,133,244,0.15)'} />
+                  <circle cx="16" cy="16" r="15" fill="none" stroke={chipStyle ? 'rgba(255,255,255,0.5)' : 'rgba(66,133,244,0.4)'} strokeWidth="1.5" />
+                  <text x="16" y="22" textAnchor="middle" fontSize="18" fill={chipStyle ? 'white' : '#4285f4'}>{SAMPLE_EMOJI}</text>
+                </svg>
+                <span style={titleStyle}>Team Meeting</span>
               </div>
             );
-            const W  = { color: '#fff', lineHeight: 1.4 };
-            const WM = { color: 'rgba(255,255,255,0.68)' };
-
-            const LAYOUTS = [
-              {
-                id: 'standard', label: 'Standard',
-                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
-                  <div style={W}>
-                    <div style={{ fontSize: 8, marginBottom: 1, ...WM }}>3:00 PM</div>
-                    <div style={{ fontSize: 10, fontWeight: 600 }}>Team Meeting</div>
-                    <div style={{ fontSize: 8, marginTop: 1, ...WM }}>Work</div>
-                  </div>
-                )),
-              },
-              {
-                id: 'minimal', label: 'Minimal',
-                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>Team Meeting</div>
-                )),
-              },
-              {
-                id: 'chip', label: 'Chip',
-                preview: (
-                  <div style={{
-                    margin: 10, padding: '6px 8px', minHeight: 44, textAlign: 'left',
-                    borderRadius: 6, background: 'var(--accent)',
-                    display: 'flex', alignItems: 'center',
-                  }}>
-                    <div style={{ fontSize: 9, color: '#fff' }}>
-                      <span style={WM}>3pm · </span><strong>Team Meeting</strong>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                id: 'logo', label: 'Logo',
-                preview: previewCard('3px solid rgba(255,255,255,0.35)', 3, (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <svg viewBox="0 0 32 32" width="26" height="26" style={{ flexShrink: 0 }}>
-                      <circle cx="16" cy="16" r="15" fill="rgba(255,255,255,0.2)" />
-                      <circle cx="16" cy="16" r="15" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" />
-                      <text x="16" y="21" textAnchor="middle" fontSize="15" fill="white">📅</text>
-                    </svg>
-                    <div style={W}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#fff' }}>Team Meeting</div>
-                      <div style={{ fontSize: 8, ...WM }}>3:00 PM</div>
-                    </div>
-                  </div>
-                )),
-              },
-            ];
-
-            const active = cs.layout || 'standard';
-
             return (
-              <div className="settings-section">
-
-                {/* Layout */}
-                <h3 style={{ marginBottom: 12 }}>Card Layout</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
-                  {LAYOUTS.map((l) => (
-                    <button
-                      key={l.id}
-                      onClick={() => setCs({ layout: l.id })}
-                      style={{
-                        border: `2px solid ${active === l.id ? 'var(--accent)' : 'var(--border)'}`,
-                        borderRadius: 8,
-                        background: active === l.id ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                        cursor: 'pointer',
-                        padding: 0,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                      }}
-                    >
-                      {/* mini card mockup — preview includes its own container */}
-                      {l.preview}
-                      <div style={{
-                        fontSize: 11, fontWeight: active === l.id ? 600 : 400,
-                        color: active === l.id ? 'var(--accent)' : 'var(--text-muted)',
-                        padding: '4px 8px 8px',
-                        textAlign: 'center',
-                        fontFamily: 'var(--font)',
-                      }}>
-                        {l.label}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Card elements */}
-                <h3 style={{ marginBottom: 10 }}>Card Elements</h3>
-                {[
-                  { key: 'showTime',        label: 'Event time',           note: 'e.g. 3:00 PM' },
-                  { key: 'showCalName',     label: 'Calendar name',        note: 'shown below the title' },
-                  { key: 'showDescSnippet', label: 'Description snippet',  note: 'first 60 characters' },
-                ].map(({ key, label, note }) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                    <input
-                      type="checkbox"
-                      checked={cs[key] ?? true}
-                      onChange={(e) => setCs({ [key]: e.target.checked })}
-                      style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
-                    />
-                    <span style={{ flex: 1, fontSize: 13 }}>{label}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{note}</span>
-                  </div>
-                ))}
-
-                {/* Popout elements */}
-                <h3 style={{ marginBottom: 10, marginTop: 20 }}>Popout Elements</h3>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Shown when you tap or click an event card.
-                </p>
-                {[
-                  { key: 'showCalName',     label: 'Calendar name'  },
-                  { key: 'showDate',        label: 'Date'           },
-                  { key: 'showTime',        label: 'Time'           },
-                  { key: 'showLocation',    label: 'Location'       },
-                  { key: 'showDescription', label: 'Description'    },
-                ].map(({ key, label }) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                    <input
-                      type="checkbox"
-                      checked={popout[key] ?? true}
-                      onChange={(e) => setPopout({ [key]: e.target.checked })}
-                      style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 13 }}>{label}</span>
-                  </div>
-                ))}
-
-              </div>
+              <span key="title" style={titleStyle}>
+                <span style={{ marginRight: 4 }}>{SAMPLE_EMOJI}</span>Team Meeting
+              </span>
             );
-          })()}
+          }
+          if (el.key === 'calName') return (
+            <span key="calName" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.72)' : 'rgba(66,133,244,0.8)' }}>Work</span>
+          );
+          if (el.key === 'desc') return (
+            <span key="desc" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.6)' : 'rgba(66,133,244,0.7)', fontStyle: 'italic' }}>Q3 planning session…</span>
+          );
+          return null;
+        })}
+      </div>
+    );
+  }
+
+  function onElemDragStart(e, idx) {
+    drag.current = { type: 'card-element', fromIdx: idx };
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  }
+  function onElemDrop(e, toIdx) {
+    e.preventDefault();
+    if (!drag.current || drag.current.type !== 'card-element') return;
+    const { fromIdx } = drag.current;
+    if (fromIdx !== toIdx) {
+      const next = [...cardElements];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      setCs({ cardElements: next });
+    }
+    drag.current = null;
+    setDropTarget(null);
+  }
+  function toggleElem(idx) {
+    const next = cardElements.map((el, i) => i === idx ? { ...el, visible: !el.visible } : el);
+    setCs({ cardElements: next });
+  }
+
+  const POPOUT_ITEMS = [
+    { key: 'showCalName',     label: 'Calendar name'  },
+    { key: 'showDate',        label: 'Date'           },
+    { key: 'showTime',        label: 'Time'           },
+    { key: 'showLocation',    label: 'Location'       },
+    { key: 'showDescription', label: 'Description'    },
+  ];
+
+  return (
+    <div className="settings-section">
+
+      {/* ── Live preview ── */}
+      <h3 style={{ marginBottom: 10 }}>Preview</h3>
+      <div style={{
+        background: chipStyle ? SAMPLE_COLOR : 'var(--surface)',
+        borderLeft: chipStyle ? 'none' : `4px solid ${SAMPLE_COLOR}`,
+        borderRadius: 8,
+        border: chipStyle ? 'none' : `1px solid var(--border)`,
+        padding: '12px 16px',
+        marginBottom: 24,
+        minHeight: 72,
+        display: 'flex',
+        alignItems: 'center',
+      }}>
+        {renderPreviewContent()}
+      </div>
+
+      {/* ── Card background style ── */}
+      <h3 style={{ marginBottom: 10 }}>Card Background</h3>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {[['border', '◧ Border'], ['chip', '▮ Solid']].map(([val, lbl]) => {
+          const active = (val === 'chip') === chipStyle;
+          return (
+            <button
+              key={val}
+              onClick={() => setCs({ chipStyle: val === 'chip' })}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                fontFamily: 'var(--font)',
+                border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                color: active ? 'var(--accent)' : 'var(--text)',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Card elements ── */}
+      <h3 style={{ marginBottom: 4 }}>Card Elements</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Drag to reorder · toggle checkbox to show or hide
+      </p>
+      {cardElements.map((el, i) => {
+        const isTarget = dropTarget === `card-elem-${i}`;
+        return (
+          <div
+            key={el.key}
+            draggable
+            onDragStart={(e) => onElemDragStart(e, i)}
+            onDragOver={(e) => { e.preventDefault(); setDropTarget(`card-elem-${i}`); }}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(e) => onElemDrop(e, i)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 10px', borderRadius: 6, marginBottom: 6, cursor: 'grab',
+              border: `1px solid ${isTarget ? 'var(--accent)' : 'var(--border)'}`,
+              background: isTarget ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--bg-secondary)',
+            }}
+          >
+            <span style={{ color: 'var(--text-muted)', fontSize: 16, cursor: 'grab', lineHeight: 1 }}>⠿</span>
+            <input
+              type="checkbox"
+              checked={el.visible !== false}
+              onChange={() => toggleElem(i)}
+              style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13, flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
+              {el.label}
+            </span>
+          </div>
+        );
+      })}
+
+      {/* ── Options ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 0', borderTop: '1px solid var(--border)', marginTop: 4,
+      }}>
+        <input
+          type="checkbox"
+          checked={emojiAsBadge}
+          onChange={(e) => setCs({ emojiAsBadge: e.target.checked })}
+          style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+        />
+        <span style={{ flex: 1, fontSize: 13 }}>Show emoji as circle badge</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>from icon rules</span>
+      </div>
+
+      {/* ── Alignment ── */}
+      <h3 style={{ marginBottom: 10, marginTop: 20 }}>Text Alignment</h3>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {[['left', '← Left'], ['center', 'Center'], ['right', 'Right →']].map(([val, lbl]) => {
+          const active = align === val;
+          return (
+            <button
+              key={val}
+              onClick={() => setCs({ align: val })}
+              style={{
+                flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                fontFamily: 'var(--font)',
+                border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                color: active ? 'var(--accent)' : 'var(--text)',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Popout elements ── */}
+      <h3 style={{ marginBottom: 10 }}>Popout Elements</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Shown when you tap or click an event card.
+      </p>
+      {POPOUT_ITEMS.map(({ key, label }) => (
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+          <input
+            type="checkbox"
+            checked={popout[key] ?? true}
+            onChange={(e) => setPopout({ [key]: e.target.checked })}
+            style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+          />
+          <span style={{ fontSize: 13 }}>{label}</span>
+        </div>
+      ))}
+
+    </div>
+  );
+})()}
 
           {/* ── Filters tab ───────────────────────────────────── */}
           {activeTab === 'eventfilters' && (() => {
