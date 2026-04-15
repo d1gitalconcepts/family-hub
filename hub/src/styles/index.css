@@ -699,6 +699,21 @@ html, body, #root {
   min-width: 0;
 }
 
+/* When badge is active: flex row [icon | text column] */
+.event-card-body--badged {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.event-card-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 /* Border style (default) */
 .event-card--border {
   border-left: 3px solid var(--cal-color, #4285f4);
@@ -706,31 +721,19 @@ html, body, #root {
   border-radius: 0 4px 4px 0;
 }
 
-/* Chip / solid style */
+/* Chip style — tinted pastel, not full bleed color */
 .event-card--chip {
-  background: var(--cal-color, #4285f4);
-  border-left: none;
+  background: color-mix(in srgb, var(--cal-color, #4285f4) 16%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--cal-color, #4285f4) 30%, var(--border));
   border-radius: 6px;
 }
-.event-card--chip .event-title,
+.event-card--chip .event-title    { color: var(--cal-color, #4285f4); }
 .event-card--chip .event-time,
 .event-card--chip .event-cal,
-.event-card--chip .event-desc-snippet { color: #fff; }
-.event-card--chip .event-time,
-.event-card--chip .event-cal,
-.event-card--chip .event-desc-snippet { color: rgba(255,255,255,0.72); }
+.event-card--chip .event-desc-snippet { color: color-mix(in srgb, var(--cal-color, #4285f4) 70%, var(--text-muted)); }
 
-/* Badge row for emoji circle */
-.event-badge-row {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
+/* Badge circle */
 .event-logo-circle { flex-shrink: 0; }
-
-/* Chip style: white-tinted SVG badge */
-.event-card--chip .event-logo-circle circle { fill: rgba(255,255,255,0.2); stroke: rgba(255,255,255,0.5); }
-.event-card--chip .event-logo-circle text  { fill: white; }
 
 .event-desc-snippet {
   display: block;

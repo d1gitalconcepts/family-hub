@@ -593,42 +593,37 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const visibleElems = cardElements.filter(e => e.visible !== false);
   const justifyMap   = { left: 'flex-start', center: 'center', right: 'flex-end' };
 
+  // Tinted text colors used by both border and chip preview (chip just has a stronger bg)
+  const previewTitle = '#1d5bb7';
+  const previewMeta  = 'rgba(29,91,183,0.72)';
+
+  function previewTextEl(el) {
+    if (el.key === 'time')    return <span key="time"    style={{ fontSize: 11, color: previewMeta }}>3:00 PM</span>;
+    if (el.key === 'title')   return <span key="title"   style={{ fontSize: 13, fontWeight: 600, color: previewTitle }}>Team Meeting</span>;
+    if (el.key === 'calName') return <span key="calName" style={{ fontSize: 11, color: previewMeta }}>Work</span>;
+    if (el.key === 'desc')    return <span key="desc"    style={{ fontSize: 11, color: previewMeta, fontStyle: 'italic' }}>Q3 planning session…</span>;
+    return null;
+  }
+
   function renderPreviewContent() {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: align, width: '100%' }}>
-        {visibleElems.map((el) => {
-          if (el.key === 'time') return (
-            <span key="time" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.72)' : 'rgba(66,133,244,0.8)' }}>3:00 PM</span>
-          );
-          if (el.key === 'title') {
-            const titleColor = chipStyle ? '#fff' : '#4285f4';
-            const titleStyle = { fontSize: 13, fontWeight: 600, color: titleColor };
-            if (emojiAsBadge) return (
-              <div key="title" style={{ display: 'flex', alignItems: 'center', gap: 7, justifyContent: justifyMap[align] }}>
-                <svg viewBox="0 0 32 32" width="28" height="28" style={{ flexShrink: 0 }}>
-                  <circle cx="16" cy="16" r="15" fill={chipStyle ? 'rgba(255,255,255,0.2)' : 'rgba(66,133,244,0.15)'} />
-                  <circle cx="16" cy="16" r="15" fill="none" stroke={chipStyle ? 'rgba(255,255,255,0.5)' : 'rgba(66,133,244,0.4)'} strokeWidth="1.5" />
-                  <text x="16" y="22" textAnchor="middle" fontSize="18" fill={chipStyle ? 'white' : '#4285f4'}>{SAMPLE_EMOJI}</text>
-                </svg>
-                <span style={titleStyle}>Team Meeting</span>
-              </div>
-            );
-            return (
-              <span key="title" style={titleStyle}>
-                <span style={{ marginRight: 4 }}>{SAMPLE_EMOJI}</span>Team Meeting
-              </span>
-            );
-          }
-          if (el.key === 'calName') return (
-            <span key="calName" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.72)' : 'rgba(66,133,244,0.8)' }}>Work</span>
-          );
-          if (el.key === 'desc') return (
-            <span key="desc" style={{ fontSize: 11, color: chipStyle ? 'rgba(255,255,255,0.6)' : 'rgba(66,133,244,0.7)', fontStyle: 'italic' }}>Q3 planning session…</span>
-          );
-          return null;
-        })}
+    const textCol = (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, textAlign: align, flex: 1, minWidth: 0 }}>
+        {visibleElems.map(previewTextEl)}
       </div>
     );
+    if (emojiAsBadge) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: justifyMap[align] }}>
+          <svg viewBox="0 0 32 32" width="30" height="30" style={{ flexShrink: 0 }}>
+            <circle cx="16" cy="16" r="15" fill="rgba(66,133,244,0.15)" />
+            <circle cx="16" cy="16" r="15" fill="none" stroke="rgba(66,133,244,0.4)" strokeWidth="1.5" />
+            <text x="16" y="22" textAnchor="middle" fontSize="18" fill={SAMPLE_COLOR}>{SAMPLE_EMOJI}</text>
+          </svg>
+          {textCol}
+        </div>
+      );
+    }
+    return <div style={{ width: '100%' }}>{textCol}</div>;
   }
 
   function onElemDragStart(e, idx) {
@@ -654,13 +649,37 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     setCs({ cardElements: next });
   }
 
-  const POPOUT_ITEMS = [
-    { key: 'showCalName',     label: 'Calendar name'  },
-    { key: 'showDate',        label: 'Date'           },
-    { key: 'showTime',        label: 'Time'           },
-    { key: 'showLocation',    label: 'Location'       },
-    { key: 'showDescription', label: 'Description'    },
+  const DEFAULT_POPOUT_ELEMENTS = [
+    { key: 'calName',     label: 'Calendar name' },
+    { key: 'date',        label: 'Date'           },
+    { key: 'time',        label: 'Time'           },
+    { key: 'location',    label: 'Location'       },
+    { key: 'description', label: 'Description'    },
   ];
+  const popoutElements = cs.popoutElements || DEFAULT_POPOUT_ELEMENTS;
+
+  function onPopoutDragStart(e, idx) {
+    drag.current = { type: 'popout-element', fromIdx: idx };
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  }
+  function onPopoutDrop(e, toIdx) {
+    e.preventDefault();
+    if (!drag.current || drag.current.type !== 'popout-element') return;
+    const { fromIdx } = drag.current;
+    if (fromIdx !== toIdx) {
+      const next = [...popoutElements];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      setCs({ popoutElements: next });
+    }
+    drag.current = null;
+    setDropTarget(null);
+  }
+  function togglePopoutElem(idx) {
+    const next = popoutElements.map((el, i) => i === idx ? { ...el, visible: !el.visible } : el);
+    setCs({ popoutElements: next });
+  }
 
   return (
     <div className="settings-section">
@@ -668,10 +687,12 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       {/* ── Live preview ── */}
       <h3 style={{ marginBottom: 10 }}>Preview</h3>
       <div style={{
-        background: chipStyle ? SAMPLE_COLOR : 'var(--surface)',
-        borderLeft: chipStyle ? 'none' : `4px solid ${SAMPLE_COLOR}`,
+        background: chipStyle ? 'rgba(66,133,244,0.14)' : 'var(--surface)',
+        borderTop:    `1px solid ${chipStyle ? 'rgba(66,133,244,0.25)' : 'var(--border)'}`,
+        borderRight:  `1px solid ${chipStyle ? 'rgba(66,133,244,0.25)' : 'var(--border)'}`,
+        borderBottom: `1px solid ${chipStyle ? 'rgba(66,133,244,0.25)' : 'var(--border)'}`,
+        borderLeft:   chipStyle ? `1px solid rgba(66,133,244,0.25)` : `4px solid ${SAMPLE_COLOR}`,
         borderRadius: 8,
-        border: chipStyle ? 'none' : `1px solid var(--border)`,
         padding: '12px 16px',
         marginBottom: 24,
         minHeight: 72,
@@ -781,21 +802,40 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       </div>
 
       {/* ── Popout elements ── */}
-      <h3 style={{ marginBottom: 10 }}>Popout Elements</h3>
+      <h3 style={{ marginBottom: 4 }}>Popout Elements</h3>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-        Shown when you tap or click an event card.
+        Shown when you tap or click an event card. Drag to reorder · toggle to show or hide.
       </p>
-      {POPOUT_ITEMS.map(({ key, label }) => (
-        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-          <input
-            type="checkbox"
-            checked={popout[key] ?? true}
-            onChange={(e) => setPopout({ [key]: e.target.checked })}
-            style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
-          />
-          <span style={{ fontSize: 13 }}>{label}</span>
-        </div>
-      ))}
+      {popoutElements.map((el, i) => {
+        const isTarget = dropTarget === `popout-elem-${i}`;
+        return (
+          <div
+            key={el.key}
+            draggable
+            onDragStart={(e) => onPopoutDragStart(e, i)}
+            onDragOver={(e) => { e.preventDefault(); setDropTarget(`popout-elem-${i}`); }}
+            onDragLeave={() => setDropTarget(null)}
+            onDrop={(e) => onPopoutDrop(e, i)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '9px 10px', borderRadius: 6, marginBottom: 6, cursor: 'grab',
+              border: `1px solid ${isTarget ? 'var(--accent)' : 'var(--border)'}`,
+              background: isTarget ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--bg-secondary)',
+            }}
+          >
+            <span style={{ color: 'var(--text-muted)', fontSize: 16, cursor: 'grab', lineHeight: 1 }}>⠿</span>
+            <input
+              type="checkbox"
+              checked={el.visible !== false}
+              onChange={() => togglePopoutElem(i)}
+              style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13, flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
+              {el.label}
+            </span>
+          </div>
+        );
+      })}
 
     </div>
   );
