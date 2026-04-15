@@ -1,6 +1,6 @@
 # Family Hub
 
-A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, a live weather widget from Ambient Weather, a 7-day forecast, and a sidebar with Google Keep checklists (shopping lists, packing lists, etc.) that you can check off from any device in the house.
+A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, a live weather widget, a 7-day forecast, and a sidebar with Google Keep checklists (shopping lists, packing lists, etc.) that sync bidirectionally — check an item off in the hub and it checks off in Google Keep too.
 
 ![Family Hub screenshot](docs/screenshot.png)
 
@@ -12,7 +12,7 @@ A self-hosted family dashboard built on React, Supabase, and Cloudflare. It show
 |-----------|-------------|
 | `hub/` | React frontend — the actual dashboard UI (Vite + React) |
 | `worker/` | Cloudflare Worker — syncs Google Calendar + forecast every 5 min |
-| `scraper/` | Node.js script — scrapes Google Keep notes into Supabase |
+| `scraper/` | Node.js script — scrapes Google Keep notes into Supabase and writes checkbox changes back |
 | `supabase/` | Database schema SQL |
 
 ---
@@ -21,12 +21,16 @@ A self-hosted family dashboard built on React, Supabase, and Cloudflare. It show
 
 ```
 Google Calendar ──► Cloudflare Worker ──► Supabase ──► Hub (React)
-Google Keep     ──► Scraper (cron)    ──►         ──► Hub (React)
-Ambient Weather ──► Cloudflare Worker ──►
-Open-Meteo      ──► Cloudflare Worker ──►
+Google Keep     ──► Scraper (cron)    ──►         ──►
+Open-Meteo      ──► Cloudflare Worker ──►         ──►
+Ambient Weather ──► Cloudflare Worker ──►         ──►
+
+Hub (React) ──► Supabase (keep_updates) ──► Watcher ──► Scraper ──► Google Keep
 ```
 
 All data lives in Supabase. The hub is a static React app that reads from Supabase in real time via subscriptions. Nothing is served from a custom backend.
+
+The watcher (`scraper/watcher.js`) subscribes to Supabase Realtime and triggers a scrape immediately whenever the hub checks or unchecks a Keep item, so write-backs land in Google Keep within a few seconds.
 
 ---
 
@@ -120,10 +124,17 @@ After first deploy, visit your hub URL and log in with `family@hub.local` or `ad
 
 **First-time settings:**
 
-Log in as admin, open Settings (gear icon), and configure:
-- **Calendars** — your Google calendars will auto-populate after the first worker sync
-- **Weather** — enter your Ambient Weather API + Application keys (from ambientweather.net → Account → API Keys)
-- **Keep Notes** — add the Google Keep note titles you want to scrape and display
+Log in as admin and open **Settings** via the hamburger menu (☰). Key tabs to configure:
+
+- **Calendars** — your Google calendars auto-populate after the first worker sync; toggle visibility and assign colors/emojis
+- **Weather** — choose a source:
+  - *Open-Meteo* (free, no API key): enter a zip code or use your device's location
+  - *Ambient Weather* (optional, for a personal weather station): enter your API Key and Application Key from [ambientweather.net → Account → API Keys](https://ambientweather.net/account)
+- **Keep Notes** — add the Google Keep note titles you want to scrape and display in the sidebar
+- **Event Cards** — customize card layout: choose which elements to show (time, title, calendar, description), drag to reorder them, pick border or solid background, set alignment
+- **Event Icons** — assign emoji to events by keyword (e.g. "soccer" → ⚽)
+- **Event Filters** — hide events whose title matches keywords (e.g. hide all "Busy" blocks)
+- **Display** — font size, accent color, app name, favicon
 
 ---
 
@@ -149,7 +160,7 @@ The scraper is a self-contained Node.js script that runs headlessly (no visible 
 ### Step 1 — Supabase
 
 1. Create a free Supabase project
-2. Run `supabase/schema.sql` in the SQL Editor (you only need the `notes` and `config` tables for the scraper — the rest is for the full hub)
+2. Run `supabase/schema.sql` in the SQL Editor (you only need the `notes`, `keep_updates`, and `config` tables for the scraper — the rest is for the full hub)
 3. Go to **Authentication → Users → Add user**, create one user:
    - Email: `admin@hub.local` (or anything you like)
    - Password: choose something strong
@@ -211,23 +222,40 @@ node scrape.js
 You should see output like:
 
 ```
-[2026-04-14T...] Target notes: Shopping List, Packing List
-[2026-04-14T...] Scraped and uploaded: Shopping List (24 items), Packing List (18 items)
+[4/14/2026, 9:00:00 AM] Target notes: Shopping List, Packing List
+[4/14/2026, 9:00:04 AM] Scraped and uploaded: Shopping List (24 items), Packing List (18 items)
 ```
 
-### Step 6 — Set up the cron job
+### Step 6 — Run persistently with pm2 (recommended)
 
-Run the scraper every 5 minutes automatically:
+The scraper has two processes you'll want running continuously:
+
+- **`scrape.js`** — polls every 5 minutes via cron (safety net)
+- **`watcher.js`** — subscribes to Supabase Realtime and triggers an immediate scrape whenever the hub checks or unchecks an item in Keep (enables write-back)
+
+Install pm2 and start both:
+
+```bash
+npm install -g pm2
+
+pm2 start watcher.js --name family-hub-watcher --restart-delay=5000
+pm2 save
+pm2 startup   # follow the printed command to enable auto-start on reboot
+```
+
+Then add the cron job as a safety net:
 
 ```bash
 crontab -e
 ```
 
-Add this line (adjust the path to match where you cloned the repo):
+Add this line (adjust the path):
 
 ```
 */5 * * * * /usr/bin/node /home/youruser/family-hub/scraper/scrape.js >> /home/youruser/family-hub/scraper/scraper.log 2>&1
 ```
+
+If you only need one-way sync (Keep → hub, no write-back), you can skip pm2 and use the cron job alone.
 
 ### What the data looks like
 
@@ -263,7 +291,7 @@ Google sessions typically last a few weeks to a few months. When the scraper log
 
 ## Keep the session alive (optional)
 
-If your scraper machine sleeps or reboots, the cron job starts again automatically. The session file persists across reboots. The only maintenance is re-running `node setup.js` when Google eventually expires the session.
+If your scraper machine sleeps or reboots, the cron job and pm2 watcher start again automatically. The session file persists across reboots. The only maintenance is re-running `node setup.js` when Google eventually expires the session.
 
 ---
 
