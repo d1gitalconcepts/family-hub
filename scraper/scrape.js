@@ -398,6 +398,25 @@ async function main() {
       }, noteName);
       if (noteCoords) console.log(`[${ts}] Note coords for "${noteName}": x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)} (textbox at y=${Math.round(noteCoords.debug.elY)} h=${Math.round(noteCoords.debug.elH)})`);
 
+      // Apply checkbox updates FIRST — before any note-open click.
+      // The note-open click triggers Keep's overlay/dimmed state which intercepts
+      // subsequent clicks. Card view is clean at this point and checkboxes are accessible.
+      if (noteCoords && pendingUpdates.length) {
+        const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
+        if (appliedIds.length) {
+          console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+          await clearPendingKeepUpdates(appliedIds);
+          await page.waitForTimeout(600); // let Keep register the clicks
+        }
+        const skipped = pendingUpdates.length - appliedIds.length;
+        if (skipped > 0) {
+          console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
+          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+          await clearPendingKeepUpdates(notApplied);
+        }
+      }
+
+      // Now click the note to open it for scraping full content
       if (noteCoords) {
         await page.waitForTimeout(300);
         await page.mouse.click(noteCoords.x, noteCoords.y);
@@ -405,20 +424,13 @@ async function main() {
       let clicked = !!noteCoords;
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
-      // This handles unpinned notes that aren't rendered due to virtual scrolling.
-      // Everything is done via page.evaluate() + keyboard to completely avoid
-      // Playwright's pointer-event actionability checks, which break when any
-      // overlay (e.g. Google Translate banner) intercepts pointer events.
       if (!clicked) {
         console.log(`[${ts}] "${noteName}" not on screen — searching…`);
 
         const searchFocused = await page.evaluate(() => {
-          // Remove any overlays that intercept pointer events
           document.querySelectorAll(
             '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
           ).forEach((el) => el.remove());
-
-          // Focus the search input directly — no click needed
           const input = document.querySelector('input[aria-label="Search"]');
           if (!input) return false;
           input.value = '';
@@ -428,9 +440,7 @@ async function main() {
 
         if (searchFocused) {
           usedSearch = true;
-          await page.keyboard.type(noteName, { delay: 40 }); // real keypresses to trigger Keep's search
-          // Wait until the exact note title appears in the DOM — don't just
-          // check for any textbox, which may already exist from the main grid.
+          await page.keyboard.type(noteName, { delay: 40 });
           await page.waitForFunction(
             (name) => {
               const els = document.querySelectorAll('div[role="textbox"]');
@@ -442,6 +452,22 @@ async function main() {
             noteName,
             { timeout: 8000, polling: 300 }
           ).catch(() => {});
+
+          // Apply updates to search result card before opening note
+          if (pendingUpdates.length) {
+            const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
+            if (appliedIds.length) {
+              console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+              await clearPendingKeepUpdates(appliedIds);
+              await page.waitForTimeout(600);
+            }
+            const skipped = pendingUpdates.length - appliedIds.length;
+            if (skipped > 0) {
+              console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
+              const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+              await clearPendingKeepUpdates(notApplied);
+            }
+          }
 
           noteCoords = await page.evaluate((name) => {
             const els = document.querySelectorAll('div[role="textbox"]');
@@ -466,31 +492,13 @@ async function main() {
       if (!clicked) {
         console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
         if (usedSearch) {
-          await page.keyboard.press('Escape'); // exits search mode in Keep
+          await page.keyboard.press('Escape');
           await page.waitForTimeout(400);
         }
         continue;
       }
 
       await page.waitForTimeout(400);
-
-      // Apply any pending checkbox updates
-      if (pendingUpdates.length) {
-        const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
-        if (appliedIds.length) {
-          console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
-          await clearPendingKeepUpdates(appliedIds);
-          // Brief pause so Keep can register the clicks before we scrape
-          await page.waitForTimeout(600);
-        }
-        const skipped = pendingUpdates.length - appliedIds.length;
-        if (skipped > 0) {
-          console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
-          // Still clear them so they don't pile up
-          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
-          await clearPendingKeepUpdates(notApplied);
-        }
-      }
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);
