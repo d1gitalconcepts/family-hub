@@ -7,6 +7,7 @@ import WeatherWidget from './components/WeatherWidget';
 import { getSession, getRole, saveRole, logout } from './auth';
 import { supabase } from './supabaseClient';
 import { useConfig } from './hooks/useConfig';
+import { APP_VERSION, CHANGELOG } from './version';
 import './styles/index.css';
 
 function useIsMobile() {
@@ -42,6 +43,7 @@ export default function App() {
   const [lastScrape, setLastScrape]   = useState(null);
   const manualSyncPending             = useRef(false);
   const menuRef                       = useRef(null);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   useEffect(() => {
     async function checkSession() {
@@ -231,6 +233,36 @@ export default function App() {
           {appName || 'Family Hub'}
         </h1>
         <WeatherWidget position="in-header" />
+        {/* Desktop: persistent sync chip + gear icon */}
+        {!isMobile && (
+          <div className="header-desktop-actions">
+            <button
+              className={`header-sync-chip${syncing ? ' header-sync-chip--syncing' : ''}`}
+              onClick={requestSync}
+              disabled={syncing}
+              title="Sync calendar"
+            >
+              <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
+              <span className="header-sync-label">
+                {syncing ? 'Syncing…' : lastSync
+                  ? `Synced ${lastSync.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                  : 'Sync now'}
+              </span>
+            </button>
+            {role === 'admin' && (
+              <button
+                className="btn-icon"
+                onClick={() => setShowSettings(true)}
+                title="Settings"
+                style={{ fontSize: 18 }}
+              >
+                ⚙
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Hamburger — always on mobile, print/logout on desktop */}
         <div className="header-actions" ref={menuRef}>
           <button
             className="btn-icon header-menu-trigger"
@@ -241,29 +273,34 @@ export default function App() {
           </button>
           {showMenu && (
             <div className="header-menu">
-              <button
-                className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
-                onClick={requestSync}
-                disabled={syncing}
-              >
-                <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
-                <span>
-                  <span className="header-menu-item-label">{syncing ? 'Syncing…' : 'Sync now'}</span>
-                  {lastSync && !syncing && (
-                    <span className="header-menu-item-sub">
-                      Last synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {/* Mobile-only: sync + settings in menu */}
+              {isMobile && (
+                <>
+                  <button
+                    className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
+                    onClick={requestSync}
+                    disabled={syncing}
+                  >
+                    <span className={`sync-icon${syncing ? ' syncing' : ''}`}>↻</span>
+                    <span>
+                      <span className="header-menu-item-label">{syncing ? 'Syncing…' : 'Sync now'}</span>
+                      {lastSync && !syncing && (
+                        <span className="header-menu-item-sub">
+                          Last synced {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </span>
+                  </button>
+                  {role === 'admin' && (
+                    <button
+                      className="header-menu-item"
+                      onClick={() => { setShowSettings(true); setShowMenu(false); }}
+                    >
+                      <span>⚙</span>
+                      <span className="header-menu-item-label">Settings</span>
+                    </button>
                   )}
-                </span>
-              </button>
-              {role === 'admin' && (
-                <button
-                  className="header-menu-item"
-                  onClick={() => { setShowSettings(true); setShowMenu(false); }}
-                >
-                  <span>⚙</span>
-                  <span className="header-menu-item-label">Settings</span>
-                </button>
+                </>
               )}
               <button className="header-menu-item" onClick={() => { setShowMenu(false); window.print(); }}>
                 <span>🖨</span>
@@ -273,6 +310,19 @@ export default function App() {
                 <span>⎋</span>
                 <span className="header-menu-item-label">Sign out</span>
               </button>
+              {/* Version number at bottom of menu */}
+              <div className="header-menu-version">
+                {role === 'admin' ? (
+                  <button
+                    className="header-menu-version-btn"
+                    onClick={() => { setShowChangelog(true); setShowMenu(false); }}
+                  >
+                    v{APP_VERSION}
+                  </button>
+                ) : (
+                  <span>v{APP_VERSION}</span>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -340,6 +390,32 @@ export default function App() {
           theme={theme}
           onThemeChange={setTheme}
         />
+      )}
+
+      {showChangelog && (
+        <div className="changelog-overlay" onClick={() => setShowChangelog(false)}>
+          <div className="changelog-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="changelog-modal-header">
+              <h2>What's new</h2>
+              <button className="btn-icon" onClick={() => setShowChangelog(false)}>✕</button>
+            </div>
+            <div className="changelog-modal-body">
+              {CHANGELOG.map((entry) => (
+                <div key={entry.version} className="changelog-version">
+                  <div className="changelog-version-heading">
+                    <span className="changelog-version-number">v{entry.version}</span>
+                    <span className="changelog-version-date">{entry.date}</span>
+                  </div>
+                  <ul>
+                    {entry.notes.map((note, i) => (
+                      <li key={i}>{note}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
