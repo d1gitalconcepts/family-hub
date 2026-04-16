@@ -96,6 +96,9 @@ export default {
           }
         }
 
+        // Decode HTML entities (og:image URLs often contain &amp; in raw HTML)
+        if (image) image = image.replace(/&amp;/g, '&');
+
         // Proxy the image through the worker to avoid hotlink protection
         const proxyImage = image
           ? `${new URL(request.url).origin}/og-img?url=${encodeURIComponent(image)}`
