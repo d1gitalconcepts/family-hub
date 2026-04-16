@@ -1589,6 +1589,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: 4,
+                        fontSize: 'inherit',
                       }}
                     >
                       <span style={{ fontSize: sample, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text)', lineHeight: 1 }}>Aa</span>
