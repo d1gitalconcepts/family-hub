@@ -13,8 +13,13 @@ async function enrichMlb(event, config) {
   if (!dateStr) throw new Error('No date for MLB event');
 
   const teamId = config.teamId;
-  const url = `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team`;
-  const json = await fetchJson(url);
+  const year = dateStr.split('-')[0];
+
+  // Fetch game + standings in parallel
+  const [json, standingsJson] = await Promise.all([
+    fetchJson(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team`),
+    fetchJson(`https://statsapi.mlb.com/api/v1/standings?leagueId=103,104&season=${year}`).catch(() => null),
+  ]);
 
   const game = json?.dates?.[0]?.games?.[0];
   if (!game) return null;
@@ -23,6 +28,32 @@ async function enrichMlb(event, config) {
   const home = game.teams?.home;
   const away = game.teams?.away;
   const isHome = String(home?.team?.id) === String(teamId);
+
+  // Build standings lookup: teamId → { rank, divisionName, gb }
+  const standingsMap = {};
+  for (const divRecord of (standingsJson?.records || [])) {
+    const divName = divRecord.division?.nameShort || divRecord.division?.name || '';
+    for (const tr of (divRecord.teamRecords || [])) {
+      standingsMap[tr.team.id] = {
+        rank: tr.divisionRank || null,
+        divisionName: divName,
+        gb: tr.gamesBack || '-',
+      };
+    }
+  }
+
+  function buildRecord(teamData) {
+    const lr = teamData?.leagueRecord;
+    const standing = standingsMap[teamData?.team?.id] || {};
+    if (!lr) return null;
+    return {
+      wins: lr.wins,
+      losses: lr.losses,
+      rank: standing.rank || null,
+      divisionName: standing.divisionName || null,
+      gb: standing.gb || lr.gb || '-',
+    };
+  }
 
   const linescore = game.linescore || {};
   const innings = (linescore.innings || []).map((inn) => ({
@@ -35,15 +66,6 @@ async function enrichMlb(event, config) {
     winner: game.decisions.winner?.fullName || null,
     loser:  game.decisions.loser?.fullName  || null,
     save:   game.decisions.save?.fullName   || null,
-  } : null;
-
-  const teamRecord = isHome ? home?.leagueRecord : away?.leagueRecord;
-  const record = teamRecord ? {
-    wins: teamRecord.wins,
-    losses: teamRecord.losses,
-    division: home?.team?.division?.name || null,
-    divisionRank: null,
-    gb: teamRecord.gb || '-',
   } : null;
 
   return {
@@ -59,7 +81,8 @@ async function enrichMlb(event, config) {
       away: { r: linescore.teams?.away?.runs ?? null, h: linescore.teams?.away?.hits ?? null, e: linescore.teams?.away?.errors ?? null },
     },
     decisions,
-    record,
+    homeRecord: buildRecord(home),
+    awayRecord: buildRecord(away),
     currentInning: linescore.currentInning || null,
     gamePk: game.gamePk,
   };

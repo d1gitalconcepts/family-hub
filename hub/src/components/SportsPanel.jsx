@@ -1,3 +1,19 @@
+function ordinal(n) {
+  if (!n) return '';
+  const num = parseInt(n, 10);
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = num % 100;
+  return num + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+function recordLine(abbrev, rec) {
+  if (!rec) return null;
+  let line = `${abbrev} ${rec.wins}-${rec.losses}`;
+  if (rec.rank && rec.divisionName) line += ` · ${ordinal(rec.rank)} ${rec.divisionName}`;
+  else if (rec.gb && rec.gb !== '-') line += ` · ${rec.gb} GB`;
+  return line;
+}
+
 const SPORT_EMOJI = {
   mlb:  '⚾',
   nfl:  '🏈',
@@ -17,9 +33,11 @@ function StatusBadge({ sport, status }) {
 // ── MLB Panel ────────────────────────────────────────────────────────────────
 
 function MlbPanel({ data }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, record, isHome } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, homeRecord, awayRecord } = data;
   const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
-  const myTeam = isHome ? homeTeam : awayTeam;
+
+  const awayLine = recordLine(awayTeam?.abbrev, awayRecord);
+  const homeLine = recordLine(homeTeam?.abbrev, homeRecord);
 
   return (
     <div>
@@ -27,11 +45,11 @@ function MlbPanel({ data }) {
         <StatusBadge sport="mlb" status={status} />
       </div>
 
-      {/* Team record above score */}
-      {record && (
+      {/* Records above score */}
+      {(awayLine || homeLine) && (
         <div className="sports-record" style={{ marginBottom: 4 }}>
-          {myTeam?.abbrev} {record.wins}-{record.losses}
-          {record.gb && record.gb !== '-' && ` · GB: ${record.gb}`}
+          {awayLine && <div>{awayLine}</div>}
+          {homeLine && <div>{homeLine}</div>}
         </div>
       )}
 
