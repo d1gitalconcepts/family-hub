@@ -300,7 +300,7 @@ export async function enrichSportsEvents(env) {
   try {
     calEvents = await sbSelect(env, 'calendar_events', {
       select: 'google_id,calendar_id,summary,start_date,start_at',
-      or: `start_date.gte.${yStr},start_at.gte.${yesterdayIso}`,
+      or: `(start_date.gte.${yStr},start_at.gte.${yesterdayIso})`,
     });
   } catch (err) {
     console.warn('[Sports] Failed to fetch calendar events:', err.message);
