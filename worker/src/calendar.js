@@ -9,18 +9,24 @@ const DAY_NAMES     = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', '
 
 let _mealSyncRunning = false;
 
-export async function syncMealCalendar(env, lines) {
+export async function syncMealCalendar(env, lines, config = {}) {
   if (_mealSyncRunning) return;
   _mealSyncRunning = true;
 
   try {
+    const prepStartDay  = config.prepStartDay  ?? 4;
+    const freezePast    = config.freezePastDays ?? true;
+    const eventPrefix   = config.eventPrefix   ?? 'Dinner: ';
+    const noteFormat    = config.noteFormat    ?? 'multiline';
+
     if (lines[lines.length - 1] === '…') {
       console.log('[Calendar] Skipping meal sync — note truncated.');
       return;
     }
 
     const calendarId = await getOrCreateMealCalendar(env);
-    const meals      = parseMeals(lines);
+    const weekDates  = getWeekDates(prepStartDay);
+    const meals      = parseMeals(lines, weekDates, noteFormat);
     if (!Object.keys(meals).length) return;
 
     const dates   = Object.values(meals).map((m) => m.date).sort();
@@ -44,8 +50,10 @@ export async function syncMealCalendar(env, lines) {
     const plannedDates = new Set(dates);
 
     // Remove events on dates no longer in the meal plan
+    const todayStr = new Date().toISOString().split('T')[0];
     for (const [d, evts] of Object.entries(byDate)) {
       if (!plannedDates.has(d)) {
+        if (freezePast && d < todayStr) continue;  // never touch past dates
         await Promise.all(evts.map((e) =>
           googleDelete(env, `${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${e.id}`)
         ));
@@ -56,7 +64,8 @@ export async function syncMealCalendar(env, lines) {
     // For each planned meal: clean up wrong/extra, create only if missing
     for (const [, { date, meal, url }] of Object.entries(meals)) {
       if (!meal) continue;
-      const expected = `Dinner: ${meal}`;
+      if (freezePast && date < todayStr) continue;  // never touch past dates
+      const expected = `${eventPrefix}${meal}`;
       const dayEvts  = byDate[date] || [];
       const correct  = dayEvts.filter((e) => e.summary === expected);
       const wrong    = dayEvts.filter((e) => e.summary !== expected);
@@ -112,38 +121,61 @@ async function getOrCreateMealCalendar(env) {
   return created.id;
 }
 
-function parseMeals(lines) {
-  const weekDates  = getWeekDates();
+function parseMeals(lines, weekDates, noteFormat) {
   const meals      = {};
   let   currentDay = null;
 
-  for (const line of lines) {
-    const trimmed  = line.trim();
-    const dayMatch = DAY_NAMES.find((d) => trimmed.startsWith(d + ':'));
+  if (noteFormat === 'inline') {
+    for (const line of lines) {
+      const trimmed  = line.trim();
+      const dayMatch = DAY_NAMES.find((d) => trimmed.toLowerCase().startsWith(d.toLowerCase() + ':'));
+      if (dayMatch && weekDates[dayMatch]) {
+        const mealText = trimmed.slice(dayMatch.length + 1).trim();
+        if (mealText && !mealText.startsWith('http')) {
+          meals[dayMatch] = { date: weekDates[dayMatch], meal: mealText };
+        }
+      }
+    }
+  } else {
+    // multiline (default)
+    for (const line of lines) {
+      const trimmed  = line.trim();
+      const dayMatch = DAY_NAMES.find((d) => trimmed.startsWith(d + ':'));
 
-    if (dayMatch && weekDates[dayMatch]) {
-      currentDay         = dayMatch;
-      meals[currentDay]  = { date: weekDates[dayMatch], meal: null };
-      continue;
-    }
-    if (currentDay && trimmed.startsWith('- ')) {
-      const mealText = trimmed.slice(2).trim();
-      if (mealText && !mealText.startsWith('http')) meals[currentDay].meal = mealText;
-      continue;
-    }
-    if (currentDay && meals[currentDay]?.meal && trimmed.startsWith('http')) {
-      meals[currentDay].url = trimmed;
+      if (dayMatch && weekDates[dayMatch]) {
+        currentDay        = dayMatch;
+        meals[currentDay] = { date: weekDates[dayMatch], meal: null };
+        continue;
+      }
+      if (currentDay && trimmed.startsWith('- ')) {
+        const mealText = trimmed.slice(2).trim();
+        if (mealText && !mealText.startsWith('http')) meals[currentDay].meal = mealText;
+        continue;
+      }
+      if (currentDay && meals[currentDay]?.meal && trimmed.startsWith('http')) {
+        meals[currentDay].url = trimmed;
+      }
     }
   }
   return meals;
 }
 
-function getWeekDates() {
-  const today     = new Date();
-  const dow       = today.getDay();
-  const daysToSat = dow === 6 ? 0 : dow + 1;
-  const saturday  = new Date(today);
-  saturday.setDate(today.getDate() - daysToSat);
+function getWeekDates(prepStartDay) {
+  // prepStartDay: JS dow (0=Sun…6=Sat) when anchor shifts to next week. null = never.
+  const today = new Date();
+  const dow   = today.getDay();
+
+  // Determine if today is in the "prep next week" zone
+  // Week display order: Sat(6) Sun(0) Mon(1) Tue(2) Wed(3) Thu(4) Fri(5)
+  const weekOrder   = [6, 0, 1, 2, 3, 4, 5];
+  const todayPos    = weekOrder.indexOf(dow);
+  const cutoverPos  = prepStartDay !== null && prepStartDay !== undefined
+    ? weekOrder.indexOf(prepStartDay) : -1;
+  const nextWeek    = cutoverPos >= 0 && todayPos >= cutoverPos;
+
+  const daysToSat   = dow === 6 ? 0 : dow + 1;
+  const saturday    = new Date(today);
+  saturday.setDate(today.getDate() - daysToSat + (nextWeek ? 7 : 0));
   saturday.setHours(0, 0, 0, 0);
 
   const order  = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];

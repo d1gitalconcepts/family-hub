@@ -31,14 +31,17 @@ export default {
 async function runFullSync(env) {
   console.log('[Worker] Starting full sync...');
   try {
-    // Shopping list is now read directly from Keep (notes table).
-    // Google Tasks is no longer involved in the shopping list flow.
-    const notes   = await sbSelect(env, 'notes', { key: 'in.(meal-planning)', select: 'key,data' });
-    const mealNote = notes.find((n) => n.key === 'meal-planning');
+    // Read meal plan config
+    const mpConfigRes = await sbSelect(env, 'config', { key: 'eq.meal_plan', select: 'value' });
+    const mealPlanConfig = mpConfigRes?.[0]?.value || {};
+    const mealNoteKey = mealPlanConfig.noteKey || 'meal-planning';
+
+    const notes    = await sbSelect(env, 'notes', { key: `in.(${mealNoteKey})`, select: 'key,data' });
+    const mealNote = notes.find((n) => n.key === mealNoteKey);
 
     // 1. Sync meal planning note → Google Calendar
     if (mealNote?.data?.lines?.length) {
-      await syncMealCalendar(env, mealNote.data.lines);
+      await syncMealCalendar(env, mealNote.data.lines, mealPlanConfig);
     }
 
     // 2. Poll all calendars → Supabase

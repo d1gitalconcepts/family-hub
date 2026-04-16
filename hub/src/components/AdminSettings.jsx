@@ -19,6 +19,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
+  const [mealPlanCfg,      setMealPlanCfg]      = useConfig('meal_plan');
   const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
   const [weatherSource,    setWeatherSource]    = useConfig('weather_source');
   const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
@@ -377,6 +378,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { id: 'eventcards',   label: 'Event Cards' },
     { id: 'eventfilters', label: 'Filters'     },
     { id: 'keepnotes',    label: 'Keep Notes'  },
+    { id: 'mealplan',     label: 'Meal Plan'   },
     { id: 'weather',      label: 'Weather'     },
     { id: 'display',      label: 'Display'     },
   ];
@@ -1108,6 +1110,209 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               </div>
             );
           })()}
+
+          {/* ── Meal Plan tab ─────────────────────────────────── */}
+          {activeTab === 'mealplan' && (() => {
+  const mp  = mealPlanCfg || {};
+  function setMp(patch) { setMealPlanCfg({ ...mp, ...patch }); }
+
+  const noteKey       = mp.noteKey       ?? 'meal-planning';
+  const prepStartDay  = mp.prepStartDay  ?? 4;   // null = off
+  const freezePast    = mp.freezePastDays ?? true;
+  const eventPrefix   = mp.eventPrefix   ?? 'Dinner: ';
+  const noteFormat    = mp.noteFormat    ?? 'multiline';
+
+  // Week display order: Sat Sun Mon Tue Wed Thu Fri
+  // Each entry: [label, JS dow]
+  const WEEK = [
+    ['Sat', 6], ['Sun', 0], ['Mon', 1], ['Tue', 2],
+    ['Wed', 3], ['Thu', 4], ['Fri', 5],
+  ];
+
+  // Source note options from keepNotesCfg
+  const keepNotes = keepNotesCfg && keepNotesCfg.length > 0 ? keepNotesCfg : [];
+
+  // Format example text
+  const sampleMeal = eventPrefix ? `${eventPrefix}Pizza Margherita` : 'Pizza Margherita';
+  const multilineExample = `Saturday:\n- Pizza Margherita\n\nSunday:\n- Roast Chicken\nhttps://recipe.example.com\n\nMonday:\n- Tacos`;
+  const inlineExample    = `Saturday: Pizza Margherita\nSunday: Roast Chicken\nMonday: Tacos`;
+
+  return (
+    <div className="settings-section">
+
+      {/* ── Source note ── */}
+      <h3 style={{ marginBottom: 6 }}>Meal Plan Note</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        Which Google Keep note contains your meal plan? Must already be configured in the Keep Notes tab.
+      </p>
+      {keepNotes.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          No Keep notes configured yet — add one in the Keep Notes tab first.
+        </p>
+      ) : (
+        <select
+          value={noteKey}
+          onChange={(e) => setMp({ noteKey: e.target.value })}
+          style={{
+            width: '100%', padding: '8px 10px', borderRadius: 6,
+            border: '1px solid var(--border)', background: 'var(--surface)',
+            color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)',
+            marginBottom: 24,
+          }}
+        >
+          {keepNotes.map((n) => (
+            <option key={n.key} value={n.key}>{n.label || n.title} ({n.key})</option>
+          ))}
+        </select>
+      )}
+
+      {/* ── Week anchoring ── */}
+      <h3 style={{ marginBottom: 6 }}>Week Anchoring</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+        On which day does editing the note mean you're planning <strong>next</strong> week?
+        Days to the left update the current week. Days to the right prep next week.
+        Set to <strong>Off</strong> to always update the current week.
+      </p>
+
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 4, marginBottom: 8 }}>
+        {WEEK.map(([label, dow], i) => {
+          const isNextWeek  = prepStartDay !== null && dow === prepStartDay;
+          const isInNext    = prepStartDay !== null && (() => {
+            // Is this day in the "next week" zone?
+            const weekOrder = [6,0,1,2,3,4,5]; // Sat→Fri
+            return weekOrder.indexOf(dow) >= weekOrder.indexOf(prepStartDay);
+          })();
+          const active = isInNext;
+
+          return (
+            <button
+              key={dow}
+              onClick={() => setMp({ prepStartDay: dow === prepStartDay ? null : dow })}
+              title={active ? `${label}: preps next week` : `${label}: updates this week`}
+              style={{
+                flex: 1, padding: '10px 0', borderRadius: 6, fontSize: 12,
+                fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
+                border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active
+                  ? 'color-mix(in srgb, var(--accent) 14%, var(--surface))'
+                  : 'var(--surface)',
+                color: active ? 'var(--accent)' : 'var(--text-muted)',
+                position: 'relative',
+              }}
+            >
+              {label}
+              {isNextWeek && (
+                <span style={{
+                  position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+                  fontSize: 9, background: 'var(--accent)', color: '#fff',
+                  borderRadius: 4, padding: '1px 4px', whiteSpace: 'nowrap',
+                }}>cutover</span>
+              )}
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setMp({ prepStartDay: null })}
+          title="Never prep ahead — always update current week"
+          style={{
+            padding: '10px 10px', borderRadius: 6, fontSize: 11,
+            cursor: 'pointer', fontFamily: 'var(--font)',
+            border: `2px solid ${prepStartDay === null ? 'var(--accent)' : 'var(--border)'}`,
+            background: prepStartDay === null
+              ? 'color-mix(in srgb, var(--accent) 14%, var(--surface))'
+              : 'var(--surface)',
+            color: prepStartDay === null ? 'var(--accent)' : 'var(--text-muted)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Off
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 24 }}>
+        <span>← Updates this week</span>
+        {prepStartDay !== null && <span>Preps next week →</span>}
+        {prepStartDay === null && <span style={{ color: 'var(--accent)' }}>Always current week</span>}
+      </div>
+
+      {/* ── Freeze past days ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border)', marginBottom: 24 }}>
+        <input
+          type="checkbox"
+          checked={freezePast}
+          onChange={(e) => setMp({ freezePastDays: e.target.checked })}
+          style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+        />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Freeze past days</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Never create, update, or delete calendar events for dates that have already passed. Today is always editable.
+          </div>
+        </div>
+      </div>
+
+      {/* ── Event prefix ── */}
+      <h3 style={{ marginBottom: 6 }}>Calendar Event Prefix</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+        Text prepended to the meal name in Google Calendar. Leave blank for just the meal name.
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <input
+          className="cal-name-input"
+          value={eventPrefix}
+          onChange={(e) => setMp({ eventPrefix: e.target.value })}
+          placeholder="Dinner: "
+          style={{ flex: 1 }}
+        />
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+          → shows as "{sampleMeal}"
+        </span>
+      </div>
+      <div style={{ marginBottom: 24 }} />
+
+      {/* ── Note format ── */}
+      <h3 style={{ marginBottom: 6 }}>Note Format</h3>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+        How your meal plan note is structured in Google Keep.
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        {[['multiline', 'Multi-line'], ['inline', 'Inline']].map(([val, lbl]) => {
+          const active = noteFormat === val;
+          return (
+            <button
+              key={val}
+              onClick={() => setMp({ noteFormat: val })}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 13,
+                cursor: 'pointer', fontFamily: 'var(--font)',
+                border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                color: active ? 'var(--accent)' : 'var(--text)',
+                fontWeight: active ? 600 : 400,
+              }}
+            >
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
+      <pre style={{
+        background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+        borderRadius: 6, padding: '10px 14px', fontSize: 12,
+        fontFamily: 'monospace', color: 'var(--text)', whiteSpace: 'pre',
+        overflowX: 'auto', lineHeight: 1.6,
+      }}>
+        {noteFormat === 'multiline' ? multilineExample : inlineExample}
+      </pre>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+        {noteFormat === 'multiline'
+          ? 'Day name on its own line followed by "- Meal". Optionally add a recipe URL on the next line.'
+          : 'Day name and meal on the same line, separated by a colon.'}
+      </p>
+
+    </div>
+  );
+})()}
 
           {/* ── Weather tab ───────────────────────────────────── */}
           {activeTab === 'weather' && (() => {
