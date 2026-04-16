@@ -1569,10 +1569,10 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               <h3 style={{ marginBottom: 10 }}>Text Size</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24 }}>
                 {[
-                  { id: 'compact', label: 'Compact', sample: '11px' },
-                  { id: 'default', label: 'Default', sample: '13px' },
-                  { id: 'large',   label: 'Large',   sample: '14px' },
-                  { id: 'xl',      label: 'XL',      sample: '15px' },
+                  { id: 'compact', label: 'Compact', sample: '12px' },
+                  { id: 'default', label: 'Default', sample: '14px' },
+                  { id: 'large',   label: 'Large',   sample: '17px' },
+                  { id: 'xl',      label: 'XL',      sample: '20px' },
                 ].map(({ id, label, sample }) => {
                   const active = (fontSizeCfg || 'default') === id;
                   return (
