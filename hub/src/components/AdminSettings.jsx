@@ -312,7 +312,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           // Virtual entries (e.g. Weather Forecast) — read-only, no color/name editing
           <>
             <span className="cal-dot" style={{ background: cal.color }} />
-            <span style={{ fontSize: 13, flex: 1 }}>{cal.name}</span>
+            <span style={{ fontSize: 'var(--s-base)', flex: 1 }}>{cal.name}</span>
           </>
         ) : (
           <>
@@ -335,7 +335,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               onChange={(e) => updateCalendar(cal.id, 'emoji', e.target.value.slice(0, 2) || null)}
               placeholder="✦"
               title="Calendar emoji (optional)"
-              style={{ width: 32, textAlign: 'center', fontSize: 15, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
+              style={{ width: 32, textAlign: 'center', fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
             />
             <input
               className="cal-name-input"
@@ -390,7 +390,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         <div className="settings-panel-header">
           Settings
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn btn-primary" style={{ fontSize: 13, padding: '5px 14px' }} onClick={onClose}>
+            <button className="btn btn-primary" style={{ fontSize: 'var(--s-base)', padding: '5px 14px' }} onClick={onClose}>
               Save &amp; Close
             </button>
             <button className="btn-icon" onClick={onClose}>✕</button>
@@ -417,13 +417,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               <div className="settings-section">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <h3 style={{ margin: 0 }}>Sections</h3>
-                  <button className="btn" style={{ fontSize: 12, padding: '3px 10px' }} onClick={addSection}>
+                  <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '3px 10px' }} onClick={addSection}>
                     + Add Section
                   </button>
                 </div>
 
                 {sectionList.length === 0 && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)' }}>
                     No sections yet. Add one and drag calendars into it.
                   </p>
                 )}
@@ -453,7 +453,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         />
                         <button
                           className="btn-icon"
-                          style={{ fontSize: 12, color: 'var(--danger)' }}
+                          style={{ fontSize: 'var(--s-sm)', color: 'var(--danger)' }}
                           onClick={() => deleteSection(section.id)}
                           title="Delete section"
                         >✕</button>
@@ -505,7 +505,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             <div className="settings-section">
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                 <h3 style={{ flex: 1, margin: 0 }}>Event Icons</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={eventIconsCfg?.enabled ?? true}
@@ -514,7 +514,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   Enable
                 </label>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>
                 Keyword → emoji rules applied to event titles. First match wins. Separate multiple keywords with commas.
               </p>
               {(eventIconsCfg?.enabled ?? true) && (() => {
@@ -557,13 +557,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           value={rule.keyword}
                           onChange={(e) => updateRule(i, 'keyword', e.target.value)}
                           placeholder="keyword, alias, ..."
-                          style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                          style={{ flex: 1, fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
                         />
-                        <button className="btn-icon" style={{ fontSize: 13 }} onClick={() => removeRule(i)}>✕</button>
+                        <button className="btn-icon" style={{ fontSize: 'var(--s-base)' }} onClick={() => removeRule(i)}>✕</button>
                       </div>
                       );
                     })}
-                    <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
+                    <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '4px 10px', marginTop: 4 }} onClick={addRule}>
                       + Add rule
                     </button>
                   </>
@@ -601,10 +601,10 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const previewMeta  = 'rgba(29,91,183,0.72)';
 
   function previewTextEl(el) {
-    if (el.key === 'time')    return <span key="time"    style={{ fontSize: 11, color: previewMeta }}>3:00 PM</span>;
-    if (el.key === 'title')   return <span key="title"   style={{ fontSize: 13, fontWeight: 600, color: previewTitle }}>Team Meeting</span>;
-    if (el.key === 'calName') return <span key="calName" style={{ fontSize: 11, color: previewMeta }}>Work</span>;
-    if (el.key === 'desc')    return <span key="desc"    style={{ fontSize: 11, color: previewMeta, fontStyle: 'italic' }}>Q3 planning session…</span>;
+    if (el.key === 'time')    return <span key="time"    style={{ fontSize: 'var(--s-xs)', color: previewMeta }}>3:00 PM</span>;
+    if (el.key === 'title')   return <span key="title"   style={{ fontSize: 'var(--s-base)', fontWeight: 600, color: previewTitle }}>Team Meeting</span>;
+    if (el.key === 'calName') return <span key="calName" style={{ fontSize: 'var(--s-xs)', color: previewMeta }}>Work</span>;
+    if (el.key === 'desc')    return <span key="desc"    style={{ fontSize: 'var(--s-xs)', color: previewMeta, fontStyle: 'italic' }}>Q3 planning session…</span>;
     return null;
   }
 
@@ -732,7 +732,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               key={val}
               onClick={() => setCs({ chipStyle: val === 'chip' })}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 13, cursor: 'pointer',
+                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 'var(--s-base)', cursor: 'pointer',
                 fontFamily: 'var(--font)',
                 border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                 background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
@@ -748,7 +748,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Card elements ── */}
       <h3 style={{ marginBottom: 4 }}>Card Elements</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
         Drag to reorder · toggle checkbox to show or hide
       </p>
       {cardElements.map((el, i) => {
@@ -775,7 +775,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               onChange={() => toggleElem(i)}
               style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
             />
-            <span style={{ fontSize: 13, flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--s-base)', flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
               {el.label}
             </span>
           </div>
@@ -793,8 +793,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           onChange={(e) => setCs({ emojiAsBadge: e.target.checked })}
           style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
         />
-        <span style={{ flex: 1, fontSize: 13 }}>Show emoji as circle badge</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>from icon rules</span>
+        <span style={{ flex: 1, fontSize: 'var(--s-base)' }}>Show emoji as circle badge</span>
+        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>from icon rules</span>
       </div>
 
       {/* ── Alignment 3×3 grid ── */}
@@ -835,8 +835,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           padding: '10px 14px', borderBottom: '1px solid var(--border)',
           background: `color-mix(in srgb, ${SAMPLE_COLOR} 8%, var(--surface))`,
         }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>{SAMPLE_EMOJI} Team Meeting</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>✕</span>
+          <span style={{ fontWeight: 600, fontSize: 'var(--s-base)' }}>{SAMPLE_EMOJI} Team Meeting</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)' }}>✕</span>
         </div>
         <div style={{ padding: '4px 0' }}>
           {popoutElements.filter(e => e.visible !== false).map((el) => {
@@ -845,7 +845,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             return (
               <div key={el.key} style={{
                 display: 'flex', gap: 12, padding: '6px 14px',
-                fontSize: 12, borderBottom: '1px solid var(--border)',
+                fontSize: 'var(--s-sm)', borderBottom: '1px solid var(--border)',
               }}>
                 <span style={{ color: 'var(--text-muted)', minWidth: 60 }}>{s.label}</span>
                 <span style={{ color: s.color || 'var(--text)' }}>{s.value}</span>
@@ -857,7 +857,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Popout elements ── */}
       <h3 style={{ marginBottom: 4 }}>Popout Elements</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
         Drag to reorder · toggle to show or hide.
       </p>
       {popoutElements.map((el, i) => {
@@ -884,7 +884,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               onChange={() => togglePopoutElem(i)}
               style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
             />
-            <span style={{ fontSize: 13, flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--s-base)', flex: 1, color: el.visible !== false ? 'var(--text)' : 'var(--text-muted)' }}>
               {el.label}
             </span>
           </div>
@@ -931,13 +931,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             return (
               <div className="settings-section">
                 <h3 style={{ marginBottom: 6 }}>Hidden Event Rules</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
                   Events whose title matches any active rule are hidden from the calendar.
                   Separate multiple keywords with commas — any match will hide the event.
                 </p>
 
                 {rules.length === 0 && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 13, padding: '8px 0' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)', padding: '8px 0' }}>
                     No filters yet. Add one below.
                   </p>
                 )}
@@ -968,14 +968,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         value={rule.keyword}
                         onChange={(e) => updateRule(i, 'keyword', e.target.value)}
                         placeholder="vitamin, reminder, daily check-in…"
-                        style={{ flex: 1, fontSize: 13, border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                        style={{ flex: 1, fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
                       />
-                      <button className="btn-icon" style={{ fontSize: 13, color: 'var(--danger)' }} onClick={() => removeRule(i)}>✕</button>
+                      <button className="btn-icon" style={{ fontSize: 'var(--s-base)', color: 'var(--danger)' }} onClick={() => removeRule(i)}>✕</button>
                     </div>
                   );
                 })}
 
-                <button className="btn" style={{ fontSize: 12, padding: '4px 10px', marginTop: 8 }} onClick={addRule}>
+                <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '4px 10px', marginTop: 8 }} onClick={addRule}>
                   + Add filter rule
                 </button>
               </div>
@@ -1006,7 +1006,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             return (
               <div className="settings-section">
                 <h3 style={{ marginBottom: 6 }}>Google Keep Notes</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
                   Configure which Google Keep notes the scraper reads and the sidebar displays.
                   The <strong>Note Title</strong> must match the exact title in Google Keep.
                   After adding a new note, the scraper will pick it up automatically on the next run.
@@ -1024,7 +1024,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       />
                       <div style={{ flex: 1, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 160px' }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Note Title (exact match in Keep)</span>
+                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Note Title (exact match in Keep)</span>
                           <input
                             className="cal-name-input"
                             value={note.title}
@@ -1046,7 +1046,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 140px' }}>
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sidebar Label</span>
+                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Sidebar Label</span>
                           <input
                             className="cal-name-input"
                             value={note.label || note.title}
@@ -1057,12 +1057,12 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       </div>
                       <button
                         className="btn-icon"
-                        style={{ fontSize: 13, color: 'var(--danger)', flexShrink: 0 }}
+                        style={{ fontSize: 'var(--s-base)', color: 'var(--danger)', flexShrink: 0 }}
                         onClick={() => removeNote(i)}
                         title="Remove note"
                       >✕</button>
                     </div>
-                    <div style={{ paddingLeft: 24, fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    <div style={{ paddingLeft: 24, fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                       key: {note.key || <em style={{ fontFamily: 'var(--font)' }}>auto-generated from title</em>}
                     </div>
                   </div>
@@ -1070,23 +1070,23 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
                 <button
                   className="btn"
-                  style={{ fontSize: 12, padding: '4px 10px', marginTop: 12 }}
+                  style={{ fontSize: 'var(--s-sm)', padding: '4px 10px', marginTop: 12 }}
                   onClick={addNote}
                 >
                   + Add Keep note
                 </button>
 
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 16 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginTop: 16 }}>
                   <strong>Using meal planning?</strong> Add your meal plan note here first, then go to the <em>Meal Plan</em> tab and select it as the source. The note doesn't need to be sidebar-visible unless you want it there.
                 </p>
 
                 {/* Task Lists sub-section */}
                 <h3 style={{ marginTop: 24, marginBottom: 6 }}>Google Task Lists</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)', marginBottom: 12 }}>
                   Choose which Google Task lists are visible. Synced every 5 minutes.
                 </p>
                 {listRows.length === 0 && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)' }}>
                     No task lists found. Wait for the next sync.
                   </p>
                 )}
@@ -1102,7 +1102,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       value={row.name}
                       onChange={(e) => updateListRow(row.list_id, 'name', e.target.value)}
                     />
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', flexShrink: 0 }}>
                       {row.itemCount} item{row.itemCount !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -1142,11 +1142,11 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Source note ── */}
       <h3 style={{ marginBottom: 6 }}>Meal Plan Note</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
         Select which Google Keep note contains your meal plan. If it doesn't appear here, add it in the <strong>Keep Notes</strong> tab first.
       </p>
       {keepNotes.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--danger)' }}>
+        <p style={{ fontSize: 'var(--s-base)', color: 'var(--danger)' }}>
           No Keep notes configured yet — go to the <strong>Keep Notes</strong> tab and add your meal plan note, then come back here.
         </p>
       ) : (
@@ -1156,7 +1156,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           style={{
             width: '100%', padding: '8px 10px', borderRadius: 6,
             border: '1px solid var(--border)', background: 'var(--surface)',
-            color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)',
+            color: 'var(--text)', fontSize: 'var(--s-base)', fontFamily: 'var(--font)',
             marginBottom: 24,
           }}
         >
@@ -1168,7 +1168,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Week anchoring ── */}
       <h3 style={{ marginBottom: 6 }}>Week Anchoring</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 14 }}>
         On which day does editing the note mean you're planning <strong>next</strong> week?
         Days to the left update the current week. Days to the right prep next week.
         Set to <strong>Off</strong> to always update the current week.
@@ -1190,7 +1190,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               onClick={() => setMp({ prepStartDay: dow === prepStartDay ? null : dow })}
               title={active ? `${label}: preps next week` : `${label}: updates this week`}
               style={{
-                flex: 1, padding: '10px 0', borderRadius: 6, fontSize: 12,
+                flex: 1, padding: '10px 0', borderRadius: 6, fontSize: 'var(--s-sm)',
                 fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)',
                 border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                 background: active
@@ -1215,7 +1215,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           onClick={() => setMp({ prepStartDay: null })}
           title="Never prep ahead — always update current week"
           style={{
-            padding: '10px 10px', borderRadius: 6, fontSize: 11,
+            padding: '10px 10px', borderRadius: 6, fontSize: 'var(--s-xs)',
             cursor: 'pointer', fontFamily: 'var(--font)',
             border: `2px solid ${prepStartDay === null ? 'var(--accent)' : 'var(--border)'}`,
             background: prepStartDay === null
@@ -1229,7 +1229,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         </button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 24 }}>
         <span>← Updates this week</span>
         {prepStartDay !== null && <span>Preps next week →</span>}
         {prepStartDay === null && <span style={{ color: 'var(--accent)' }}>Always current week</span>}
@@ -1244,8 +1244,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
         />
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Freeze past days</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 'var(--s-base)', fontWeight: 500 }}>Freeze past days</div>
+          <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
             Never create, update, or delete calendar events for dates that have already passed. Today is always editable.
           </div>
         </div>
@@ -1253,7 +1253,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Event prefix ── */}
       <h3 style={{ marginBottom: 6 }}>Calendar Event Prefix</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 8 }}>
         Text prepended to the meal name in Google Calendar. Leave blank for just the meal name.
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -1264,7 +1264,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           placeholder="Dinner: "
           style={{ flex: 1 }}
         />
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
+        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', flexShrink: 0 }}>
           → shows as "{sampleMeal}"
         </span>
       </div>
@@ -1272,7 +1272,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
       {/* ── Note format ── */}
       <h3 style={{ marginBottom: 6 }}>Note Format</h3>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+      <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
         How your meal plan note is structured in Google Keep.
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -1283,7 +1283,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               key={val}
               onClick={() => setMp({ noteFormat: val })}
               style={{
-                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 13,
+                flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 'var(--s-base)',
                 cursor: 'pointer', fontFamily: 'var(--font)',
                 border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
                 background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
@@ -1296,14 +1296,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           );
         })}
       </div>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+      <p style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 8 }}>
         {noteFormat === 'multiline'
           ? 'Day name on its own line, meal on the next line starting with "- ". Optionally add a recipe URL on its own line after the meal — it will appear as a link in the calendar event.'
           : 'Day name and meal on the same line, separated by a colon. Recipe URLs are not supported in inline format.'}
       </p>
       <pre style={{
         background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-        borderRadius: 6, padding: '10px 14px', fontSize: 12,
+        borderRadius: 6, padding: '10px 14px', fontSize: 'var(--s-sm)',
         fontFamily: 'monospace', color: 'var(--text)', whiteSpace: 'pre',
         overflowX: 'auto', lineHeight: 1.6,
       }}>
@@ -1320,7 +1320,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             const SectionDivider = ({ label }) => (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0 16px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{label}</span>
+                <span style={{ fontSize: 'var(--s-xs)', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{label}</span>
                 <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
               </div>
             );
@@ -1336,8 +1336,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       color: active ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font)',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                     }}>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{label}</span>
-                      {desc && <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>}
+                      <span style={{ fontWeight: 600, fontSize: 'var(--s-base)' }}>{label}</span>
+                      {desc && <span style={{ fontSize: 'var(--s-xs)', color: active ? 'var(--accent)' : 'var(--text-muted)', opacity: 0.85 }}>{desc}</span>}
                     </button>
                   );
                 })}
@@ -1361,7 +1361,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 {/* ════ DATA SOURCE ════ */}
                 <SectionDivider label="Data Source" />
 
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 12 }}>
                   Choose where current conditions come from. The 7-day forecast always uses Open-Meteo.
                 </p>
                 <OptionPicker
@@ -1377,23 +1377,23 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 {src === 'ambient' && (
                   <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginTop: 4 }}>
                     <h3 style={{ margin: '0 0 6px' }}>API Keys</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 12 }}>
                       From <strong>ambientweather.net → Account → API Keys</strong>. Location is read automatically from your station.
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <label style={{ fontSize: 13 }}>
+                      <label style={{ fontSize: 'var(--s-base)' }}>
                         API Key
                         <input className="cal-name-input" type="password" value={awApiKey}
                           onChange={(e) => setAwApiKey(e.target.value)} placeholder="Your API key"
                           autoComplete="off"
-                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }} />
+                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 'var(--s-sm)' }} />
                       </label>
-                      <label style={{ fontSize: 13 }}>
+                      <label style={{ fontSize: 'var(--s-base)' }}>
                         Application Key
                         <input className="cal-name-input" type="password" value={awAppKey}
                           onChange={(e) => setAwAppKey(e.target.value)} placeholder="Your application key"
                           autoComplete="off"
-                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 12 }} />
+                          style={{ display: 'block', width: '100%', marginTop: 4, fontFamily: 'monospace', fontSize: 'var(--s-sm)' }} />
                       </label>
                       <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={saveWeatherKeys}>
                         {keysSaved ? '✓ Saved' : 'Save Keys'}
@@ -1406,36 +1406,36 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 {src === 'openmeteo' && (
                   <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', marginTop: 4 }}>
                     <h3 style={{ margin: '0 0 6px' }}>Location</h3>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                    <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 12 }}>
                       Used for both current conditions and the forecast. Device location works worldwide; zip lookup is US only.
                     </p>
                     {weatherLocation?.label && (
-                      <div style={{ fontSize: 13, color: 'var(--accent)', marginBottom: 12, fontWeight: 500 }}>
+                      <div style={{ fontSize: 'var(--s-base)', color: 'var(--accent)', marginBottom: 12, fontWeight: 500 }}>
                         📍 Current: {weatherLocation.label}
                       </div>
                     )}
-                    <button className="btn" style={{ width: '100%', marginBottom: 10, fontSize: 13 }}
+                    <button className="btn" style={{ width: '100%', marginBottom: 10, fontSize: 'var(--s-base)' }}
                       onClick={useDeviceLocation} disabled={locationStatus === 'loading'}>
                       {locationStatus === 'loading' ? 'Detecting…' : '📡 Use device location'}
                     </button>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>or enter a zip code</span>
+                      <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>or enter a zip code</span>
                       <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input className="cal-name-input" type="text" value={zipInput}
                         onChange={(e) => setZipInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && lookupZip()}
-                        placeholder="e.g. 78701" maxLength={10} style={{ flex: 1, fontSize: 13 }} />
-                      <button className="btn btn-primary" style={{ fontSize: 13, padding: '5px 14px', flexShrink: 0 }}
+                        placeholder="e.g. 78701" maxLength={10} style={{ flex: 1, fontSize: 'var(--s-base)' }} />
+                      <button className="btn btn-primary" style={{ fontSize: 'var(--s-base)', padding: '5px 14px', flexShrink: 0 }}
                         onClick={lookupZip} disabled={locationStatus === 'loading' || !zipInput.trim()}>
                         Look up
                       </button>
                     </div>
                     {locationMsg && (
                       <div style={{
-                        marginTop: 8, fontSize: 12, padding: '6px 10px', borderRadius: 6,
+                        marginTop: 8, fontSize: 'var(--s-sm)', padding: '6px 10px', borderRadius: 6,
                         background: locationStatus === 'error' ? 'color-mix(in srgb, var(--danger) 12%, var(--surface))' : 'color-mix(in srgb, var(--accent) 12%, var(--surface))',
                         color: locationStatus === 'error' ? 'var(--danger)' : 'var(--accent)',
                       }}>{locationMsg}</div>
@@ -1447,13 +1447,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <SectionDivider label="Current Conditions Widget" />
 
                 <h3 style={{ marginBottom: 8 }}>Position</h3>
-                <select className="cal-name-input" style={{ fontSize: 13, padding: '5px 8px', marginBottom: 18 }}
+                <select className="cal-name-input" style={{ fontSize: 'var(--s-base)', padding: '5px 8px', marginBottom: 18 }}
                   value={weatherConfig?.position || 'below-header'}
                   onChange={(e) => setWeatherConfig({ ...weatherConfig, position: e.target.value })}>
                   <option value="below-header">Below header bar</option>
                   <option value="in-header">Inside header bar</option>
                 </select>
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 16 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 16 }}>
                   On mobile the widget always appears below the header.
                 </p>
 
@@ -1468,14 +1468,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 />
 
                 <h3 style={{ marginBottom: 6 }}>Fields</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 10 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>
                   Drag to reorder. Check to show, uncheck to hide.
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                   <input type="checkbox" id="hide-rain-zero"
                     checked={weatherConfig?.hideRainIfZero !== false}
                     onChange={(e) => setWeatherConfig({ ...weatherConfig, hideRainIfZero: e.target.checked })} />
-                  <label htmlFor="hide-rain-zero" style={{ fontSize: 13 }}>Hide Rain Today when value is zero</label>
+                  <label htmlFor="hide-rain-zero" style={{ fontSize: 'var(--s-base)' }}>Hide Rain Today when value is zero</label>
                 </div>
 
                 {weatherFields.map((key, idx) => {
@@ -1489,7 +1489,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       onDrop={(e) => onWeatherDrop(e, idx)}>
                       <span className="drag-handle">⠿</span>
                       <input type="checkbox" checked={true} onChange={() => toggleWeatherField(key)} />
-                      <span style={{ fontSize: 13 }}>{def.label}</span>
+                      <span style={{ fontSize: 'var(--s-base)' }}>{def.label}</span>
                     </div>
                   );
                 })}
@@ -1497,14 +1497,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   <div key={key} className="cal-row" style={{ gap: 6, opacity: 0.5 }}>
                     <span className="drag-handle" style={{ visibility: 'hidden' }}>⠿</span>
                     <input type="checkbox" checked={false} onChange={() => toggleWeatherField(key)} />
-                    <span style={{ fontSize: 13 }}>{label}</span>
+                    <span style={{ fontSize: 'var(--s-base)' }}>{label}</span>
                   </div>
                 ))}
 
                 {/* ════ FORECAST ════ */}
                 <SectionDivider label="Forecast" />
 
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 12 }}>
                   The 7-day forecast appears on the calendar. Tap any day's card to see the hourly detail.
                 </p>
                 <h3 style={{ marginBottom: 8 }}>Hourly Detail Layout</h3>
@@ -1533,7 +1533,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 value={appName ?? ''}
                 placeholder="Family Hub"
                 onChange={(e) => setAppName(e.target.value || null)}
-                style={{ marginBottom: 20, fontSize: 14 }}
+                style={{ marginBottom: 20, fontSize: 'var(--s-md)' }}
               />
 
               {/* Favicon */}
@@ -1559,7 +1559,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       }}
                     >
                       <img src={src} width="28" height="28" alt={label} style={{ display: 'block' }} />
-                      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                      <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
                     </button>
                   );
                 })}
@@ -1592,7 +1592,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       }}
                     >
                       <span style={{ fontSize: sample, fontWeight: 600, color: active ? 'var(--accent)' : 'var(--text)', lineHeight: 1 }}>Aa</span>
-                      <span style={{ fontSize: 11, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                      <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
                     </button>
                   );
                 })}
@@ -1601,7 +1601,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               {/* Accent Color */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                 <h3 style={{ flex: 1, margin: 0 }}>Accent Color</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={accentColorCfg?.enabled ?? false}
@@ -1618,17 +1618,17 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     value={accentColorCfg?.color || '#1a73e8'}
                     onChange={(e) => setAccentColorCfg({ ...(accentColorCfg || {}), enabled: true, color: e.target.value })}
                   />
-                  <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>
+                  <span style={{ fontSize: 'var(--s-base)', color: 'var(--text-muted)', flex: 1 }}>
                     Replaces the default blue on buttons, highlights, and today's date.
                   </span>
-                  <button className="btn" style={{ fontSize: 11, padding: '3px 8px' }}
+                  <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '3px 8px' }}
                     onClick={() => setAccentColorCfg({ ...(accentColorCfg || {}), color: '#1a73e8' })}>
                     Reset
                   </button>
                 </div>
               )}
               {!(accentColorCfg?.enabled) && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 20 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 20 }}>
                   Uses the default blue accent. Enable to override.
                 </p>
               )}
@@ -1636,7 +1636,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               {/* Header Style */}
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                 <h3 style={{ flex: 1, margin: 0 }}>Header Style</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={headerStyleCfg?.enabled ?? false}
@@ -1663,7 +1663,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           key={p.id}
                           onClick={() => setHeaderStyleCfg({ ...(headerStyleCfg || {}), preset: p.id })}
                           style={{
-                            padding: '6px 10px', fontSize: 12, borderRadius: 6, cursor: 'pointer',
+                            padding: '6px 10px', fontSize: 'var(--s-sm)', borderRadius: 6, cursor: 'pointer',
                             border: `2px solid ${active === p.id ? 'var(--accent)' : 'var(--border)'}`,
                             background: p.bg || (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
                             color: 'var(--text)', fontFamily: 'var(--font)',
@@ -1683,14 +1683,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         <input type="color" className="cal-color-input"
                           value={headerStyleCfg?.color2 || '#c2e9fb'}
                           onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || {}), color2: e.target.value })} />
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gradient colors</span>
+                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Gradient colors</span>
                       </div>
                     )}
                   </>
                 );
               })()}
               {!(headerStyleCfg?.enabled) && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 20 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 20 }}>
                   Solid header. Enable to add a gradient.
                 </p>
               )}
@@ -1711,7 +1711,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       border: `2px solid ${theme === value ? 'var(--accent)' : 'var(--border)'}`,
                       background: theme === value ? 'color-mix(in srgb, var(--accent) 10%, var(--surface))' : 'var(--surface)',
                       color: theme === value ? 'var(--accent)' : 'var(--text)',
-                      fontFamily: 'var(--font)', fontWeight: theme === value ? 600 : 400, fontSize: 13,
+                      fontFamily: 'var(--font)', fontWeight: theme === value ? 600 : 400, fontSize: 'var(--s-base)',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
                     }}
                   >
@@ -1720,7 +1720,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   </button>
                 ))}
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 10, marginBottom: 20 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginTop: 10, marginBottom: 20 }}>
                 Auto follows your device's system preference.
               </p>
 

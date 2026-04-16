@@ -1464,6 +1464,10 @@ html, body, #root {
   flex-direction: column;
   overflow: hidden;
   font-size: var(--app-font-size, 14px);
+  --s-md:   1em;
+  --s-base: 0.93em;
+  --s-sm:   0.85em;
+  --s-xs:   0.78em;
 }
 
 .settings-panel-header {
