@@ -362,11 +362,14 @@ export async function enrichSportsEvents(env) {
         `https://statsapi.mlb.com/api/v1/standings?leagueId=103,104&season=${year}`
       );
       for (const divRecord of (standingsJson?.records || [])) {
-        const divName = divRecord.division?.nameShort || divRecord.division?.name || '';
+        // Skip wildcard and league-level records — they have no division and
+        // would overwrite valid division entries with a null divisionName
+        if (!divRecord.division?.id) continue;
+        const divName = divRecord.division.nameShort || divRecord.division.name || '';
         for (const tr of (divRecord.teamRecords || [])) {
           mlbStandingsMap[tr.team.id] = {
             rank: tr.divisionRank || null,
-            divisionName: divName,
+            divisionName: divName || null,
             gb: tr.gamesBack || '-',
           };
         }
