@@ -277,21 +277,24 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
                 if (el.key === 'description' && event.description && !enrichment) {
                   const desc = event.description.trim();
                   const isLink = isUrl(desc);
+                  const hostname = isLink ? (() => { try { return new URL(desc).hostname.replace(/^www\./, ''); } catch { return desc; } })() : null;
                   return (
                     <div key="description" className="event-popout-desc-block">
-                      {isLink && previewImage && (
-                        <a href={desc} target="_blank" rel="noreferrer" className="event-popout-preview-link">
-                          <img src={previewImage} alt="" className="event-popout-preview-img" />
+                      {isLink && previewImage ? (
+                        <a href={desc} target="_blank" rel="noreferrer" className="event-popout-link-card">
+                          <img src={previewImage} alt="" className="event-popout-link-thumb" />
+                          <span className="event-popout-link-host">{hostname}</span>
                         </a>
+                      ) : (
+                        <div className="event-popout-row event-popout-desc">
+                          <span className="event-popout-label">Details</span>
+                          <span>
+                            {isLink
+                              ? <a href={desc} target="_blank" rel="noreferrer">{desc}</a>
+                              : desc}
+                          </span>
+                        </div>
                       )}
-                      <div className="event-popout-row event-popout-desc">
-                        <span className="event-popout-label">Details</span>
-                        <span>
-                          {isLink
-                            ? <a href={desc} target="_blank" rel="noreferrer">{desc}</a>
-                            : desc}
-                        </span>
-                      </div>
                     </div>
                   );
                 }
