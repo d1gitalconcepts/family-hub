@@ -44,10 +44,12 @@ function StatusBadge({ sport, status }) {
 
 // ── MLB Panel ────────────────────────────────────────────────────────────────
 
-function MlbPanel({ data }) {
+function MlbPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions,
           homeRecord, awayRecord, walkoffNote, seriesGame, seriesTotal, occasion, venue } = data;
   const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
+  const showBox  = detail === 'boxscore' || detail === 'all';
+  const showAll  = detail === 'all';
 
   return (
     <div>
@@ -60,29 +62,29 @@ function MlbPanel({ data }) {
         )}
       </div>
 
-      {occasion && (
+      {showAll && occasion && (
         <div style={{ fontSize: 'var(--s-xs)', color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
           {occasion}
         </div>
       )}
 
-      {/* Score row with inline standings */}
+      {/* Score row — records shown in boxscore+ */}
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
           <span>{awayTeam?.abbrev}</span>
-          {awayRecord && <span className="sports-score-record">{awayRecord.wins}-{awayRecord.losses}{awayRecord.rank && awayRecord.divisionName ? ` · ${ordinal(awayRecord.rank)} ${awayRecord.divisionName}` : ''}</span>}
+          {showBox && awayRecord && <span className="sports-score-record">{awayRecord.wins}-{awayRecord.losses}{awayRecord.rank && awayRecord.divisionName ? ` · ${ordinal(awayRecord.rank)} ${awayRecord.divisionName}` : ''}</span>}
         </div>
         <div className="sports-score-num">{awayScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-divider">·</div>
         <div className="sports-score-num">{homeScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-team sports-score-team--home">
           <span>{homeTeam?.abbrev}</span>
-          {homeRecord && <span className="sports-score-record">{homeRecord.wins}-{homeRecord.losses}{homeRecord.rank && homeRecord.divisionName ? ` · ${ordinal(homeRecord.rank)} ${homeRecord.divisionName}` : ''}</span>}
+          {showBox && homeRecord && <span className="sports-score-record">{homeRecord.wins}-{homeRecord.losses}{homeRecord.rank && homeRecord.divisionName ? ` · ${ordinal(homeRecord.rank)} ${homeRecord.divisionName}` : ''}</span>}
         </div>
       </div>
 
-      {/* Linescore — only show when there are innings */}
-      {!isScheduled && innings?.length > 0 && (
+      {/* Linescore — box score+ */}
+      {showBox && !isScheduled && innings?.length > 0 && (
         <div className="sports-linescore-wrap">
           <table className="sports-linescore">
             <thead>
@@ -114,8 +116,8 @@ function MlbPanel({ data }) {
         </div>
       )}
 
-      {/* Decisions */}
-      {decisions && (decisions.winner || decisions.loser) && (
+      {/* Decisions — box score+ */}
+      {showBox && decisions && (decisions.winner || decisions.loser) && (
         <div className="sports-decisions">
           {decisions.winner && <span>W: {decisions.winner}</span>}
           {decisions.loser  && <span>L: {decisions.loser}</span>}
@@ -123,13 +125,13 @@ function MlbPanel({ data }) {
         </div>
       )}
 
-      {walkoffNote && (
+      {showAll && walkoffNote && (
         <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 6 }}>
           {walkoffNote}
         </div>
       )}
 
-      {venue && (
+      {showAll && venue && (
         <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
           📍 {venue}
         </div>
@@ -141,8 +143,9 @@ function MlbPanel({ data }) {
 
 // ── NFL Panel ────────────────────────────────────────────────────────────────
 
-function NflPanel({ data }) {
+function NflPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock } = data;
+  const showBox = detail === 'boxscore' || detail === 'all';
   const quarters = homeLinescores?.length > 4
     ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
     : ['Q1','Q2','Q3','Q4'];
@@ -162,7 +165,7 @@ function NflPanel({ data }) {
         <div className="sports-score-team sports-score-team--home">{homeTeam?.name}</div>
       </div>
 
-      {homeLinescores?.length > 0 && (
+      {showBox && homeLinescores?.length > 0 && (
         <div className="sports-linescore-wrap">
           <table className="sports-linescore">
             <thead>
@@ -185,7 +188,7 @@ function NflPanel({ data }) {
         </div>
       )}
 
-      {(homeRecord || awayRecord) && (
+      {showBox && (homeRecord || awayRecord) && (
         <div className="sports-record">
           {awayRecord} · {homeRecord}
         </div>
@@ -198,9 +201,11 @@ function NflPanel({ data }) {
 
 const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
 
-function NhlPanel({ data }) {
+function NhlPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType, lastPeriodType,
           periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars } = data;
+  const showBox = detail === 'boxscore' || detail === 'all';
+  const showAll = detail === 'all';
   const isLive   = status === 'LIVE' || status === 'CRIT';
   const isFinal  = status === 'OFF'  || status === 'FINAL';
   const finishSuffix = lastPeriodType === 'OT' ? '/OT' : lastPeriodType === 'SO' ? '/SO' : '';
@@ -226,8 +231,8 @@ function NhlPanel({ data }) {
         <div className="sports-score-team sports-score-team--home">{homeTeam?.abbrev}</div>
       </div>
 
-      {/* Period linescore */}
-      {periods?.length > 0 && (
+      {/* Period linescore — box score+ */}
+      {showBox && periods?.length > 0 && (
         <div className="sports-linescore-wrap">
           <table className="sports-linescore">
             <thead>
@@ -253,8 +258,8 @@ function NhlPanel({ data }) {
         </div>
       )}
 
-      {/* Goal log */}
-      {goals?.length > 0 && (
+      {/* Goal log — box score+ */}
+      {showBox && goals?.length > 0 && (
         <div className="sports-nhl-goals">
           {goals.map((g, i) => (
             <div key={i} className="sports-nhl-goal-row">
@@ -274,16 +279,16 @@ function NhlPanel({ data }) {
         </div>
       )}
 
-      {/* Team stats: shots + power play */}
-      {(homeShots != null || homePP) && (
+      {/* Team stats — box score+ */}
+      {showBox && (homeShots != null || homePP) && (
         <div className="sports-decisions" style={{ marginTop: 8 }}>
           {homeShots != null && <span>SOG: {awayShots}–{homeShots}</span>}
           {homePP     && <span>PP: {awayPP} / {homePP}</span>}
         </div>
       )}
 
-      {/* Goalie duel */}
-      {(awayGoalie || homeGoalie) && (
+      {/* Goalie duel — full detail */}
+      {showAll && (awayGoalie || homeGoalie) && (
         <div className="sports-nhl-goalies">
           {awayGoalie && (
             <div>{awayGoalie.decision ? `${awayGoalie.decision} · ` : ''}{awayGoalie.name} {awayGoalie.saves}/{awayGoalie.shots}{awayGoalie.savePct ? ` (${awayGoalie.savePct})` : ''}</div>
@@ -294,8 +299,8 @@ function NhlPanel({ data }) {
         </div>
       )}
 
-      {/* Three Stars */}
-      {threeStars?.length > 0 && (
+      {/* Three Stars — full detail */}
+      {showAll && threeStars?.length > 0 && (
         <div className="sports-nhl-goalies" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
           {threeStars.map((s) => (
             <div key={s.star}>⭐{'⭐'.repeat(s.star === 1 ? 2 : s.star === 2 ? 1 : 0)} {s.name}{s.teamAbbrev ? ` · ${s.teamAbbrev}` : ''}</div>
@@ -308,9 +313,13 @@ function NhlPanel({ data }) {
 
 // ── Golf Panel ───────────────────────────────────────────────────────────────
 
-function GolfPanel({ data }) {
+function GolfPanel({ data, detail }) {
   const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine } = data;
   const hasRounds = leaderboard?.[0]?.rounds?.length > 1;
+  const showBox = detail === 'boxscore' || detail === 'all';
+  const showAll = detail === 'all';
+  // Score: show leader only; boxscore: full leaderboard; all: leaderboard + tracked + cut
+  const visibleLeaderboard = detail === 'score' ? leaderboard?.slice(0, 1) : leaderboard;
 
   return (
     <div>
@@ -337,7 +346,7 @@ function GolfPanel({ data }) {
           </tr>
         </thead>
         <tbody>
-          {(leaderboard || []).map((p, i) => (
+          {(visibleLeaderboard || []).map((p, i) => (
             <tr key={i}>
               <td>{p.positionText}</td>
               <td>{p.name}</td>
@@ -348,7 +357,7 @@ function GolfPanel({ data }) {
             </tr>
           ))}
 
-          {trackedGolfers?.length > 0 && (
+          {showAll && trackedGolfers?.length > 0 && (
             <>
               <tr className="sports-leaderboard-divider">
                 <td colSpan={hasRounds ? 5 + (leaderboard[0]?.rounds?.length || 0) : 5}>── Tracked ──</td>
@@ -368,7 +377,7 @@ function GolfPanel({ data }) {
         </tbody>
       </table>
 
-      {cutLine && (
+      {showAll && cutLine && (
         <div className="sports-record">Cut: {cutLine}</div>
       )}
     </div>
@@ -446,19 +455,22 @@ function F1Panel({ data }) {
 
 // ── Main SportsPanel ─────────────────────────────────────────────────────────
 
-export default function SportsPanel({ enrichment }) {
+export default function SportsPanel({ enrichment, detailLevel = 'all' }) {
   if (!enrichment) return null;
   const { sport, data } = enrichment;
   if (!data) return null;
 
+  // detailLevel: 'score' | 'boxscore' | 'all'
+  const detail = detailLevel || 'all';
+
   return (
     <div className="sports-panel">
-      {sport === 'mlb'  && <MlbPanel  data={data} />}
-      {sport === 'nfl'  && <NflPanel  data={data} />}
-      {sport === 'nhl'  && <NhlPanel  data={data} />}
-      {sport === 'golf' && <GolfPanel data={data} />}
-      {sport === 'f1'     && <F1Panel     data={data} />}
-      {sport === 'nascar' && <NascarPanel data={data} />}
+      {sport === 'mlb'    && <MlbPanel    data={data} detail={detail} />}
+      {sport === 'nfl'    && <NflPanel    data={data} detail={detail} />}
+      {sport === 'nhl'    && <NhlPanel    data={data} detail={detail} />}
+      {sport === 'golf'   && <GolfPanel   data={data} detail={detail} />}
+      {sport === 'f1'     && <F1Panel     data={data} detail={detail} />}
+      {sport === 'nascar' && <NascarPanel data={data} detail={detail} />}
     </div>
   );
 }

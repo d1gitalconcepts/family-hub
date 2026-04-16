@@ -1077,8 +1077,24 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               setSportsConfig([...entries, { calendarId: '', sport: 'mlb', teamId: '', teamName: '', keyword: null, display: {} }]);
             }
 
-            const hasGolf = entries.some((e) => e.sport === 'golf');
-            const hasF1   = entries.some((e) => e.sport === 'f1');
+            const hasGolf   = entries.some((e) => e.sport === 'golf');
+            const hasF1     = entries.some((e) => e.sport === 'f1');
+            const configuredSports = [...new Set(entries.map((e) => e.sport).filter(Boolean))];
+
+            const SPORT_DETAIL_LABEL = {
+              mlb:    '⚾ MLB',
+              nfl:    '🏈 NFL',
+              nhl:    '🏒 NHL',
+              nba:    '🏀 NBA',
+              golf:   '⛳ Golf',
+              f1:     '🏎️ F1',
+              nascar: '🏁 NASCAR',
+            };
+            const DETAIL_OPTIONS = [
+              { value: 'score',    label: 'Score only' },
+              { value: 'boxscore', label: 'Box score'  },
+              { value: 'all',      label: 'Full detail' },
+            ];
 
             const sd = sportsDisplay || {};
             function setSd(patch) { setSportsDisplay({ ...sd, ...patch }); }
@@ -1205,6 +1221,44 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   />
                   <span style={{ fontSize: 'var(--s-base)' }}>Show score chip on event cards</span>
                 </div>
+
+                {/* Per-sport detail level */}
+                {configuredSports.length > 0 && (
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ margin: '0 0 10px', fontSize: 'var(--s-sm)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detail level</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {configuredSports.map((sport) => (
+                        <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 'var(--s-base)', flex: 1 }}>{SPORT_DETAIL_LABEL[sport] || sport}</span>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {DETAIL_OPTIONS.map((opt) => {
+                              const current = (sd.detail || {})[sport] || 'all';
+                              const active = current === opt.value;
+                              return (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setSd({ detail: { ...(sd.detail || {}), [sport]: opt.value } })}
+                                  style={{
+                                    fontSize: 'var(--s-xs)',
+                                    padding: '3px 8px',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 4,
+                                    background: active ? 'var(--accent)' : 'var(--bg)',
+                                    color: active ? '#fff' : 'var(--text)',
+                                    cursor: 'pointer',
+                                    fontWeight: active ? 600 : 400,
+                                  }}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {hasGolf && (
                   <div style={{ marginTop: 16 }}>

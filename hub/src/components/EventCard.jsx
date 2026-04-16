@@ -266,7 +266,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
                 );
                 return null;
               })}
-              {enrichment && <SportsPanel enrichment={enrichment} />}
+              {enrichment && <SportsPanel enrichment={enrichment} detailLevel={(sportsDisplay?.detail || {})[enrichment.sport] || 'all'} />}
             </div>
           </div>
         </div>
