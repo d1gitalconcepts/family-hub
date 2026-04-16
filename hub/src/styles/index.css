@@ -930,7 +930,7 @@ html, body, #root {
   flex: 1;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: var(--s-base, 0.93em);
   font-weight: 600;
   color: var(--text);
   font-family: var(--font);
@@ -959,7 +959,7 @@ html, body, #root {
 
 .drop-hint {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--s-sm, 0.85em);
   font-style: italic;
   padding: 6px 0;
 }
@@ -991,7 +991,7 @@ html, body, #root {
   cursor: pointer;
   border-radius: var(--radius);
   padding: 6px 12px;
-  font-size: 13px;
+  font-size: inherit;
   font-family: var(--font);
   background: var(--bg-secondary);
   color: var(--text);
@@ -1490,7 +1490,7 @@ html, body, #root {
 
 .settings-tab {
   padding: 10px 16px;
-  font-size: 13px;
+  font-size: var(--s-base, 0.93em);
   font-family: var(--font);
   background: none;
   border: none;
@@ -1518,7 +1518,7 @@ html, body, #root {
 }
 
 .settings-section h3 {
-  font-size: 12px;
+  font-size: var(--s-sm, 0.85em);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -1544,7 +1544,7 @@ html, body, #root {
   flex: 1;
   border: none;
   background: none;
-  font-size: 13px;
+  font-size: var(--s-base, 0.93em);
   color: var(--text);
   font-family: var(--font);
   outline: none;
@@ -1566,7 +1566,7 @@ html, body, #root {
 
 .person-tag-input {
   width: 100px;
-  font-size: 12px;
+  font-size: var(--s-sm, 0.85em);
   padding: 3px 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
