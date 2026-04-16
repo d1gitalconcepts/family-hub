@@ -1769,7 +1769,7 @@ html, body, #root {
 
 .sports-score-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 10px;
   font-size: 1.1rem;
@@ -1778,10 +1778,20 @@ html, body, #root {
 
 .sports-score-team {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.sports-score-team--away { text-align: left; }
-.sports-score-team--home { text-align: right; }
+.sports-score-team--away { align-items: flex-start; text-align: left; }
+.sports-score-team--home { align-items: flex-end;   text-align: right; }
+
+.sports-score-record {
+  font-size: var(--s-xs);
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.2;
+}
 
 .sports-score-num {
   font-size: 1.4rem;

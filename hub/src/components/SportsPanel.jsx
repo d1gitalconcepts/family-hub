@@ -57,24 +57,18 @@ function MlbPanel({ data }) {
         <StatusBadge sport="mlb" status={status} />
       </div>
 
-      {/* Records above score */}
-      {(awayLine || homeLine) && (
-        <div className="sports-record" style={{ marginBottom: 4 }}>
-          {awayLine && <div>{awayLine}</div>}
-          {homeLine && <div>{homeLine}</div>}
-        </div>
-      )}
-
-      {/* Score row */}
+      {/* Score row with inline standings */}
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
-          {awayTeam?.abbrev}
+          <span>{awayTeam?.abbrev}</span>
+          {awayRecord && <span className="sports-score-record">{awayRecord.wins}-{awayRecord.losses}{awayRecord.rank && awayRecord.divisionName ? ` · ${ordinal(awayRecord.rank)} ${awayRecord.divisionName}` : ''}</span>}
         </div>
         <div className="sports-score-num">{awayScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-divider">·</div>
         <div className="sports-score-num">{homeScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-team sports-score-team--home">
-          {homeTeam?.abbrev}
+          <span>{homeTeam?.abbrev}</span>
+          {homeRecord && <span className="sports-score-record">{homeRecord.wins}-{homeRecord.losses}{homeRecord.rank && homeRecord.divisionName ? ` · ${ordinal(homeRecord.rank)} ${homeRecord.divisionName}` : ''}</span>}
         </div>
       </div>
 
