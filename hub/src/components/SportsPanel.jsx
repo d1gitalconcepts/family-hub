@@ -6,11 +6,22 @@ function ordinal(n) {
   return num + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
+function formatGb(gb) {
+  if (!gb || gb === '-') return null;
+  // MLB API returns ".5" instead of "0.5" — add leading zero
+  const s = String(gb);
+  return s.startsWith('.') ? `0${s}` : s;
+}
+
 function recordLine(abbrev, rec) {
   if (!rec) return null;
   let line = `${abbrev} ${rec.wins}-${rec.losses}`;
-  if (rec.rank && rec.divisionName) line += ` · ${ordinal(rec.rank)} ${rec.divisionName}`;
-  else if (rec.gb && rec.gb !== '-') line += ` · ${rec.gb} GB`;
+  if (rec.rank && rec.divisionName) {
+    line += ` · ${ordinal(rec.rank)} ${rec.divisionName}`;
+  } else {
+    const gb = formatGb(rec.gb);
+    if (gb) line += ` · ${gb} GB`;
+  }
   return line;
 }
 
