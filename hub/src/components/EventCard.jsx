@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import SportsPanel from './SportsPanel';
 
 const DEFAULT_ELEMENTS = [
   { key: 'time',    visible: true  },
@@ -58,7 +59,7 @@ function resolvePopoutElements(style) {
   ];
 }
 
-export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle }) {
+export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -173,6 +174,21 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         onClick={() => setOpen(true)}
       >
         {renderCardContent()}
+        {enrichment?.data?.homeScore != null && enrichment.sport !== 'golf' && enrichment.sport !== 'f1' && (
+          <div className="event-card-score-chip">
+            {enrichment.data.awayTeam?.abbrev} {enrichment.data.awayScore} · {enrichment.data.homeScore} {enrichment.data.homeTeam?.abbrev}
+          </div>
+        )}
+        {enrichment?.sport === 'golf' && enrichment.data?.leaderboard?.[0] && (
+          <div className="event-card-score-chip">
+            ⛳ {enrichment.data.leaderboard[0].name} {enrichment.data.leaderboard[0].score}
+          </div>
+        )}
+        {enrichment?.sport === 'f1' && enrichment.data?.topResults?.[0] && (
+          <div className="event-card-score-chip">
+            🏎️ {enrichment.data.topResults[0].acronym} P1
+          </div>
+        )}
       </div>
 
       {open && createPortal(
@@ -192,7 +208,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
               <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
             </div>
 
-            <div className="event-popout-body">
+            <div className="event-popout-body" style={{ '--cal-color': color }}>
               {resolvePopoutElements(style).filter(e => e.visible !== false).map((el) => {
                 if (el.key === 'calName' && event.cal_name) return (
                   <div key="calName" className="event-popout-row">
@@ -232,6 +248,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
                 );
                 return null;
               })}
+              {enrichment && <SportsPanel enrichment={enrichment} />}
             </div>
           </div>
         </div>

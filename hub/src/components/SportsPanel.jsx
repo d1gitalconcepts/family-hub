@@ -1,0 +1,303 @@
+const SPORT_EMOJI = {
+  mlb:  '⚾',
+  nfl:  '🏈',
+  nhl:  '🏒',
+  golf: '⛳',
+  f1:   '🏎️',
+};
+
+function StatusBadge({ sport, status }) {
+  return (
+    <span className="sports-status-badge">
+      {SPORT_EMOJI[sport] || '🏆'} {status}
+    </span>
+  );
+}
+
+// ── MLB Panel ────────────────────────────────────────────────────────────────
+
+function MlbPanel({ data }) {
+  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, record } = data;
+  const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="mlb" status={status} />
+      </div>
+
+      {/* Score row */}
+      <div className="sports-score-row">
+        <div className="sports-score-team sports-score-team--away">
+          {awayTeam?.abbrev}
+        </div>
+        <div className="sports-score-num">{awayScore ?? (isScheduled ? '—' : '0')}</div>
+        <div className="sports-score-divider">·</div>
+        <div className="sports-score-num">{homeScore ?? (isScheduled ? '—' : '0')}</div>
+        <div className="sports-score-team sports-score-team--home">
+          {homeTeam?.abbrev}
+        </div>
+      </div>
+
+      {/* Linescore — only show when there are innings */}
+      {!isScheduled && innings?.length > 0 && (
+        <div className="sports-linescore-wrap">
+          <table className="sports-linescore">
+            <thead>
+              <tr>
+                <th></th>
+                {innings.map((inn) => <th key={inn.num}>{inn.num}</th>)}
+                <th className="col-totals">R</th>
+                <th className="col-totals">H</th>
+                <th className="col-totals">E</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{awayTeam?.abbrev}</td>
+                {innings.map((inn) => <td key={inn.num}>{inn.away !== '' ? inn.away : 'x'}</td>)}
+                <td className="col-totals">{totals?.away?.r ?? '—'}</td>
+                <td className="col-totals">{totals?.away?.h ?? '—'}</td>
+                <td className="col-totals">{totals?.away?.e ?? '—'}</td>
+              </tr>
+              <tr>
+                <td>{homeTeam?.abbrev}</td>
+                {innings.map((inn) => <td key={inn.num}>{inn.home !== '' ? inn.home : 'x'}</td>)}
+                <td className="col-totals">{totals?.home?.r ?? '—'}</td>
+                <td className="col-totals">{totals?.home?.h ?? '—'}</td>
+                <td className="col-totals">{totals?.home?.e ?? '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Decisions */}
+      {decisions && (decisions.winner || decisions.loser) && (
+        <div className="sports-decisions">
+          {decisions.winner && <span>W: {decisions.winner}</span>}
+          {decisions.loser  && <span>L: {decisions.loser}</span>}
+          {decisions.save   && <span>S: {decisions.save}</span>}
+        </div>
+      )}
+
+      {/* Record */}
+      {record && (
+        <div className="sports-record">
+          {awayTeam?.abbrev} {record.wins}-{record.losses}
+          {record.divisionRank && record.division && ` · ${record.divisionRank} ${record.division}`}
+          {record.gb && record.gb !== '-' && ` · GB: ${record.gb}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── NFL Panel ────────────────────────────────────────────────────────────────
+
+function NflPanel({ data }) {
+  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock } = data;
+  const quarters = homeLinescores?.length > 4
+    ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
+    : ['Q1','Q2','Q3','Q4'];
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="nfl" status={status} />
+        {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
+      </div>
+
+      <div className="sports-score-row">
+        <div className="sports-score-team sports-score-team--away">{awayTeam?.name}</div>
+        <div className="sports-score-num">{awayScore ?? '—'}</div>
+        <div className="sports-score-divider">·</div>
+        <div className="sports-score-num">{homeScore ?? '—'}</div>
+        <div className="sports-score-team sports-score-team--home">{homeTeam?.name}</div>
+      </div>
+
+      {homeLinescores?.length > 0 && (
+        <div className="sports-linescore-wrap">
+          <table className="sports-linescore">
+            <thead>
+              <tr>
+                <th></th>
+                {quarters.map((q) => <th key={q}>{q}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{awayTeam?.abbrev || awayTeam?.name}</td>
+                {(awayLinescores || []).map((s, i) => <td key={i}>{s}</td>)}
+              </tr>
+              <tr>
+                <td>{homeTeam?.abbrev || homeTeam?.name}</td>
+                {(homeLinescores || []).map((s, i) => <td key={i}>{s}</td>)}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {(homeRecord || awayRecord) && (
+        <div className="sports-record">
+          {awayRecord} · {homeRecord}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── NHL Panel ────────────────────────────────────────────────────────────────
+
+function NhlPanel({ data }) {
+  const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType } = data;
+  const isLive = status === 'LIVE' || status === 'CRIT';
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="nhl" status={status === 'OFF' ? 'Final' : status} />
+        {isLive && period && (
+          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+            Period {period}{periodType === 'OT' ? ' OT' : ''}
+          </span>
+        )}
+      </div>
+
+      <div className="sports-score-row">
+        <div className="sports-score-team sports-score-team--away">{awayTeam?.abbrev}</div>
+        <div className="sports-score-num">{awayScore ?? '—'}</div>
+        <div className="sports-score-divider">·</div>
+        <div className="sports-score-num">{homeScore ?? '—'}</div>
+        <div className="sports-score-team sports-score-team--home">{homeTeam?.abbrev}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Golf Panel ───────────────────────────────────────────────────────────────
+
+function GolfPanel({ data }) {
+  const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine } = data;
+  const hasRounds = leaderboard?.[0]?.rounds?.length > 1;
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="golf" status={status} />
+        {currentRound && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Round {currentRound}</span>}
+      </div>
+
+      {tournamentName && (
+        <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{tournamentName}</div>
+      )}
+
+      <table className="sports-leaderboard">
+        <thead>
+          <tr>
+            <th>Pos</th>
+            <th>Player</th>
+            <th className="num">Score</th>
+            <th className="num">Today</th>
+            <th className="num">Thru</th>
+            {hasRounds && leaderboard[0].rounds.map((_, i) => (
+              <th key={i} className="num">R{i+1}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(leaderboard || []).map((p, i) => (
+            <tr key={i}>
+              <td>{p.positionText}</td>
+              <td>{p.name}</td>
+              <td className="num">{p.score}</td>
+              <td className="num">{p.today ?? '—'}</td>
+              <td className="num">{p.thru}</td>
+              {hasRounds && (p.rounds || []).map((r, ri) => <td key={ri} className="num">{r}</td>)}
+            </tr>
+          ))}
+
+          {trackedGolfers?.length > 0 && (
+            <>
+              <tr className="sports-leaderboard-divider">
+                <td colSpan={hasRounds ? 5 + (leaderboard[0]?.rounds?.length || 0) : 5}>── Tracked ──</td>
+              </tr>
+              {trackedGolfers.map((p, i) => (
+                <tr key={`tracked-${i}`} className="tracked">
+                  <td>{p.positionText}</td>
+                  <td>{p.name}</td>
+                  <td className="num">{p.score}</td>
+                  <td className="num">{p.today ?? '—'}</td>
+                  <td className="num">{p.thru}</td>
+                  {hasRounds && (p.rounds || []).map((r, ri) => <td key={ri} className="num">{r}</td>)}
+                </tr>
+              ))}
+            </>
+          )}
+        </tbody>
+      </table>
+
+      {cutLine && (
+        <div className="sports-record">Cut: {cutLine}</div>
+      )}
+    </div>
+  );
+}
+
+// ── F1 Panel ─────────────────────────────────────────────────────────────────
+
+function F1Panel({ data }) {
+  const { sessionType, circuitName, countryName, status, topResults } = data;
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="f1" status={status} />
+        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>{sessionType}</span>
+      </div>
+
+      {(circuitName || countryName) && (
+        <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>
+          {circuitName}{countryName ? ` · ${countryName}` : ''}
+        </div>
+      )}
+
+      <div className="sports-f1-results">
+        {(topResults || []).map((r) => (
+          <div key={r.position} className="sports-f1-row">
+            <span className="sports-f1-pos">{r.position}</span>
+            {r.teamColor && (
+              <span
+                className="sports-f1-team-dot"
+                style={{ background: `#${r.teamColor}` }}
+              />
+            )}
+            <span className="sports-f1-driver">
+              <strong>{r.acronym}</strong> {r.name}
+            </span>
+            {r.team && <span className="sports-f1-team">{r.team}</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main SportsPanel ─────────────────────────────────────────────────────────
+
+export default function SportsPanel({ enrichment }) {
+  if (!enrichment) return null;
+  const { sport, data } = enrichment;
+  if (!data) return null;
+
+  return (
+    <div className="sports-panel">
+      {sport === 'mlb'  && <MlbPanel  data={data} />}
+      {sport === 'nfl'  && <NflPanel  data={data} />}
+      {sport === 'nhl'  && <NhlPanel  data={data} />}
+      {sport === 'golf' && <GolfPanel data={data} />}
+      {sport === 'f1'   && <F1Panel   data={data} />}
+    </div>
+  );
+}

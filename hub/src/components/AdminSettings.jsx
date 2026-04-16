@@ -18,6 +18,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [eventIconsCfg,    setEventIconsCfg]    = useConfig('event_icons');
   const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
+  const [sportsConfig,     setSportsConfig]      = useConfig('sports_config');
+  const [sportsDisplay,    setSportsDisplay]     = useConfig('sports_display');
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
   const [mealPlanCfg,      setMealPlanCfg]      = useConfig('meal_plan');
   const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
@@ -377,6 +379,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { id: 'eventicons',   label: 'Event Icons' },
     { id: 'eventcards',   label: 'Event Cards' },
     { id: 'eventfilters', label: 'Filters'     },
+    { id: 'sports',       label: 'Sports'      },
     { id: 'keepnotes',    label: 'Keep Notes'  },
     { id: 'mealplan',     label: 'Meal Plan'   },
     { id: 'weather',      label: 'Weather'     },
@@ -978,6 +981,287 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '4px 10px', marginTop: 8 }} onClick={addRule}>
                   + Add filter rule
                 </button>
+              </div>
+            );
+          })()}
+
+          {/* ── Sports tab ────────────────────────────────────── */}
+          {activeTab === 'sports' && (() => {
+            const MLB_TEAMS = [
+              { id: '108', name: 'Los Angeles Angels' }, { id: '109', name: 'Arizona Diamondbacks' },
+              { id: '110', name: 'Baltimore Orioles' }, { id: '111', name: 'Boston Red Sox' },
+              { id: '112', name: 'Chicago Cubs' }, { id: '113', name: 'Cincinnati Reds' },
+              { id: '114', name: 'Cleveland Guardians' }, { id: '115', name: 'Colorado Rockies' },
+              { id: '116', name: 'Detroit Tigers' }, { id: '117', name: 'Houston Astros' },
+              { id: '118', name: 'Kansas City Royals' }, { id: '119', name: 'Los Angeles Dodgers' },
+              { id: '120', name: 'Washington Nationals' }, { id: '121', name: 'New York Mets' },
+              { id: '133', name: 'Oakland Athletics' }, { id: '134', name: 'Pittsburgh Pirates' },
+              { id: '135', name: 'San Diego Padres' }, { id: '136', name: 'Seattle Mariners' },
+              { id: '137', name: 'San Francisco Giants' }, { id: '138', name: 'St. Louis Cardinals' },
+              { id: '139', name: 'Tampa Bay Rays' }, { id: '140', name: 'Texas Rangers' },
+              { id: '141', name: 'Toronto Blue Jays' }, { id: '142', name: 'Minnesota Twins' },
+              { id: '143', name: 'Philadelphia Phillies' }, { id: '144', name: 'Atlanta Braves' },
+              { id: '145', name: 'Chicago White Sox' }, { id: '146', name: 'Miami Marlins' },
+              { id: '147', name: 'New York Yankees' }, { id: '158', name: 'Milwaukee Brewers' },
+            ].sort((a,b) => a.name.localeCompare(b.name));
+
+            const NFL_TEAMS = [
+              { id: 'ari', name: 'Arizona Cardinals' }, { id: 'atl', name: 'Atlanta Falcons' },
+              { id: 'bal', name: 'Baltimore Ravens' }, { id: 'buf', name: 'Buffalo Bills' },
+              { id: 'car', name: 'Carolina Panthers' }, { id: 'chi', name: 'Chicago Bears' },
+              { id: 'cin', name: 'Cincinnati Bengals' }, { id: 'cle', name: 'Cleveland Browns' },
+              { id: 'dal', name: 'Dallas Cowboys' }, { id: 'den', name: 'Denver Broncos' },
+              { id: 'det', name: 'Detroit Lions' }, { id: 'gb', name: 'Green Bay Packers' },
+              { id: 'hou', name: 'Houston Texans' }, { id: 'ind', name: 'Indianapolis Colts' },
+              { id: 'jax', name: 'Jacksonville Jaguars' }, { id: 'kc', name: 'Kansas City Chiefs' },
+              { id: 'lac', name: 'Los Angeles Chargers' }, { id: 'lar', name: 'Los Angeles Rams' },
+              { id: 'lv', name: 'Las Vegas Raiders' }, { id: 'mia', name: 'Miami Dolphins' },
+              { id: 'min', name: 'Minnesota Vikings' }, { id: 'ne', name: 'New England Patriots' },
+              { id: 'no', name: 'New Orleans Saints' }, { id: 'nyg', name: 'New York Giants' },
+              { id: 'nyj', name: 'New York Jets' }, { id: 'phi', name: 'Philadelphia Eagles' },
+              { id: 'pit', name: 'Pittsburgh Steelers' }, { id: 'sf', name: 'San Francisco 49ers' },
+              { id: 'sea', name: 'Seattle Seahawks' }, { id: 'tb', name: 'Tampa Bay Buccaneers' },
+              { id: 'ten', name: 'Tennessee Titans' }, { id: 'wsh', name: 'Washington Commanders' },
+            ].sort((a,b) => a.name.localeCompare(b.name));
+
+            const NHL_TEAMS = [
+              { id: 'ANA', name: 'Anaheim Ducks' }, { id: 'BOS', name: 'Boston Bruins' },
+              { id: 'BUF', name: 'Buffalo Sabres' }, { id: 'CGY', name: 'Calgary Flames' },
+              { id: 'CAR', name: 'Carolina Hurricanes' }, { id: 'CHI', name: 'Chicago Blackhawks' },
+              { id: 'COL', name: 'Colorado Avalanche' }, { id: 'CBJ', name: 'Columbus Blue Jackets' },
+              { id: 'DAL', name: 'Dallas Stars' }, { id: 'DET', name: 'Detroit Red Wings' },
+              { id: 'EDM', name: 'Edmonton Oilers' }, { id: 'FLA', name: 'Florida Panthers' },
+              { id: 'LAK', name: 'Los Angeles Kings' }, { id: 'MIN', name: 'Minnesota Wild' },
+              { id: 'MTL', name: 'Montreal Canadiens' }, { id: 'NSH', name: 'Nashville Predators' },
+              { id: 'NJD', name: 'New Jersey Devils' }, { id: 'NYI', name: 'New York Islanders' },
+              { id: 'NYR', name: 'New York Rangers' }, { id: 'OTT', name: 'Ottawa Senators' },
+              { id: 'PHI', name: 'Philadelphia Flyers' }, { id: 'PIT', name: 'Pittsburgh Penguins' },
+              { id: 'SEA', name: 'Seattle Kraken' }, { id: 'SJS', name: 'San Jose Sharks' },
+              { id: 'STL', name: 'St. Louis Blues' }, { id: 'TBL', name: 'Tampa Bay Lightning' },
+              { id: 'TOR', name: 'Toronto Maple Leafs' }, { id: 'UTA', name: 'Utah Hockey Club' },
+              { id: 'VAN', name: 'Vancouver Canucks' }, { id: 'VGK', name: 'Vegas Golden Knights' },
+              { id: 'WSH', name: 'Washington Capitals' }, { id: 'WPG', name: 'Winnipeg Jets' },
+            ].sort((a,b) => a.name.localeCompare(b.name));
+
+            const NBA_TEAMS = [
+              { id: 'atl', name: 'Atlanta Hawks' }, { id: 'bos', name: 'Boston Celtics' },
+              { id: 'bkn', name: 'Brooklyn Nets' }, { id: 'cha', name: 'Charlotte Hornets' },
+              { id: 'chi', name: 'Chicago Bulls' }, { id: 'cle', name: 'Cleveland Cavaliers' },
+              { id: 'dal', name: 'Dallas Mavericks' }, { id: 'den', name: 'Denver Nuggets' },
+              { id: 'det', name: 'Detroit Pistons' }, { id: 'gsw', name: 'Golden State Warriors' },
+              { id: 'hou', name: 'Houston Rockets' }, { id: 'ind', name: 'Indiana Pacers' },
+              { id: 'lac', name: 'Los Angeles Clippers' }, { id: 'lal', name: 'Los Angeles Lakers' },
+              { id: 'mem', name: 'Memphis Grizzlies' }, { id: 'mia', name: 'Miami Heat' },
+              { id: 'mil', name: 'Milwaukee Bucks' }, { id: 'min', name: 'Minnesota Timberwolves' },
+              { id: 'nop', name: 'New Orleans Pelicans' }, { id: 'nyk', name: 'New York Knicks' },
+              { id: 'okc', name: 'Oklahoma City Thunder' }, { id: 'orl', name: 'Orlando Magic' },
+              { id: 'phi', name: 'Philadelphia 76ers' }, { id: 'phx', name: 'Phoenix Suns' },
+              { id: 'por', name: 'Portland Trail Blazers' }, { id: 'sac', name: 'Sacramento Kings' },
+              { id: 'sas', name: 'San Antonio Spurs' }, { id: 'tor', name: 'Toronto Raptors' },
+              { id: 'uta', name: 'Utah Jazz' }, { id: 'was', name: 'Washington Wizards' },
+            ].sort((a,b) => a.name.localeCompare(b.name));
+
+            const TEAM_LISTS = { mlb: MLB_TEAMS, nfl: NFL_TEAMS, nhl: NHL_TEAMS, nba: NBA_TEAMS };
+            const SPORTS_WITH_TEAMS = ['mlb', 'nfl', 'nhl', 'nba'];
+
+            const entries = sportsConfig || [];
+
+            function updateEntry(i, patch) {
+              const next = entries.map((e, ei) => ei === i ? { ...e, ...patch } : e);
+              setSportsConfig(next);
+            }
+            function removeEntry(i) {
+              setSportsConfig(entries.filter((_, ei) => ei !== i));
+            }
+            function addEntry() {
+              setSportsConfig([...entries, { calendarId: '', sport: 'mlb', teamId: '', teamName: '', keyword: null, display: {} }]);
+            }
+
+            const hasGolf = entries.some((e) => e.sport === 'golf');
+            const hasF1   = entries.some((e) => e.sport === 'f1');
+
+            const sd = sportsDisplay || {};
+            function setSd(patch) { setSportsDisplay({ ...sd, ...patch }); }
+
+            return (
+              <div className="settings-section">
+                {/* ── Team Mappings ── */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <h3 style={{ margin: 0 }}>Team Mappings</h3>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 'var(--s-sm)', padding: '3px 10px', fontSize: 'inherit' }}
+                    onClick={addEntry}
+                  >
+                    + Add Sport
+                  </button>
+                </div>
+
+                {entries.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)' }}>
+                    No sport mappings yet. Click "+ Add Sport" to get started.
+                  </p>
+                )}
+
+                {entries.map((entry, i) => {
+                  const teamList = TEAM_LISTS[entry.sport] || [];
+                  const showTeam = SPORTS_WITH_TEAMS.includes(entry.sport);
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                      padding: '10px 0', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Calendar dropdown */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px' }}>
+                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Calendar</span>
+                          <select
+                            value={entry.calendarId || ''}
+                            onChange={(e) => updateEntry(i, { calendarId: e.target.value })}
+                            style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
+                          >
+                            <option value="">— select calendar —</option>
+                            {(calConfig || []).filter((c) => !c.virtual).map((c) => (
+                              <option key={c.id} value={c.id}>{c.name || c.id}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Sport dropdown */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '0 0 120px' }}>
+                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Sport</span>
+                          <select
+                            value={entry.sport || 'mlb'}
+                            onChange={(e) => updateEntry(i, { sport: e.target.value, teamId: '', teamName: '' })}
+                            style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
+                          >
+                            <option value="mlb">MLB</option>
+                            <option value="nfl">NFL</option>
+                            <option value="nhl">NHL</option>
+                            <option value="nba">NBA</option>
+                            <option value="golf">Golf</option>
+                            <option value="f1">F1</option>
+                            <option value="nascar">NASCAR</option>
+                          </select>
+                        </div>
+
+                        {/* Team dropdown (conditional) */}
+                        {showTeam && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px' }}>
+                            <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Team</span>
+                            <select
+                              value={entry.teamId || ''}
+                              onChange={(e) => {
+                                const team = teamList.find((t) => t.id === e.target.value);
+                                updateEntry(i, { teamId: e.target.value, teamName: team?.name || '' });
+                              }}
+                              style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
+                            >
+                              <option value="">— select team —</option>
+                              {teamList.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* Delete */}
+                        <button
+                          className="btn-icon"
+                          style={{ fontSize: 'var(--s-base)', color: 'var(--danger)', alignSelf: 'flex-end', marginBottom: 2, fontSize: 'inherit' }}
+                          onClick={() => removeEntry(i)}
+                          title="Remove"
+                        >✕</button>
+                      </div>
+
+                      {/* Keyword filter */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingLeft: 2 }}>
+                        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Keyword filter (optional):</span>
+                        <input
+                          type="text"
+                          value={entry.keyword || ''}
+                          onChange={(e) => updateEntry(i, { keyword: e.target.value || null })}
+                          placeholder="e.g. Yankees"
+                          style={{ flex: 1, fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <p style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 12, padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
+                  💡 Tips: Calendar IDs come from your Calendars tab above. Team IDs are pre-filled when you select a team from the dropdown — you don't need to find them manually. For F1 and Golf, no team selection is needed.
+                </p>
+
+                {/* ── Display Options ── */}
+                <h3 style={{ marginTop: 24, marginBottom: 10 }}>Display Options</h3>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <input
+                    type="checkbox"
+                    checked={sd.showChip !== false}
+                    onChange={(e) => setSd({ showChip: e.target.checked })}
+                    style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 'var(--s-base)' }}>Show score chip on event cards</span>
+                </div>
+
+                {hasGolf && (
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ margin: '0 0 8px' }}>Golf</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 'var(--s-base)', flex: 1 }}>Leaderboard size</span>
+                        <select
+                          value={sd.leaderboardSize || 10}
+                          onChange={(e) => setSd({ leaderboardSize: Number(e.target.value) })}
+                          style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Tracked golfers (comma-separated)</span>
+                        <input
+                          type="text"
+                          value={(sd.trackedGolfers || []).join(', ')}
+                          onChange={(e) => setSd({ trackedGolfers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                          placeholder="Scottie Scheffler, Rory McIlroy"
+                          style={{ fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasF1 && (
+                  <div style={{ marginTop: 16 }}>
+                    <h4 style={{ margin: '0 0 8px' }}>F1</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={sd.f1EnrichQualifying !== false}
+                          onChange={(e) => setSd({ f1EnrichQualifying: e.target.checked })}
+                          style={{ accentColor: 'var(--accent)' }}
+                        />
+                        Enrich qualifying sessions
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={sd.f1EnrichPractice === true}
+                          onChange={(e) => setSd({ f1EnrichPractice: e.target.checked })}
+                          style={{ accentColor: 'var(--accent)' }}
+                        />
+                        Enrich practice sessions
+                      </label>
+                    </div>
+                  </div>
+                )}
+
               </div>
             );
           })()}

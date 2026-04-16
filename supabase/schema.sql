@@ -90,3 +90,24 @@ create policy "admin write config"
 --   Email: family@hub.local  Password: (choose your family password)
 --   Email: admin@hub.local   Password: (choose your admin password)
 -- ============================================================
+
+-- ============================================================
+-- SPORTS ENRICHMENT
+-- ============================================================
+
+create table if not exists sports_enrichment (
+  google_event_id  text primary key,
+  sport            text not null,
+  data             jsonb not null,
+  fetched_at       timestamptz default now()
+);
+
+alter table sports_enrichment enable row level security;
+
+create policy "authenticated read sports_enrichment"
+  on sports_enrichment for select to authenticated using (true);
+
+create policy "admin write sports_enrichment"
+  on sports_enrichment for all to authenticated
+  using (auth.email() = 'admin@hub.local')
+  with check (auth.email() = 'admin@hub.local');

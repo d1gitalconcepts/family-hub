@@ -1,6 +1,7 @@
 import { pollAllCalendars, syncMealCalendar } from './calendar.js';
 import { pollWeather } from './weather.js';
 import { sbSelect, sbUpsert } from './supabase.js';
+import { enrichSportsEvents } from './sports.js';
 
 export default {
   // Cron trigger — runs every 5 minutes
@@ -46,6 +47,9 @@ async function runFullSync(env) {
 
     // 2. Poll all calendars → Supabase
     await pollAllCalendars(env);
+
+    // 2.5. Enrich sports events
+    await enrichSportsEvents(env);
 
     // 3. Poll weather station
     await pollWeather(env);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
+import { useSportsEnrichment } from '../hooks/useSportsEnrichment';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -84,6 +85,7 @@ export default function WeekView() {
     return { background: `linear-gradient(90deg, ${stops})` };
   })();
   const isMobile    = useIsMobile();
+  const enrichments = useSportsEnrichment();
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
@@ -225,6 +227,7 @@ export default function WeekView() {
               iconRules={iconRules}
               cardStyle={cardStyleCfg}
               filterRules={eventFiltersCfg?.rules || []}
+              enrichments={enrichments}
             />
           ))}
         </div>
