@@ -99,6 +99,15 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(location)}`;
   }
 
+  function stripLeadingEmoji(str) {
+    if (!str) return str;
+    // Remove one leading emoji (including optional variation selector + skin tone)
+    // and any whitespace that follows it
+    return str.replace(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})[\uFE0F\u{1F3FB}-\u{1F3FF}]?\s*/u, '').trim();
+  }
+
+  const cleanSummary = stripLeadingEmoji(event.summary || '');
+
   function getKeywordIcon(title) {
     if (!iconRules?.length) return null;
     const lower = title.toLowerCase();
@@ -110,7 +119,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     return null;
   }
 
-  const emoji = calEmoji || getKeywordIcon(event.summary || '');
+  const emoji = calEmoji || getKeywordIcon(cleanSummary);
 
   function renderTextElement(el) {
     if (el.key === 'time') {
@@ -121,7 +130,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
       return (
         <span key="title" className="event-title">
           {!emojiAsBadge && emoji && <span className="event-emoji">{emoji}</span>}
-          {event.summary}
+          {cleanSummary}
         </span>
       );
     }
@@ -212,7 +221,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
             <div className="event-popout-header">
               <div className="event-popout-title">
                 {emoji && <span style={{ marginRight: 6 }}>{emoji}</span>}
-                {event.summary}
+                {cleanSummary}
               </div>
               <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
             </div>
