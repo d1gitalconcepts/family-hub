@@ -1077,7 +1077,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 </button>
 
                 <p style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 16 }}>
-                  <strong>Note:</strong> Meal Planning is always scraped for calendar sync and does not need to be listed here unless you also want it shown in the sidebar.
+                  <strong>Using meal planning?</strong> Add your meal plan note here first, then go to the <em>Meal Plan</em> tab and select it as the source. The note doesn't need to be sidebar-visible unless you want it there.
                 </p>
 
                 {/* Task Lists sub-section */}
@@ -1143,11 +1143,11 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       {/* ── Source note ── */}
       <h3 style={{ marginBottom: 6 }}>Meal Plan Note</h3>
       <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-        Which Google Keep note contains your meal plan? Must already be configured in the Keep Notes tab.
+        Select which Google Keep note contains your meal plan. If it doesn't appear here, add it in the <strong>Keep Notes</strong> tab first.
       </p>
       {keepNotes.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          No Keep notes configured yet — add one in the Keep Notes tab first.
+        <p style={{ fontSize: 13, color: 'var(--danger)' }}>
+          No Keep notes configured yet — go to the <strong>Keep Notes</strong> tab and add your meal plan note, then come back here.
         </p>
       ) : (
         <select
@@ -1306,8 +1306,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       </pre>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
         {noteFormat === 'multiline'
-          ? 'Day name on its own line followed by "- Meal". Optionally add a recipe URL on the next line.'
-          : 'Day name and meal on the same line, separated by a colon.'}
+          ? 'Day name on its own line, meal on the next line starting with "- ". Optionally add a recipe URL on its own line after the meal — it will appear as a link in the calendar event.'
+          : 'Day name and meal on the same line, separated by a colon. Recipe URLs are not supported in inline format.'}
       </p>
 
     </div>
