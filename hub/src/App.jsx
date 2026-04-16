@@ -182,10 +182,10 @@ export default function App() {
 
   useEffect(() => {
     const SIZES = {
-      compact:  { app: '13px', card: '11px', meta: '10px' },
+      compact:  { app: '12px', card: '11px', meta: '10px' },
       default:  { app: '14px', card: '13px', meta: '11px' },
-      large:    { app: '15px', card: '14px', meta: '12px' },
-      xl:       { app: '16px', card: '15px', meta: '13px' },
+      large:    { app: '17px', card: '15px', meta: '13px' },
+      xl:       { app: '20px', card: '18px', meta: '15px' },
     };
     const s = SIZES[fontSizeCfg || 'default'];
     document.documentElement.style.setProperty('--app-font-size',  s.app);
