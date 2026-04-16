@@ -1117,7 +1117,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   function setMp(patch) { setMealPlanCfg({ ...mp, ...patch }); }
 
   const noteKey       = mp.noteKey       ?? 'meal-planning';
-  const prepStartDay  = mp.prepStartDay  ?? 4;   // null = off
+  const prepStartDay  = 'prepStartDay' in mp ? mp.prepStartDay : 4;  // null = off, 4 = default Thu
   const freezePast    = mp.freezePastDays ?? true;
   const eventPrefix   = mp.eventPrefix   ?? 'Dinner: ';
   const noteFormat    = mp.noteFormat    ?? 'multiline';
@@ -1296,6 +1296,11 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
           );
         })}
       </div>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+        {noteFormat === 'multiline'
+          ? 'Day name on its own line, meal on the next line starting with "- ". Optionally add a recipe URL on its own line after the meal — it will appear as a link in the calendar event.'
+          : 'Day name and meal on the same line, separated by a colon. Recipe URLs are not supported in inline format.'}
+      </p>
       <pre style={{
         background: 'var(--bg-secondary)', border: '1px solid var(--border)',
         borderRadius: 6, padding: '10px 14px', fontSize: 12,
@@ -1304,11 +1309,6 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
       }}>
         {noteFormat === 'multiline' ? multilineExample : inlineExample}
       </pre>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
-        {noteFormat === 'multiline'
-          ? 'Day name on its own line, meal on the next line starting with "- ". Optionally add a recipe URL on its own line after the meal — it will appear as a link in the calendar event.'
-          : 'Day name and meal on the same line, separated by a colon. Recipe URLs are not supported in inline format.'}
-      </p>
 
     </div>
   );
