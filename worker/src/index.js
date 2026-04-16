@@ -4,12 +4,15 @@ import { sbSelect, sbUpsert } from './supabase.js';
 import { enrichSportsEvents } from './sports.js';
 
 export default {
-  // Cron trigger — runs every 5 minutes
-  // Sports enrichment runs here only (separate invocation = fresh subrequest budget)
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(
-      runFullSync(env).then(() => enrichSportsEvents(env))
-    );
+  // Two cron triggers, each gets its own invocation and subrequest budget:
+  //   "*/5 * * * *"      → calendar + weather sync
+  //   "2-59/5 * * * *"   → sports enrichment only (fires 2 min after, events already synced)
+  async scheduled(event, env, ctx) {
+    if (event.cron === '2-59/5 * * * *') {
+      ctx.waitUntil(enrichSportsEvents(env));
+    } else {
+      ctx.waitUntil(runFullSync(env));
+    }
   },
 
   // HTTP handler — POST /sync for on-demand trigger from the hub

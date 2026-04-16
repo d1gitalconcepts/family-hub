@@ -3,7 +3,9 @@ main = "src/index.js"
 compatibility_date = "2025-01-01"
 
 [triggers]
-crons = ["*/5 * * * *"]
+# Two separate cron triggers = two separate invocations = two separate subrequest budgets.
+# Calendar sync fires at 0,5,10... — sports fires at 2,7,12... (offset so events exist first).
+crons = ["*/5 * * * *", "2-59/5 * * * *"]
 
 # Subrequest limit: free plan = 50, Workers Paid = up to 1000.
 # With 16+ calendars you may hit the free limit on busy syncs.
