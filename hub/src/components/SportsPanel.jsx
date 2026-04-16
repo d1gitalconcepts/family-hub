@@ -15,11 +15,12 @@ function recordLine(abbrev, rec) {
 }
 
 const SPORT_EMOJI = {
-  mlb:  '⚾',
-  nfl:  '🏈',
-  nhl:  '🏒',
-  golf: '⛳',
-  f1:   '🏎️',
+  mlb:    '⚾',
+  nfl:    '🏈',
+  nhl:    '🏒',
+  golf:   '⛳',
+  f1:     '🏎️',
+  nascar: '🏁',
 };
 
 function StatusBadge({ sport, status }) {
@@ -264,6 +265,36 @@ function GolfPanel({ data }) {
   );
 }
 
+// ── NASCAR Panel ─────────────────────────────────────────────────────────────
+
+function NascarPanel({ data }) {
+  const { raceName, status, results } = data;
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="nascar" status={status} />
+      </div>
+
+      {raceName && (
+        <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{raceName}</div>
+      )}
+
+      <div className="sports-f1-results">
+        {(results || []).map((r, i) => (
+          <div key={i} className="sports-f1-row">
+            <span className="sports-f1-pos">{r.position}</span>
+            <span className="sports-f1-driver">
+              <strong>#{r.number}</strong> {r.name}
+            </span>
+            {r.laps && <span className="sports-f1-team">{r.laps} laps</span>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── F1 Panel ─────────────────────────────────────────────────────────────────
 
 function F1Panel({ data }) {
@@ -316,7 +347,8 @@ export default function SportsPanel({ enrichment }) {
       {sport === 'nfl'  && <NflPanel  data={data} />}
       {sport === 'nhl'  && <NhlPanel  data={data} />}
       {sport === 'golf' && <GolfPanel data={data} />}
-      {sport === 'f1'   && <F1Panel   data={data} />}
+      {sport === 'f1'     && <F1Panel     data={data} />}
+      {sport === 'nascar' && <NascarPanel data={data} />}
     </div>
   );
 }

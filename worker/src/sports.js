@@ -8,18 +8,15 @@ async function fetchJson(url) {
 
 // ── MLB ──────────────────────────────────────────────────────────────────────
 
-async function enrichMlb(event, config) {
+// standingsMap is fetched once per sync and passed in to avoid repeated API calls
+async function enrichMlb(event, config, standingsMap = {}) {
   const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
   if (!dateStr) throw new Error('No date for MLB event');
 
   const teamId = config.teamId;
-  const year = dateStr.split('-')[0];
-
-  // Fetch game + standings in parallel
-  const [json, standingsJson] = await Promise.all([
-    fetchJson(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team`),
-    fetchJson(`https://statsapi.mlb.com/api/v1/standings?leagueId=103,104&season=${year}`).catch(() => null),
-  ]);
+  const json = await fetchJson(
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team`
+  );
 
   const game = json?.dates?.[0]?.games?.[0];
   if (!game) return null;
@@ -28,19 +25,6 @@ async function enrichMlb(event, config) {
   const home = game.teams?.home;
   const away = game.teams?.away;
   const isHome = String(home?.team?.id) === String(teamId);
-
-  // Build standings lookup: teamId → { rank, divisionName, gb }
-  const standingsMap = {};
-  for (const divRecord of (standingsJson?.records || [])) {
-    const divName = divRecord.division?.nameShort || divRecord.division?.name || '';
-    for (const tr of (divRecord.teamRecords || [])) {
-      standingsMap[tr.team.id] = {
-        rank: tr.divisionRank || null,
-        divisionName: divName,
-        gb: tr.gamesBack || '-',
-      };
-    }
-  }
 
   function buildRecord(teamData) {
     const lr = teamData?.leagueRecord;
@@ -303,6 +287,38 @@ async function enrichF1(event) {
   };
 }
 
+// ── NASCAR ───────────────────────────────────────────────────────────────────
+
+async function enrichNascar(event) {
+  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  if (!dateStr) throw new Error('No date for NASCAR event');
+
+  const yyyymmdd = dateStr.replace(/-/g, '');
+  const url = `https://site.api.espn.com/apis/site/v2/sports/racing/nascar-premier/scoreboard?dates=${yyyymmdd}`;
+  const json = await fetchJson(url);
+
+  const ev = json?.events?.[0];
+  if (!ev) return null;
+
+  const comp = ev.competitions?.[0];
+  const statusStr = comp?.status?.type?.description || 'Scheduled';
+  const competitors = (comp?.competitors || [])
+    .sort((a, b) => (parseInt(a.order) || 99) - (parseInt(b.order) || 99))
+    .slice(0, 10)
+    .map((c) => ({
+      position: c.order || c.id,
+      name: c.athlete?.displayName || c.team?.displayName || 'Unknown',
+      number: c.athlete?.jersey || c.team?.abbreviation || '',
+      laps: c.laps || null,
+    }));
+
+  return {
+    raceName: ev.name || ev.shortName || 'NASCAR Race',
+    status: statusStr,
+    results: competitors,
+  };
+}
+
 // ── Main enrichment function ──────────────────────────────────────────────────
 
 export async function enrichSportsEvents(env) {
@@ -313,9 +329,9 @@ export async function enrichSportsEvents(env) {
     return;
   }
 
-  // 2. Fetch recent calendar events (7 days back so completed games get refreshed)
+  // 2. Fetch recent calendar events (3 days back + future)
   const lookback = new Date();
-  lookback.setDate(lookback.getDate() - 7);
+  lookback.setDate(lookback.getDate() - 3);
   lookback.setHours(0, 0, 0, 0);
   const lookbackIso = lookback.toISOString();
   const yStr = lookbackIso.split('T')[0];
@@ -334,6 +350,30 @@ export async function enrichSportsEvents(env) {
   if (!calEvents?.length) {
     console.log('[Sports] No recent calendar events to enrich.');
     return;
+  }
+
+  // 3. Fetch MLB standings once for all MLB games (saves one API call per game)
+  const needsMlb = sportsConfig.some((sc) => sc.sport === 'mlb');
+  let mlbStandingsMap = {};
+  if (needsMlb) {
+    const year = new Date().getFullYear();
+    try {
+      const standingsJson = await fetchJson(
+        `https://statsapi.mlb.com/api/v1/standings?leagueId=103,104&season=${year}`
+      );
+      for (const divRecord of (standingsJson?.records || [])) {
+        const divName = divRecord.division?.nameShort || divRecord.division?.name || '';
+        for (const tr of (divRecord.teamRecords || [])) {
+          mlbStandingsMap[tr.team.id] = {
+            rank: tr.divisionRank || null,
+            divisionName: divName,
+            gb: tr.gamesBack || '-',
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[Sports] Failed to fetch MLB standings:', e.message);
+    }
   }
 
   const enrichments = [];
@@ -356,7 +396,7 @@ export async function enrichSportsEvents(env) {
 
       switch (config.sport) {
         case 'mlb':
-          data = await enrichMlb(event, config);
+          data = await enrichMlb(event, config, mlbStandingsMap);
           break;
         case 'nfl':
           data = await enrichNfl(event, config);
@@ -369,6 +409,9 @@ export async function enrichSportsEvents(env) {
           break;
         case 'f1':
           data = await enrichF1(event, config);
+          break;
+        case 'nascar':
+          data = await enrichNascar(event, config);
           break;
         default:
           console.warn(`[Sports] Unknown sport: ${config.sport}`);

@@ -5,11 +5,16 @@ import { enrichSportsEvents } from './sports.js';
 
 export default {
   // Cron trigger — runs every 5 minutes
+  // Sports enrichment runs here only (separate invocation = fresh subrequest budget)
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(runFullSync(env));
+    ctx.waitUntil(
+      runFullSync(env).then(() => enrichSportsEvents(env))
+    );
   },
 
   // HTTP handler — POST /sync for on-demand trigger from the hub
+  // Sports enrichment intentionally excluded — it uses too many subrequests
+  // when combined with calendar sync on the free plan.
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
@@ -47,9 +52,6 @@ async function runFullSync(env) {
 
     // 2. Poll all calendars → Supabase
     await pollAllCalendars(env);
-
-    // 2.5. Enrich sports events
-    await enrichSportsEvents(env);
 
     // 3. Poll weather station
     await pollWeather(env);
