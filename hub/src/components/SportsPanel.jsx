@@ -258,8 +258,8 @@ function NhlPanel({ data, detail }) {
         </div>
       )}
 
-      {/* Goal log — box score+ */}
-      {showBox && goals?.length > 0 && (
+      {/* Goal log — full detail only */}
+      {showAll && goals?.length > 0 && (
         <div className="sports-nhl-goals">
           {goals.map((g, i) => (
             <div key={i} className="sports-nhl-goal-row">
