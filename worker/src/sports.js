@@ -182,45 +182,72 @@ async function enrichNhl(event, config) {
   const awayGoalie = pickGoalie(playerStats?.awayTeam?.goalies);
 
   // Goals + period linescore live in the landing endpoint — fetch separately
-  let periods = [];
-  let goals   = [];
-  let homePP  = null;
-  let awayPP  = null;
+  let periods    = [];
+  let goals      = [];
+  let homePP     = null;
+  let awayPP     = null;
+  let threeStars = [];
 
   try {
     const landing = await fetchJson(`https://api-web.nhle.com/v1/gamecenter/${game.id}/landing`);
     const summary = landing?.summary;
 
-    // Period linescore
-    periods = (summary?.linescore?.byPeriod || []).map((p) => ({
-      periodDesc: p.periodDescriptor?.periodType === 'OT' ? 'OT' :
-                  p.periodDescriptor?.periodType === 'SO' ? 'SO' : `P${p.period}`,
-      home: p.home ?? null,
-      away: p.away ?? null,
-    }));
+    // Goal log — scoring is an array of period objects, each with a goals array
+    const homeAbbrev = box?.homeTeam?.abbrev?.toUpperCase();
+    const periodMap  = {};
 
-    // Goal log
-    goals = (summary?.scoring || []).flatMap((period) => {
-      const pDesc = period.periodDescriptor?.periodType === 'OT' ? 'OT' :
-                    period.periodDescriptor?.periodType === 'SO' ? 'SO' :
-                    period.period ? `P${period.period}` : '?';
-      return (period.goals || []).map((g) => ({
-        teamAbbrev: g.teamAbbrev?.default || null,
-        scorer: g.name?.default || null,
-        scorerTotal: g.goalsToDate ?? null,
-        assists: (g.assists || []).map((a) => a.name?.default || '').filter(Boolean),
-        period: pDesc,
-        timeInPeriod: g.timeInPeriod || null,
-        strength: g.strength || 'ev',
-        emptyNet: g.goalModifier === 'empty-net' || false,
+    for (const period of (summary?.scoring || [])) {
+      const pType = period.periodDescriptor?.periodType;
+      const pNum  = period.period;
+      const pDesc = pType === 'OT' ? 'OT' : pType === 'SO' ? 'SO' : `P${pNum}`;
+
+      if (!periodMap[pDesc]) periodMap[pDesc] = { periodDesc: pDesc, home: 0, away: 0 };
+
+      for (const g of (period.goals || [])) {
+        const isHome = g.teamAbbrev?.default?.toUpperCase() === homeAbbrev;
+        if (isHome) periodMap[pDesc].home++;
+        else        periodMap[pDesc].away++;
+
+        goals.push({
+          teamAbbrev:  g.teamAbbrev?.default || null,
+          scorer:      g.name?.default || null,
+          scorerTotal: g.goalsToDate ?? null,
+          assists:     (g.assists || []).map((a) => a.name?.default || '').filter(Boolean),
+          period:      pDesc,
+          timeInPeriod: g.timeInPeriod || null,
+          strength:    g.strength || 'ev',
+          emptyNet:    g.goalModifier === 'empty-net' || false,
+        });
+      }
+    }
+
+    // Period grid derived from goal counts (no linescore endpoint available)
+    periods = Object.values(periodMap);
+
+    // Three Stars
+    threeStars = (summary?.threeStars || [])
+      .sort((a, b) => a.star - b.star)
+      .map((s) => ({
+        star:      s.star,
+        name:      s.name?.default || null,
+        teamAbbrev: s.teamAbbrev || null,
+        position:  s.position || null,
       }));
-    });
 
-    // Power play from teamGameStats in landing
-    const tgs = summary?.teamGameStats || [];
-    const ppStat = tgs.find((s) => s.category === 'powerPlay');
-    homePP = ppStat?.homeValue ?? null;
-    awayPP = ppStat?.awayValue ?? null;
+    // Power play — derive from goalie's PP stats in boxscore
+    function ppFromGoalie(goalie) {
+      if (!goalie) return null;
+      const ppga = goalie.powerPlayGoalsAgainst ?? null;
+      const ppsa = goalie.powerPlayShotsAgainst || '';   // "saves/shots"
+      const opps = parseInt(ppsa.split('/')[1]) || null;
+      return ppga != null && opps != null ? `${ppga}/${opps}` : null;
+    }
+    const rawGoalies = box?.playerByGameStats;
+    const homeGData  = rawGoalies?.homeTeam?.goalies?.find(g => g.starter) || rawGoalies?.homeTeam?.goalies?.[0];
+    const awayGData  = rawGoalies?.awayTeam?.goalies?.find(g => g.starter) || rawGoalies?.awayTeam?.goalies?.[0];
+    // Home PP = goals scored against away goalie; away PP = goals against home goalie
+    homePP = ppFromGoalie(awayGData);
+    awayPP = ppFromGoalie(homeGData);
 
   } catch (e) {
     console.warn('[Sports] NHL landing fetch failed:', e.message);
@@ -237,6 +264,7 @@ async function enrichNhl(event, config) {
     awayPP,
     homeGoalie,
     awayGoalie,
+    threeStars,
   };
 }
 

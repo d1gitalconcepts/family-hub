@@ -200,7 +200,7 @@ const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
 
 function NhlPanel({ data }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType, lastPeriodType,
-          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie } = data;
+          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars } = data;
   const isLive   = status === 'LIVE' || status === 'CRIT';
   const isFinal  = status === 'OFF'  || status === 'FINAL';
   const finishSuffix = lastPeriodType === 'OT' ? '/OT' : lastPeriodType === 'SO' ? '/SO' : '';
@@ -286,11 +286,20 @@ function NhlPanel({ data }) {
       {(awayGoalie || homeGoalie) && (
         <div className="sports-nhl-goalies">
           {awayGoalie && (
-            <div>{awayGoalie.name} {awayGoalie.saves}/{awayGoalie.shots}{awayGoalie.savePct ? ` (${awayGoalie.savePct})` : ''}</div>
+            <div>{awayGoalie.decision ? `${awayGoalie.decision} · ` : ''}{awayGoalie.name} {awayGoalie.saves}/{awayGoalie.shots}{awayGoalie.savePct ? ` (${awayGoalie.savePct})` : ''}</div>
           )}
           {homeGoalie && (
-            <div>{homeGoalie.name} {homeGoalie.saves}/{homeGoalie.shots}{homeGoalie.savePct ? ` (${homeGoalie.savePct})` : ''}</div>
+            <div>{homeGoalie.decision ? `${homeGoalie.decision} · ` : ''}{homeGoalie.name} {homeGoalie.saves}/{homeGoalie.shots}{homeGoalie.savePct ? ` (${homeGoalie.savePct})` : ''}</div>
           )}
+        </div>
+      )}
+
+      {/* Three Stars */}
+      {threeStars?.length > 0 && (
+        <div className="sports-nhl-goalies" style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+          {threeStars.map((s) => (
+            <div key={s.star}>⭐{'⭐'.repeat(s.star === 1 ? 2 : s.star === 2 ? 1 : 0)} {s.name}{s.teamAbbrev ? ` · ${s.teamAbbrev}` : ''}</div>
+          ))}
         </div>
       )}
     </div>
