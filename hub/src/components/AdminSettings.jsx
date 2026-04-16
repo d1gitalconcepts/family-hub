@@ -1637,17 +1637,22 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               {/* Nav Bar Style */}
               <h3 style={{ marginBottom: 10 }}>Nav Bar Style</h3>
               {(() => {
+                // Preview bg at higher opacity so swatches are visible in the settings panel
                 const PRESETS = [
-                  { id: 'none',     label: '— None',      bg: 'var(--bg-secondary)' },
-                  { id: 'accent',   label: '🎨 Accent',   bg: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' },
-                  { id: 'sunrise',  label: '🌅 Sunrise',  bg: 'linear-gradient(90deg,#ffecd2,#fcb69f)' },
-                  { id: 'ocean',    label: '🌊 Ocean',    bg: 'linear-gradient(90deg,#a1c4fd,#c2e9fb)' },
-                  { id: 'forest',   label: '🌿 Forest',   bg: 'linear-gradient(90deg,#d4fc79,#96e6a1)' },
-                  { id: 'twilight', label: '🌆 Twilight', bg: 'linear-gradient(90deg,#a18cd1,#fbc2eb)' },
-                  { id: 'slate',    label: '🩶 Slate',    bg: 'linear-gradient(90deg,#e0eafc,#cfdef3)' },
-                  { id: 'custom',   label: '✏️ Custom',   bg: null },
+                  { id: 'none',     label: '— None',      preview: 'var(--bg-secondary)',                                      isGradient: false },
+                  { id: 'accent',   label: '🎨 Accent',   preview: 'color-mix(in srgb, var(--accent) 40%, var(--bg-secondary))', isGradient: false },
+                  { id: 'sunrise',  label: '🌅 Sunrise',  preview: 'linear-gradient(90deg,rgba(255,110,40,0.65),rgba(255,195,80,0.65))',  isGradient: true },
+                  { id: 'ocean',    label: '🌊 Ocean',    preview: 'linear-gradient(90deg,rgba(30,130,255,0.65),rgba(0,205,225,0.65))',   isGradient: true },
+                  { id: 'forest',   label: '🌿 Forest',   preview: 'linear-gradient(90deg,rgba(35,170,70,0.65),rgba(120,205,55,0.65))',   isGradient: true },
+                  { id: 'twilight', label: '🌆 Twilight', preview: 'linear-gradient(90deg,rgba(148,60,215,0.65),rgba(228,75,165,0.65))',  isGradient: true },
+                  { id: 'slate',    label: '🩶 Slate',    preview: 'linear-gradient(90deg,rgba(85,125,168,0.55),rgba(135,170,208,0.55))', isGradient: true },
+                  { id: 'custom',   label: '✏️ Custom',   preview: null,                                                       isGradient: true },
                 ];
-                const active = navStyleCfg?.preset || 'none';
+                const active     = navStyleCfg?.preset || 'none';
+                const isGradient = PRESETS.find((p) => p.id === active)?.isGradient;
+                const isCustom   = active === 'custom';
+                const hasCenter  = !!navStyleCfg?.color3;
+
                 return (
                   <>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -1656,27 +1661,59 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           key={p.id}
                           onClick={() => setNavStyleCfg({ ...(navStyleCfg || {}), preset: p.id })}
                           style={{
-                            padding: '6px 10px', fontSize: 'var(--s-sm)', borderRadius: 6, cursor: 'pointer',
+                            padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 'inherit',
                             border: `2px solid ${active === p.id ? 'var(--accent)' : 'var(--border)'}`,
-                            background: p.bg ?? (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
-                            color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'inherit',
+                            background: p.preview ?? (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
+                            color: 'var(--text)', fontFamily: 'var(--font)',
                             fontWeight: active === p.id ? 600 : 400,
                           }}
-                        >
-                          {p.label}
-                        </button>
+                        >{p.label}</button>
                       ))}
                     </div>
-                    {active === 'custom' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <input type="color" className="cal-color-input"
-                          value={navStyleCfg?.color1 || '#a1c4fd'}
-                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color1: e.target.value })} />
-                        <span style={{ color: 'var(--text-muted)' }}>→</span>
-                        <input type="color" className="cal-color-input"
-                          value={navStyleCfg?.color2 || '#c2e9fb'}
-                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color2: e.target.value })} />
-                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Gradient colors</span>
+
+                    {isGradient && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8 }}>
+                        {/* Custom: start + end color pickers */}
+                        {isCustom && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <input type="color" className="cal-color-input"
+                              value={navStyleCfg?.color1 || '#5b8dee'}
+                              onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color1: e.target.value })} />
+                            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Start</span>
+                            <span style={{ flex: 1 }} />
+                            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>End</span>
+                            <input type="color" className="cal-color-input"
+                              value={navStyleCfg?.color2 || '#a18cd1'}
+                              onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color2: e.target.value })} />
+                          </div>
+                        )}
+
+                        {/* Center color toggle — available for all gradient types */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>
+                          <input
+                            type="checkbox"
+                            checked={hasCenter}
+                            onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color3: e.target.checked ? '#ffffff' : null })}
+                          />
+                          Add center color (3-color gradient)
+                        </label>
+
+                        {hasCenter && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 22 }}>
+                            <input type="color" className="cal-color-input"
+                              value={navStyleCfg?.color3 || '#ffffff'}
+                              onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color3: e.target.value })} />
+                            <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>
+                              Center — appears at the midpoint of the gradient
+                            </span>
+                          </div>
+                        )}
+
+                        {isCustom && (
+                          <p style={{ margin: 0, fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+                            Tip: in dark mode, pick mid-to-dark shades so text stays readable.
+                          </p>
+                        )}
                       </div>
                     )}
                   </>

@@ -46,16 +46,35 @@ export default function WeekView() {
     const preset = navStyleCfg?.preset;
     if (!preset || preset === 'none') return {};
     if (preset === 'accent') return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
-    const PRESETS = {
-      sunrise:  'linear-gradient(90deg,#ffecd2,#fcb69f)',
-      ocean:    'linear-gradient(90deg,#a1c4fd,#c2e9fb)',
-      forest:   'linear-gradient(90deg,#d4fc79,#96e6a1)',
-      twilight: 'linear-gradient(90deg,#a18cd1,#fbc2eb)',
-      slate:    'linear-gradient(90deg,#e0eafc,#cfdef3)',
-      custom:   `linear-gradient(90deg,${navStyleCfg.color1 || '#a1c4fd'},${navStyleCfg.color2 || '#c2e9fb'})`,
+
+    // Preset colors use rgba so they tint rather than override — works in both light and dark mode
+    const PRESET_COLORS = {
+      sunrise:  ['rgba(255,110,40,0.32)',  'rgba(255,195,80,0.32)'],
+      ocean:    ['rgba(30,130,255,0.32)',  'rgba(0,205,225,0.32)'],
+      forest:   ['rgba(35,170,70,0.32)',   'rgba(120,205,55,0.32)'],
+      twilight: ['rgba(148,60,215,0.32)',  'rgba(228,75,165,0.32)'],
+      slate:    ['rgba(85,125,168,0.28)',  'rgba(135,170,208,0.28)'],
     };
-    const bg = PRESETS[preset];
-    return bg ? { background: bg } : {};
+
+    const c3raw = navStyleCfg?.color3 || null;
+
+    if (preset === 'custom') {
+      const c1 = navStyleCfg?.color1 || '#a1c4fd';
+      const c2 = navStyleCfg?.color2 || '#c2e9fb';
+      const stops = c3raw ? `${c1}, ${c3raw} 50%, ${c2}` : `${c1}, ${c2}`;
+      return { background: `linear-gradient(90deg, ${stops})` };
+    }
+
+    const colors = PRESET_COLORS[preset];
+    if (!colors) return {};
+    const [c1, c2] = colors;
+    // Center color: convert hex to matching rgba so it blends consistently
+    const c3 = c3raw ? (() => {
+      const r = parseInt(c3raw.slice(1,3),16), g = parseInt(c3raw.slice(3,5),16), b = parseInt(c3raw.slice(5,7),16);
+      return `rgba(${r},${g},${b},0.32)`;
+    })() : null;
+    const stops = c3 ? `${c1}, ${c3} 50%, ${c2}` : `${c1}, ${c2}`;
+    return { background: `linear-gradient(90deg, ${stops})` };
   })();
   const isMobile    = useIsMobile();
 
