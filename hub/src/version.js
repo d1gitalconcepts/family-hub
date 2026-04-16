@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.5.1';
+export const APP_VERSION = '1.5.2';
 
 export const CHANGELOG = [
+  {
+    version: '1.5.2',
+    date: 'April 2026',
+    notes: [
+      'Recipe link previews: dish photo shown in event popout when description is a recipe URL',
+    ],
+  },
   {
     version: '1.5.1',
     date: 'April 2026',

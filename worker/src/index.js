@@ -41,6 +41,54 @@ export default {
       });
     }
 
+    if (request.method === 'GET' && url.pathname === '/og') {
+      const targetUrl = url.searchParams.get('url');
+      if (!targetUrl) {
+        return new Response(JSON.stringify({ image: null }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
+      try {
+        const res = await fetch(targetUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FamilyHub/1.0)' },
+        });
+        const html = await res.text();
+
+        // Try og:image (handles both attribute orderings)
+        const ogImg =
+          html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1];
+
+        let image = ogImg || null;
+
+        // Fallback: first image from JSON-LD recipe schema
+        if (!image) {
+          const ldMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+          if (ldMatch) {
+            try {
+              const ld = JSON.parse(ldMatch[1]);
+              const imgs = ld.image;
+              if (typeof imgs === 'string') image = imgs;
+              else if (Array.isArray(imgs)) image = imgs[0]?.url || imgs[0];
+              else if (imgs?.url) image = imgs.url;
+            } catch {}
+          }
+        }
+
+        return new Response(JSON.stringify({ image }), {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=86400',
+            ...corsHeaders(),
+          },
+        });
+      } catch {
+        return new Response(JSON.stringify({ image: null }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+        });
+      }
+    }
+
     return new Response('Not found', { status: 404 });
   },
 };
@@ -80,7 +128,7 @@ async function runFullSync(env) {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }

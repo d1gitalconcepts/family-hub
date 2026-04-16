@@ -1,6 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SportsPanel from './SportsPanel';
+
+function useLinkPreview(url) {
+  const [image, setImage] = useState(null);
+  useEffect(() => {
+    if (!url) return;
+    const workerUrl = import.meta.env.VITE_WORKER_URL;
+    if (!workerUrl || workerUrl.includes('YOUR_ACCOUNT')) return;
+    fetch(`${workerUrl}/og?url=${encodeURIComponent(url)}`)
+      .then(r => r.json())
+      .then(d => { if (d.image) setImage(d.image); })
+      .catch(() => {});
+  }, [url]);
+  return image;
+}
 
 const DEFAULT_ELEMENTS = [
   { key: 'time',    visible: true  },
@@ -62,6 +76,12 @@ function resolvePopoutElements(style) {
 export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
+
+  // Link preview — only for non-sport events where description is a URL
+  const descUrl = !enrichment && event.description?.trim() && (() => {
+    try { new URL(event.description.trim()); return event.description.trim(); } catch { return null; }
+  })();
+  const previewImage = useLinkPreview(descUrl || null);
 
   const style = {
     popout: { ...DEFAULT_POPOUT },
@@ -254,16 +274,27 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
                     </a>
                   </div>
                 );
-                if (el.key === 'description' && event.description && !enrichment) return (
-                  <div key="description" className="event-popout-row event-popout-desc">
-                    <span className="event-popout-label">Details</span>
-                    <span>
-                      {isUrl(event.description.trim())
-                        ? <a href={event.description.trim()} target="_blank" rel="noreferrer">{event.description.trim()}</a>
-                        : event.description}
-                    </span>
-                  </div>
-                );
+                if (el.key === 'description' && event.description && !enrichment) {
+                  const desc = event.description.trim();
+                  const isLink = isUrl(desc);
+                  return (
+                    <div key="description" className="event-popout-desc-block">
+                      {isLink && previewImage && (
+                        <a href={desc} target="_blank" rel="noreferrer" className="event-popout-preview-link">
+                          <img src={previewImage} alt="" className="event-popout-preview-img" />
+                        </a>
+                      )}
+                      <div className="event-popout-row event-popout-desc">
+                        <span className="event-popout-label">Details</span>
+                        <span>
+                          {isLink
+                            ? <a href={desc} target="_blank" rel="noreferrer">{desc}</a>
+                            : desc}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
                 return null;
               })}
               {enrichment && <SportsPanel enrichment={enrichment} detailLevel={(sportsDisplay?.detail || {})[enrichment.sport] || 'all'} />}
