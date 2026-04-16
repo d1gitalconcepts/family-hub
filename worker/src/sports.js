@@ -198,7 +198,7 @@ async function enrichNhl(event, config) {
 
     for (const period of (summary?.scoring || [])) {
       const pType = period.periodDescriptor?.periodType;
-      const pNum  = period.period;
+      const pNum  = period.periodDescriptor?.number ?? period.period;
       const pDesc = pType === 'OT' ? 'OT' : pType === 'SO' ? 'SO' : `P${pNum}`;
 
       if (!periodMap[pDesc]) periodMap[pDesc] = { periodDesc: pDesc, home: 0, away: 0 };
