@@ -1,6 +1,6 @@
 # Family Hub
 
-A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, a live weather widget, a 7-day forecast, and a sidebar with Google Keep checklists (shopping lists, packing lists, etc.) that sync bidirectionally — check an item off in the hub and it checks off in Google Keep too.
+A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, live weather, a 7-day forecast, and a sidebar with Google Keep checklists that sync bidirectionally. Sports calendars are automatically enriched with live scores, box scores, and game detail from public APIs — MLB, NHL, NFL, Golf, F1, and NASCAR.
 
 ![Family Hub screenshot](docs/screenshot.png)
 
@@ -132,9 +132,10 @@ Log in as admin and open **Settings** via the hamburger menu (☰). Key tabs to 
   - *Ambient Weather* (optional, for a personal weather station): enter your API Key and Application Key from [ambientweather.net → Account → API Keys](https://ambientweather.net/account)
 - **Keep Notes** — add the Google Keep note titles you want to scrape and display in the sidebar
 - **Event Cards** — customize card layout: choose which elements to show (time, title, calendar, description), drag to reorder them, pick border or solid background, set alignment
+- **Sports** — configure which sports calendars get live enrichment (MLB, NHL, NFL, Golf, F1, NASCAR); set per-sport detail level (Score only / Box Score / Full Detail) and toggle the score chip on event cards
 - **Event Icons** — assign emoji to events by keyword (e.g. "soccer" → ⚽)
 - **Event Filters** — hide events whose title matches keywords (e.g. hide all "Busy" blocks)
-- **Display** — font size, accent color, app name, favicon
+- **Display** — font size, accent color, nav bar theme, app name, favicon
 
 ---
 
@@ -301,10 +302,11 @@ If your scraper machine sleeps or reboots, the cron job and pm2 watcher start ag
 |-------|-----------|
 | Frontend | React + Vite |
 | Database + Auth | Supabase (Postgres) |
-| Calendar/Weather sync | Cloudflare Workers (free tier) |
+| Calendar/Weather/Sports sync | Cloudflare Workers (free tier, two cron triggers) |
 | Keep scraper | Node.js + Playwright (headless Chromium) |
 | Forecast data | Open-Meteo (free, no API key needed) |
 | Weather station | Ambient Weather (optional) |
+| Sports data | MLB Stats API, NHL API, ESPN (NFL/Golf/NASCAR), OpenF1 |
 | Hosting | Cloudflare Pages (free tier) |
 
 ---

@@ -1,6 +1,28 @@
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.5.1';
 
 export const CHANGELOG = [
+  {
+    version: '1.5.1',
+    date: 'April 2026',
+    notes: [
+      'NHL goal log restricted to Full Detail (was appearing at Box Score level)',
+      'NHL PP/SH/EN strength badges now readable on light-colored calendars',
+    ],
+  },
+  {
+    version: '1.5.0',
+    date: 'April 2026',
+    notes: [
+      'Sports enrichment — MLB box scores, standings, decisions, walk-off notes, series context',
+      'NHL enrichment — goal log, period grid, goalie duel, Three Stars, PP/SOG stats',
+      'NFL, Golf, F1, NASCAR enrichment via ESPN and OpenF1 APIs',
+      'Per-sport detail level: Score only / Box Score / Full Detail',
+      'Score chip on event cards (toggleable)',
+      'Nav bar gradient theming with 3-color center stop and spread slider',
+      'Font size scaling fixed across all settings UI elements',
+      'Leading emoji stripped from calendar event titles for consistent icon rules',
+    ],
+  },
   {
     version: '1.4.0',
     date: 'April 2026',
@@ -19,7 +41,7 @@ export const CHANGELOG = [
   },
   {
     version: '1.3.0',
-    date: 'March 2026',
+    date: 'April 2026',
     notes: [
       'Multi-note Keep sidebar — configure any number of checklist notes',
       'Keep Notes settings tab replaces hardcoded list',
@@ -33,7 +55,7 @@ export const CHANGELOG = [
   },
   {
     version: '1.2.0',
-    date: 'February 2026',
+    date: 'April 2026',
     notes: [
       'Weather widget with Ambient Weather station support',
       'Current conditions display: temp, humidity, wind, UV, pressure',
@@ -44,7 +66,7 @@ export const CHANGELOG = [
   },
   {
     version: '1.1.0',
-    date: 'January 2026',
+    date: 'April 2026',
     notes: [
       'Google Keep scraper with Playwright headless browser',
       'Shopping List and Meal Planning sync to Supabase',
@@ -55,7 +77,7 @@ export const CHANGELOG = [
   },
   {
     version: '1.0.0',
-    date: 'December 2025',
+    date: 'April 2026',
     notes: [
       'Initial release',
       'Google Calendar sync via Cloudflare Worker',
