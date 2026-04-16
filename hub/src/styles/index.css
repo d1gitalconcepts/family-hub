@@ -1461,8 +1461,8 @@ html, body, #root {
 }
 
 .event-popout-link-thumb {
-  width: 52px;
-  height: 52px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
   border-radius: 6px;
   flex-shrink: 0;
