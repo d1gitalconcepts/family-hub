@@ -1698,16 +1698,64 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           Add center color (3-color gradient)
                         </label>
 
-                        {hasCenter && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 22 }}>
-                            <input type="color" className="cal-color-input"
-                              value={navStyleCfg?.color3 || '#ffffff'}
-                              onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color3: e.target.value })} />
-                            <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>
-                              Center — appears at the midpoint of the gradient
-                            </span>
-                          </div>
-                        )}
+                        {hasCenter && (() => {
+                          const spread = navStyleCfg?.centerSpread ?? 30;
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 22 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <input type="color" className="cal-color-input"
+                                  value={navStyleCfg?.color3 || '#ffffff'}
+                                  onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color3: e.target.value })} />
+                                <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Center color</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Width</span>
+                                <input
+                                  type="range" min="0" max="80" step="5"
+                                  value={spread}
+                                  onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), centerSpread: Number(e.target.value) })}
+                                  style={{ flex: 1 }}
+                                />
+                                <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', minWidth: 32, textAlign: 'right' }}>{spread}%</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Live preview strip */}
+                        {(() => {
+                          const PREV_COLORS = {
+                            sunrise:  ['rgba(255,110,40,0.65)',  'rgba(255,195,80,0.65)'],
+                            ocean:    ['rgba(30,130,255,0.65)',  'rgba(0,205,225,0.65)'],
+                            forest:   ['rgba(35,170,70,0.65)',   'rgba(120,205,55,0.65)'],
+                            twilight: ['rgba(148,60,215,0.65)',  'rgba(228,75,165,0.65)'],
+                            slate:    ['rgba(85,125,168,0.55)',  'rgba(135,170,208,0.55)'],
+                          };
+                          let c1, c2;
+                          if (isCustom) {
+                            c1 = navStyleCfg?.color1 || '#5b8dee';
+                            c2 = navStyleCfg?.color2 || '#a18cd1';
+                          } else {
+                            const cols = PREV_COLORS[active];
+                            if (!cols) return null;
+                            [c1, c2] = cols;
+                          }
+                          const c3raw = navStyleCfg?.color3;
+                          const spread = navStyleCfg?.centerSpread ?? 30;
+                          const cStart = Math.max(0, (100 - spread) / 2);
+                          const cEnd   = Math.min(100, (100 + spread) / 2);
+                          const c3 = c3raw || null;
+                          const stops = c3
+                            ? `${c1}, ${c3} ${cStart}%, ${c3} ${cEnd}%, ${c2}`
+                            : `${c1}, ${c2}`;
+                          return (
+                            <div style={{
+                              height: 28, borderRadius: 6, marginTop: 2,
+                              background: `linear-gradient(90deg, ${stops})`,
+                              border: '1px solid var(--border)',
+                            }} />
+                          );
+                        })()}
 
                         {isCustom && (
                           <p style={{ margin: 0, fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>

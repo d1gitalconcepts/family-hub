@@ -56,24 +56,31 @@ export default function WeekView() {
       slate:    ['rgba(85,125,168,0.28)',  'rgba(135,170,208,0.28)'],
     };
 
-    const c3raw = navStyleCfg?.color3 || null;
+    const c3raw  = navStyleCfg?.color3 || null;
+    const spread = navStyleCfg?.centerSpread ?? 30; // % of bar the center color occupies
+    const cStart = Math.max(0,  (100 - spread) / 2);
+    const cEnd   = Math.min(100, (100 + spread) / 2);
 
     if (preset === 'custom') {
       const c1 = navStyleCfg?.color1 || '#a1c4fd';
       const c2 = navStyleCfg?.color2 || '#c2e9fb';
-      const stops = c3raw ? `${c1}, ${c3raw} 50%, ${c2}` : `${c1}, ${c2}`;
+      const stops = c3raw
+        ? `${c1}, ${c3raw} ${cStart}%, ${c3raw} ${cEnd}%, ${c2}`
+        : `${c1}, ${c2}`;
       return { background: `linear-gradient(90deg, ${stops})` };
     }
 
     const colors = PRESET_COLORS[preset];
     if (!colors) return {};
     const [c1, c2] = colors;
-    // Center color: convert hex to matching rgba so it blends consistently
+    // Center color: convert hex to rgba so it blends consistently with the preset's opacity
     const c3 = c3raw ? (() => {
       const r = parseInt(c3raw.slice(1,3),16), g = parseInt(c3raw.slice(3,5),16), b = parseInt(c3raw.slice(5,7),16);
       return `rgba(${r},${g},${b},0.32)`;
     })() : null;
-    const stops = c3 ? `${c1}, ${c3} 50%, ${c2}` : `${c1}, ${c2}`;
+    const stops = c3
+      ? `${c1}, ${c3} ${cStart}%, ${c3} ${cEnd}%, ${c2}`
+      : `${c1}, ${c2}`;
     return { background: `linear-gradient(90deg, ${stops})` };
   })();
   const isMobile    = useIsMobile();
