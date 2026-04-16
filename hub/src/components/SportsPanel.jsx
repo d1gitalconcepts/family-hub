@@ -45,17 +45,26 @@ function StatusBadge({ sport, status }) {
 // ── MLB Panel ────────────────────────────────────────────────────────────────
 
 function MlbPanel({ data }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, homeRecord, awayRecord } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions,
+          homeRecord, awayRecord, walkoffNote, seriesGame, seriesTotal, occasion, venue } = data;
   const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
-
-  const awayLine = recordLine(awayTeam?.abbrev, awayRecord);
-  const homeLine = recordLine(homeTeam?.abbrev, homeRecord);
 
   return (
     <div>
       <div className="sports-panel-header">
         <StatusBadge sport="mlb" status={status} />
+        {seriesGame && seriesTotal && (
+          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+            Game {seriesGame} of {seriesTotal}
+          </span>
+        )}
       </div>
+
+      {occasion && (
+        <div style={{ fontSize: 'var(--s-xs)', color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
+          {occasion}
+        </div>
+      )}
 
       {/* Score row with inline standings */}
       <div className="sports-score-row">
@@ -111,6 +120,18 @@ function MlbPanel({ data }) {
           {decisions.winner && <span>W: {decisions.winner}</span>}
           {decisions.loser  && <span>L: {decisions.loser}</span>}
           {decisions.save   && <span>S: {decisions.save}</span>}
+        </div>
+      )}
+
+      {walkoffNote && (
+        <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 6 }}>
+          {walkoffNote}
+        </div>
+      )}
+
+      {venue && (
+        <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
+          📍 {venue}
         </div>
       )}
 

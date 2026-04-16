@@ -68,6 +68,11 @@ async function enrichMlb(event, config, standingsMap = {}) {
     homeRecord: buildRecord(home),
     awayRecord: buildRecord(away),
     currentInning: linescore.currentInning || null,
+    walkoffNote: linescore.note || null,
+    seriesGame: game.seriesGameNumber || null,
+    seriesTotal: game.gamesInSeries || null,
+    occasion: game.description || null,
+    venue: game.venue?.name || null,
     gamePk: game.gamePk,
   };
 }
