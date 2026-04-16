@@ -128,7 +128,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     if (el.key === 'calName') {
       return <span key="calName" className="event-cal">{event.cal_name}</span>;
     }
-    if (el.key === 'desc' && event.description) {
+    if (el.key === 'desc' && event.description && !enrichment) {
       return (
         <span key="desc" className="event-desc-snippet">
           {event.description.slice(0, 60)}{event.description.length > 60 ? '…' : ''}
@@ -236,7 +236,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
                     </a>
                   </div>
                 );
-                if (el.key === 'description' && event.description) return (
+                if (el.key === 'description' && event.description && !enrichment) return (
                   <div key="description" className="event-popout-row event-popout-desc">
                     <span className="event-popout-label">Details</span>
                     <span>

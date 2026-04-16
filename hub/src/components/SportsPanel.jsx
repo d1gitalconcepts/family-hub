@@ -17,14 +17,23 @@ function StatusBadge({ sport, status }) {
 // ── MLB Panel ────────────────────────────────────────────────────────────────
 
 function MlbPanel({ data }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, record } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions, record, isHome } = data;
   const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
+  const myTeam = isHome ? homeTeam : awayTeam;
 
   return (
     <div>
       <div className="sports-panel-header">
         <StatusBadge sport="mlb" status={status} />
       </div>
+
+      {/* Team record above score */}
+      {record && (
+        <div className="sports-record" style={{ marginBottom: 4 }}>
+          {myTeam?.abbrev} {record.wins}-{record.losses}
+          {record.gb && record.gb !== '-' && ` · GB: ${record.gb}`}
+        </div>
+      )}
 
       {/* Score row */}
       <div className="sports-score-row">
@@ -81,14 +90,6 @@ function MlbPanel({ data }) {
         </div>
       )}
 
-      {/* Record */}
-      {record && (
-        <div className="sports-record">
-          {awayTeam?.abbrev} {record.wins}-{record.losses}
-          {record.divisionRank && record.division && ` · ${record.divisionRank} ${record.division}`}
-          {record.gb && record.gb !== '-' && ` · GB: ${record.gb}`}
-        </div>
-      )}
     </div>
   );
 }

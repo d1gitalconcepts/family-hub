@@ -55,8 +55,8 @@ async function enrichMlb(event, config) {
     awayScore: away?.score ?? null,
     innings,
     totals: {
-      home: { r: linescore.home?.runs ?? null, h: linescore.home?.hits ?? null, e: linescore.home?.errors ?? null },
-      away: { r: linescore.away?.runs ?? null, h: linescore.away?.hits ?? null, e: linescore.away?.errors ?? null },
+      home: { r: linescore.teams?.home?.runs ?? null, h: linescore.teams?.home?.hits ?? null, e: linescore.teams?.home?.errors ?? null },
+      away: { r: linescore.teams?.away?.runs ?? null, h: linescore.teams?.away?.hits ?? null, e: linescore.teams?.away?.errors ?? null },
     },
     decisions,
     record,
