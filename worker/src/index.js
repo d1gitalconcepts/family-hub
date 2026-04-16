@@ -33,6 +33,14 @@ export default {
       });
     }
 
+    if (request.method === 'POST' && url.pathname === '/sync-sports') {
+      ctx.waitUntil(enrichSportsEvents(env));
+      return new Response(JSON.stringify({ ok: true, message: 'Sports enrichment started' }), {
+        status:  200,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+      });
+    }
+
     return new Response('Not found', { status: 404 });
   },
 };
