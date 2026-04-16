@@ -41,6 +41,27 @@ export default {
       });
     }
 
+    if (request.method === 'GET' && url.pathname === '/og-img') {
+      const targetUrl = url.searchParams.get('url');
+      if (!targetUrl) return new Response('Missing url', { status: 400 });
+      try {
+        const res = await fetch(targetUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; FamilyHub/1.0)' },
+        });
+        const contentType = res.headers.get('content-type') || 'image/jpeg';
+        return new Response(res.body, {
+          status: res.status,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=86400',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      } catch {
+        return new Response('Failed to fetch image', { status: 502 });
+      }
+    }
+
     if (request.method === 'GET' && url.pathname === '/og') {
       const targetUrl = url.searchParams.get('url');
       if (!targetUrl) {
@@ -75,7 +96,12 @@ export default {
           }
         }
 
-        return new Response(JSON.stringify({ image }), {
+        // Proxy the image through the worker to avoid hotlink protection
+        const proxyImage = image
+          ? `${new URL(request.url).origin}/og-img?url=${encodeURIComponent(image)}`
+          : null;
+
+        return new Response(JSON.stringify({ image: proxyImage }), {
           headers: {
             'Content-Type': 'application/json',
             'Cache-Control': 'public, max-age=86400',
