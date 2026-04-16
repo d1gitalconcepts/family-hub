@@ -199,13 +199,12 @@ function NflPanel({ data }) {
 const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
 
 function NhlPanel({ data }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType,
+  const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType, lastPeriodType,
           periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie } = data;
   const isLive   = status === 'LIVE' || status === 'CRIT';
   const isFinal  = status === 'OFF'  || status === 'FINAL';
-  const statusLabel = isFinal ? (periods?.some(p => p.periodDesc === 'OT') ? 'Final/OT' :
-                                 periods?.some(p => p.periodDesc === 'SO') ? 'Final/SO' : 'Final')
-                               : status;
+  const finishSuffix = lastPeriodType === 'OT' ? '/OT' : lastPeriodType === 'SO' ? '/SO' : '';
+  const statusLabel  = isFinal ? `Final${finishSuffix}` : status;
 
   return (
     <div>

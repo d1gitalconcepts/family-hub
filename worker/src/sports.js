@@ -154,59 +154,81 @@ async function enrichNhl(event, config) {
     return base; // boxscore unavailable — fall back to basic score
   }
 
-  // Period-by-period linescore
-  const periods = (box?.linescore?.byPeriod || []).map((p) => ({
-    period: p.period,
-    periodDesc: p.periodDescriptor?.periodType === 'OT' ? 'OT' :
-                p.periodDescriptor?.periodType === 'SO' ? 'SO' : String(p.period),
-    home: p.home ?? null,
-    away: p.away ?? null,
-  }));
+  // Shots on goal — confirmed on team object directly
+  const homeShots = box?.homeTeam?.sog ?? null;
+  const awayShots = box?.awayTeam?.sog ?? null;
 
-  // Shots on goal
-  const homeShots = box?.teamGameStats?.find?.(s => s.category === 'sog')?.homeValue ?? null;
-  const awayShots = box?.teamGameStats?.find?.(s => s.category === 'sog')?.awayValue ?? null;
+  // Finish type (OT/SO/REG) from gameOutcome
+  const lastPeriodType = box?.gameOutcome?.lastPeriodType || null;
 
-  // Power play (goals/opportunities)
-  const homePP = box?.teamGameStats?.find?.(s => s.category === 'powerPlay')?.homeValue ?? null;
-  const awayPP = box?.teamGameStats?.find?.(s => s.category === 'powerPlay')?.awayValue ?? null;
-
-  // Goal log from linescore scoring plays
-  const goals = (box?.linescore?.goal || []).map((g) => ({
-    teamAbbrev: g.teamAbbrev?.default || null,
-    scorer: g.firstName?.default && g.lastName?.default
-      ? `${g.firstName.default} ${g.lastName.default}` : null,
-    scorerTotal: g.goalsToDate ?? null,
-    assists: (g.assists || []).map((a) => `${a.firstName?.default || ''} ${a.lastName?.default || ''}`.trim()),
-    period: g.periodDescriptor?.periodType === 'OT' ? 'OT' :
-            g.periodDescriptor?.periodType === 'SO' ? 'SO' :
-            g.period ? `${g.period}` : null,
-    timeInPeriod: g.timeInPeriod || null,
-    strength: g.strength || 'ev',        // ev, pp, sh
-    emptyNet: g.goalModifier === 'empty-net' || false,
-  }));
-
-  // Goalies — one per team, the one with most TOI (starter)
+  // Goalies — use starter flag, confirmed field names from API
   function pickGoalie(goalies) {
     if (!goalies?.length) return null;
-    const sorted = [...goalies].sort((a, b) => (b.toi || 0) - (a.toi || 0));
-    const g = sorted[0];
-    const shots = (g.saves ?? 0) + (g.goalsAgainst ?? 0);
-    const pct = shots > 0 ? (g.saves / shots).toFixed(3).replace(/^0/, '') : null;
+    const g = goalies.find(gl => gl.starter) || goalies[0];
+    const pct = g.savePctg != null
+      ? g.savePctg.toFixed(3).replace(/^0/, '')
+      : null;
     return {
-      name: `${g.firstName?.default || ''} ${g.lastName?.default || ''}`.trim(),
+      name: g.name?.default || '',
       saves: g.saves ?? null,
-      shots,
+      shots: g.shotsAgainst ?? null,
       savePct: pct,
+      decision: g.decision || null,
     };
   }
 
   const playerStats = box?.playerByGameStats;
   const homeGoalie = pickGoalie(playerStats?.homeTeam?.goalies);
-  const awayGoalie  = pickGoalie(playerStats?.awayTeam?.goalies);
+  const awayGoalie = pickGoalie(playerStats?.awayTeam?.goalies);
+
+  // Goals + period linescore live in the landing endpoint — fetch separately
+  let periods = [];
+  let goals   = [];
+  let homePP  = null;
+  let awayPP  = null;
+
+  try {
+    const landing = await fetchJson(`https://api-web.nhle.com/v1/gamecenter/${game.id}/landing`);
+    const summary = landing?.summary;
+
+    // Period linescore
+    periods = (summary?.linescore?.byPeriod || []).map((p) => ({
+      periodDesc: p.periodDescriptor?.periodType === 'OT' ? 'OT' :
+                  p.periodDescriptor?.periodType === 'SO' ? 'SO' : `P${p.period}`,
+      home: p.home ?? null,
+      away: p.away ?? null,
+    }));
+
+    // Goal log
+    goals = (summary?.scoring || []).flatMap((period) => {
+      const pDesc = period.periodDescriptor?.periodType === 'OT' ? 'OT' :
+                    period.periodDescriptor?.periodType === 'SO' ? 'SO' :
+                    period.period ? `P${period.period}` : '?';
+      return (period.goals || []).map((g) => ({
+        teamAbbrev: g.teamAbbrev?.default || null,
+        scorer: g.name?.default || null,
+        scorerTotal: g.goalsToDate ?? null,
+        assists: (g.assists || []).map((a) => a.name?.default || '').filter(Boolean),
+        period: pDesc,
+        timeInPeriod: g.timeInPeriod || null,
+        strength: g.strength || 'ev',
+        emptyNet: g.goalModifier === 'empty-net' || false,
+      }));
+    });
+
+    // Power play from teamGameStats in landing
+    const tgs = summary?.teamGameStats || [];
+    const ppStat = tgs.find((s) => s.category === 'powerPlay');
+    homePP = ppStat?.homeValue ?? null;
+    awayPP = ppStat?.awayValue ?? null;
+
+  } catch (e) {
+    console.warn('[Sports] NHL landing fetch failed:', e.message);
+  }
 
   return {
     ...base,
+    lastPeriodType,
     periods,
     goals,
     homeShots,
