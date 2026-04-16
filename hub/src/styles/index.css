@@ -1863,6 +1863,59 @@ html, body, #root {
   color: var(--text-muted);
 }
 
+/* NHL goal log */
+.sports-nhl-goals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: var(--s-xs);
+}
+
+.sports-nhl-goal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+  background: color-mix(in srgb, var(--cal-color, var(--accent)) 8%, var(--surface));
+  border-radius: 4px;
+  border-left: 2px solid color-mix(in srgb, var(--cal-color, var(--accent)) 40%, transparent);
+}
+
+.sports-nhl-goal-meta {
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sports-nhl-strength {
+  background: var(--cal-color, var(--accent));
+  color: #fff;
+  font-size: 0.7em;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.sports-nhl-goal-scorer {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sports-nhl-goal-assists {
+  color: var(--text-muted);
+}
+
+.sports-nhl-goalies {
+  font-size: var(--s-xs);
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 /* Golf leaderboard */
 .sports-leaderboard {
   width: 100%;

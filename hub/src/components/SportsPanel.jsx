@@ -196,21 +196,29 @@ function NflPanel({ data }) {
 
 // ── NHL Panel ────────────────────────────────────────────────────────────────
 
+const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
+
 function NhlPanel({ data }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType } = data;
-  const isLive = status === 'LIVE' || status === 'CRIT';
+  const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType,
+          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie } = data;
+  const isLive   = status === 'LIVE' || status === 'CRIT';
+  const isFinal  = status === 'OFF'  || status === 'FINAL';
+  const statusLabel = isFinal ? (periods?.some(p => p.periodDesc === 'OT') ? 'Final/OT' :
+                                 periods?.some(p => p.periodDesc === 'SO') ? 'Final/SO' : 'Final')
+                               : status;
 
   return (
     <div>
       <div className="sports-panel-header">
-        <StatusBadge sport="nhl" status={status === 'OFF' ? 'Final' : status} />
+        <StatusBadge sport="nhl" status={statusLabel} />
         {isLive && period && (
           <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
-            Period {period}{periodType === 'OT' ? ' OT' : ''}
+            {periodType === 'OT' ? 'OT' : periodType === 'SO' ? 'SO' : `P${period}`}
           </span>
         )}
       </div>
 
+      {/* Score row */}
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">{awayTeam?.abbrev}</div>
         <div className="sports-score-num">{awayScore ?? '—'}</div>
@@ -218,6 +226,74 @@ function NhlPanel({ data }) {
         <div className="sports-score-num">{homeScore ?? '—'}</div>
         <div className="sports-score-team sports-score-team--home">{homeTeam?.abbrev}</div>
       </div>
+
+      {/* Period linescore */}
+      {periods?.length > 0 && (
+        <div className="sports-linescore-wrap">
+          <table className="sports-linescore">
+            <thead>
+              <tr>
+                <th></th>
+                {periods.map((p) => <th key={p.periodDesc}>{p.periodDesc}</th>)}
+                <th className="col-totals">T</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{awayTeam?.abbrev}</td>
+                {periods.map((p) => <td key={p.periodDesc}>{p.away ?? '—'}</td>)}
+                <td className="col-totals">{awayScore ?? '—'}</td>
+              </tr>
+              <tr>
+                <td>{homeTeam?.abbrev}</td>
+                {periods.map((p) => <td key={p.periodDesc}>{p.home ?? '—'}</td>)}
+                <td className="col-totals">{homeScore ?? '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Goal log */}
+      {goals?.length > 0 && (
+        <div className="sports-nhl-goals">
+          {goals.map((g, i) => (
+            <div key={i} className="sports-nhl-goal-row">
+              <span className="sports-nhl-goal-meta">
+                {g.teamAbbrev} · {g.period} {g.timeInPeriod}
+                {STRENGTH_LABEL[g.strength] && <span className="sports-nhl-strength">{STRENGTH_LABEL[g.strength]}</span>}
+                {g.emptyNet && <span className="sports-nhl-strength">EN</span>}
+              </span>
+              <span className="sports-nhl-goal-scorer">
+                {g.scorer}{g.scorerTotal != null ? ` (${g.scorerTotal})` : ''}
+              </span>
+              {g.assists?.length > 0 && (
+                <span className="sports-nhl-goal-assists">{g.assists.join(', ')}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Team stats: shots + power play */}
+      {(homeShots != null || homePP) && (
+        <div className="sports-decisions" style={{ marginTop: 8 }}>
+          {homeShots != null && <span>SOG: {awayShots}–{homeShots}</span>}
+          {homePP     && <span>PP: {awayPP} / {homePP}</span>}
+        </div>
+      )}
+
+      {/* Goalie duel */}
+      {(awayGoalie || homeGoalie) && (
+        <div className="sports-nhl-goalies">
+          {awayGoalie && (
+            <div>{awayGoalie.name} {awayGoalie.saves}/{awayGoalie.shots}{awayGoalie.savePct ? ` (${awayGoalie.savePct})` : ''}</div>
+          )}
+          {homeGoalie && (
+            <div>{homeGoalie.name} {homeGoalie.saves}/{homeGoalie.shots}{homeGoalie.savePct ? ` (${homeGoalie.savePct})` : ''}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

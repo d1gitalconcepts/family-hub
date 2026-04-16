@@ -122,25 +122,99 @@ async function enrichNhl(event, config) {
   const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
   if (!dateStr) throw new Error('No date for NHL event');
 
-  const url = `https://api-web.nhle.com/v1/score/${dateStr}`;
-  const json = await fetchJson(url);
-
+  // Step 1: find the game on the scoreboard
+  const scoreJson = await fetchJson(`https://api-web.nhle.com/v1/score/${dateStr}`);
   const abbrev = (config.teamId || '').toUpperCase();
-  const game = (json?.games || []).find((g) => {
-    return g.homeTeam?.abbrev?.toUpperCase() === abbrev || g.awayTeam?.abbrev?.toUpperCase() === abbrev;
-  });
+  const game = (scoreJson?.games || []).find((g) =>
+    g.homeTeam?.abbrev?.toUpperCase() === abbrev || g.awayTeam?.abbrev?.toUpperCase() === abbrev
+  );
   if (!game) return null;
 
   const statusCode = game.gameState || 'FUTURE';
+  const isFinal = statusCode === 'OFF' || statusCode === 'FINAL';
+  const isLive  = statusCode === 'LIVE' || statusCode === 'CRIT';
 
-  return {
+  const base = {
     status: statusCode,
-    homeTeam: { abbrev: game.homeTeam?.abbrev, name: game.homeTeam?.name?.default || game.homeTeam?.abbrev },
-    awayTeam: { abbrev: game.awayTeam?.abbrev, name: game.awayTeam?.name?.default || game.awayTeam?.abbrev },
+    homeTeam: { abbrev: game.homeTeam?.abbrev, name: game.homeTeam?.commonName?.default || game.homeTeam?.abbrev },
+    awayTeam: { abbrev: game.awayTeam?.abbrev, name: game.awayTeam?.commonName?.default || game.awayTeam?.abbrev },
     homeScore: game.homeTeam?.score ?? null,
     awayScore: game.awayTeam?.score ?? null,
     period: game.period || null,
     periodType: game.periodType || null,
+  };
+
+  // Step 2: fetch boxscore for completed or live games
+  if (!isFinal && !isLive) return base;
+
+  let box;
+  try {
+    box = await fetchJson(`https://api-web.nhle.com/v1/gamecenter/${game.id}/boxscore`);
+  } catch (e) {
+    return base; // boxscore unavailable — fall back to basic score
+  }
+
+  // Period-by-period linescore
+  const periods = (box?.linescore?.byPeriod || []).map((p) => ({
+    period: p.period,
+    periodDesc: p.periodDescriptor?.periodType === 'OT' ? 'OT' :
+                p.periodDescriptor?.periodType === 'SO' ? 'SO' : String(p.period),
+    home: p.home ?? null,
+    away: p.away ?? null,
+  }));
+
+  // Shots on goal
+  const homeShots = box?.teamGameStats?.find?.(s => s.category === 'sog')?.homeValue ?? null;
+  const awayShots = box?.teamGameStats?.find?.(s => s.category === 'sog')?.awayValue ?? null;
+
+  // Power play (goals/opportunities)
+  const homePP = box?.teamGameStats?.find?.(s => s.category === 'powerPlay')?.homeValue ?? null;
+  const awayPP = box?.teamGameStats?.find?.(s => s.category === 'powerPlay')?.awayValue ?? null;
+
+  // Goal log from linescore scoring plays
+  const goals = (box?.linescore?.goal || []).map((g) => ({
+    teamAbbrev: g.teamAbbrev?.default || null,
+    scorer: g.firstName?.default && g.lastName?.default
+      ? `${g.firstName.default} ${g.lastName.default}` : null,
+    scorerTotal: g.goalsToDate ?? null,
+    assists: (g.assists || []).map((a) => `${a.firstName?.default || ''} ${a.lastName?.default || ''}`.trim()),
+    period: g.periodDescriptor?.periodType === 'OT' ? 'OT' :
+            g.periodDescriptor?.periodType === 'SO' ? 'SO' :
+            g.period ? `${g.period}` : null,
+    timeInPeriod: g.timeInPeriod || null,
+    strength: g.strength || 'ev',        // ev, pp, sh
+    emptyNet: g.goalModifier === 'empty-net' || false,
+  }));
+
+  // Goalies — one per team, the one with most TOI (starter)
+  function pickGoalie(goalies) {
+    if (!goalies?.length) return null;
+    const sorted = [...goalies].sort((a, b) => (b.toi || 0) - (a.toi || 0));
+    const g = sorted[0];
+    const shots = (g.saves ?? 0) + (g.goalsAgainst ?? 0);
+    const pct = shots > 0 ? (g.saves / shots).toFixed(3).replace(/^0/, '') : null;
+    return {
+      name: `${g.firstName?.default || ''} ${g.lastName?.default || ''}`.trim(),
+      saves: g.saves ?? null,
+      shots,
+      savePct: pct,
+    };
+  }
+
+  const playerStats = box?.playerByGameStats;
+  const homeGoalie = pickGoalie(playerStats?.homeTeam?.goalies);
+  const awayGoalie  = pickGoalie(playerStats?.awayTeam?.goalies);
+
+  return {
+    ...base,
+    periods,
+    goals,
+    homeShots,
+    awayShots,
+    homePP,
+    awayPP,
+    homeGoalie,
+    awayGoalie,
   };
 }
 
