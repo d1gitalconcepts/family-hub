@@ -1891,7 +1891,7 @@ html, body, #root {
 
 .sports-nhl-strength {
   background: var(--cal-color, var(--accent));
-  color: #fff;
+  color: var(--bg);
   font-size: 0.7em;
   font-weight: 700;
   padding: 1px 4px;
