@@ -59,7 +59,7 @@ function resolvePopoutElements(style) {
   ];
 }
 
-export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment }) {
+export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -174,20 +174,29 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         onClick={() => setOpen(true)}
       >
         {renderCardContent()}
-        {enrichment?.data?.homeScore != null && enrichment.sport !== 'golf' && enrichment.sport !== 'f1' && (
-          <div className="event-card-score-chip">
-            {enrichment.data.awayTeam?.abbrev} {enrichment.data.awayScore} · {enrichment.data.homeScore} {enrichment.data.homeTeam?.abbrev}
-          </div>
-        )}
-        {enrichment?.sport === 'golf' && enrichment.data?.leaderboard?.[0] && (
-          <div className="event-card-score-chip">
-            ⛳ {enrichment.data.leaderboard[0].name} {enrichment.data.leaderboard[0].score}
-          </div>
-        )}
-        {enrichment?.sport === 'f1' && enrichment.data?.topResults?.[0] && (
-          <div className="event-card-score-chip">
-            🏎️ {enrichment.data.topResults[0].acronym} P1
-          </div>
+        {enrichment && sportsDisplay?.showChip !== false && (
+          <>
+            {enrichment.data?.homeScore != null && enrichment.sport !== 'golf' && enrichment.sport !== 'f1' && enrichment.sport !== 'nascar' && (
+              <div className="event-card-score-chip">
+                {enrichment.data.awayTeam?.abbrev} {enrichment.data.awayScore} · {enrichment.data.homeScore} {enrichment.data.homeTeam?.abbrev}
+              </div>
+            )}
+            {enrichment.sport === 'golf' && enrichment.data?.leaderboard?.[0] && (
+              <div className="event-card-score-chip">
+                ⛳ {enrichment.data.leaderboard[0].name} {enrichment.data.leaderboard[0].score}
+              </div>
+            )}
+            {enrichment.sport === 'f1' && enrichment.data?.topResults?.[0] && (
+              <div className="event-card-score-chip">
+                🏎️ {enrichment.data.topResults[0].acronym} P1
+              </div>
+            )}
+            {enrichment.sport === 'nascar' && enrichment.data?.results?.[0] && (
+              <div className="event-card-score-chip">
+                🏁 {enrichment.data.results[0].name}
+              </div>
+            )}
+          </>
         )}
       </div>
 

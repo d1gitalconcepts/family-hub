@@ -40,8 +40,9 @@ export default function WeekView() {
   const [forecast]  = useConfig('weather_forecast');
   const [eventIconsCfg]   = useConfig('event_icons');
   const [cardStyleCfg]    = useConfig('card_style');
-  const [eventFiltersCfg] = useConfig('event_filters');
-  const [navStyleCfg]     = useConfig('nav_style');
+  const [eventFiltersCfg]  = useConfig('event_filters');
+  const [navStyleCfg]      = useConfig('nav_style');
+  const [sportsDisplayCfg] = useConfig('sports_display');
 
   const navBg = (() => {
     const preset = navStyleCfg?.preset;
@@ -228,6 +229,7 @@ export default function WeekView() {
               cardStyle={cardStyleCfg}
               filterRules={eventFiltersCfg?.rules || []}
               enrichments={enrichments}
+              sportsDisplay={sportsDisplayCfg}
             />
           ))}
         </div>
