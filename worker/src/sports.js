@@ -313,17 +313,18 @@ export async function enrichSportsEvents(env) {
     return;
   }
 
-  // 2. Fetch recent calendar events
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayIso = yesterday.toISOString();
-  const yStr = yesterdayIso.split('T')[0];
+  // 2. Fetch recent calendar events (7 days back so completed games get refreshed)
+  const lookback = new Date();
+  lookback.setDate(lookback.getDate() - 7);
+  lookback.setHours(0, 0, 0, 0);
+  const lookbackIso = lookback.toISOString();
+  const yStr = lookbackIso.split('T')[0];
 
   let calEvents;
   try {
     calEvents = await sbSelect(env, 'calendar_events', {
       select: 'google_id,calendar_id,summary,start_date,start_at',
-      or: `(start_date.gte.${yStr},start_at.gte.${yesterdayIso})`,
+      or: `(start_date.gte.${yStr},start_at.gte.${lookbackIso})`,
     });
   } catch (err) {
     console.warn('[Sports] Failed to fetch calendar events:', err.message);
