@@ -1672,7 +1672,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     </div>
 
                     {isGradient && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 20px', background: 'var(--bg)', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}>
                         {/* Custom: start + end color pickers */}
                         {isCustom && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
