@@ -24,7 +24,6 @@ function useIsMobile() {
 export default function App() {
   const [appName]                      = useConfig('app_name');
   const [accentColorCfg] = useConfig('accent_color');
-  const [headerStyleCfg] = useConfig('header_style');
   const [fontSizeCfg]    = useConfig('font_size');
   const [faviconCfg]     = useConfig('favicon');
   const [role, setRole]               = useState(null);
@@ -193,19 +192,6 @@ export default function App() {
     document.documentElement.style.setProperty('--card-meta-font', s.meta);
   }, [fontSizeCfg]);
 
-  const headerBg = useMemo(() => {
-    if (!headerStyleCfg?.enabled) return {};
-    const PRESETS = {
-      sunrise:  'linear-gradient(135deg,#ffecd2,#fcb69f)',
-      ocean:    'linear-gradient(135deg,#a1c4fd,#c2e9fb)',
-      forest:   'linear-gradient(135deg,#d4fc79,#96e6a1)',
-      twilight: 'linear-gradient(135deg,#a18cd1,#fbc2eb)',
-      slate:    'linear-gradient(135deg,#e0eafc,#cfdef3)',
-      custom:   `linear-gradient(135deg,${headerStyleCfg.color1 || '#a1c4fd'},${headerStyleCfg.color2 || '#c2e9fb'})`,
-    };
-    const bg = PRESETS[headerStyleCfg.preset || 'sunrise'];
-    return bg ? { background: bg } : {};
-  }, [headerStyleCfg]);
 
   // Close mobile list when switching to desktop
   useEffect(() => {
@@ -222,7 +208,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header" style={headerBg}>
+      <header className="app-header">
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <img
             src={faviconCfg === 'bolt' ? '/favicon.svg' : `/favicon-${faviconCfg || 'house'}.svg`}

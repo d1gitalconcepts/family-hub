@@ -14,7 +14,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [appName,        setAppName]       = useConfig('app_name');
   const [fontSizeCfg,    setFontSizeCfg]   = useConfig('font_size');
   const [accentColorCfg,  setAccentColorCfg]  = useConfig('accent_color');
-  const [headerStyleCfg,  setHeaderStyleCfg]  = useConfig('header_style');
+  const [navStyleCfg,     setNavStyleCfg]     = useConfig('nav_style');
   const [eventIconsCfg,    setEventIconsCfg]    = useConfig('event_icons');
   const [cardStyleCfg,     setCardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg,  setEventFiltersCfg]  = useConfig('event_filters');
@@ -1634,40 +1634,32 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 </p>
               )}
 
-              {/* Header Style */}
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-                <h3 style={{ flex: 1, margin: 0 }}>Header Style</h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={headerStyleCfg?.enabled ?? false}
-                    onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || { preset: 'sunrise' }), enabled: e.target.checked })}
-                  />
-                  Enable
-                </label>
-              </div>
-              {headerStyleCfg?.enabled && (() => {
+              {/* Nav Bar Style */}
+              <h3 style={{ marginBottom: 10 }}>Nav Bar Style</h3>
+              {(() => {
                 const PRESETS = [
-                  { id: 'sunrise',  label: '🌅 Sunrise',  bg: 'linear-gradient(135deg,#ffecd2,#fcb69f)' },
-                  { id: 'ocean',    label: '🌊 Ocean',    bg: 'linear-gradient(135deg,#a1c4fd,#c2e9fb)' },
-                  { id: 'forest',   label: '🌿 Forest',   bg: 'linear-gradient(135deg,#d4fc79,#96e6a1)' },
-                  { id: 'twilight', label: '🌆 Twilight', bg: 'linear-gradient(135deg,#a18cd1,#fbc2eb)' },
-                  { id: 'slate',    label: '🩶 Slate',    bg: 'linear-gradient(135deg,#e0eafc,#cfdef3)' },
-                  { id: 'custom',   label: '🎨 Custom',   bg: null },
+                  { id: 'none',     label: '— None',      bg: 'var(--bg-secondary)' },
+                  { id: 'accent',   label: '🎨 Accent',   bg: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' },
+                  { id: 'sunrise',  label: '🌅 Sunrise',  bg: 'linear-gradient(90deg,#ffecd2,#fcb69f)' },
+                  { id: 'ocean',    label: '🌊 Ocean',    bg: 'linear-gradient(90deg,#a1c4fd,#c2e9fb)' },
+                  { id: 'forest',   label: '🌿 Forest',   bg: 'linear-gradient(90deg,#d4fc79,#96e6a1)' },
+                  { id: 'twilight', label: '🌆 Twilight', bg: 'linear-gradient(90deg,#a18cd1,#fbc2eb)' },
+                  { id: 'slate',    label: '🩶 Slate',    bg: 'linear-gradient(90deg,#e0eafc,#cfdef3)' },
+                  { id: 'custom',   label: '✏️ Custom',   bg: null },
                 ];
-                const active = headerStyleCfg?.preset || 'sunrise';
+                const active = navStyleCfg?.preset || 'none';
                 return (
                   <>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                       {PRESETS.map((p) => (
                         <button
                           key={p.id}
-                          onClick={() => setHeaderStyleCfg({ ...(headerStyleCfg || {}), preset: p.id })}
+                          onClick={() => setNavStyleCfg({ ...(navStyleCfg || {}), preset: p.id })}
                           style={{
                             padding: '6px 10px', fontSize: 'var(--s-sm)', borderRadius: 6, cursor: 'pointer',
                             border: `2px solid ${active === p.id ? 'var(--accent)' : 'var(--border)'}`,
-                            background: p.bg || (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
-                            color: 'var(--text)', fontFamily: 'var(--font)',
+                            background: p.bg ?? (active === p.id ? 'color-mix(in srgb,var(--accent) 10%,var(--surface))' : 'var(--surface)'),
+                            color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'inherit',
                             fontWeight: active === p.id ? 600 : 400,
                           }}
                         >
@@ -1678,26 +1670,21 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     {active === 'custom' && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                         <input type="color" className="cal-color-input"
-                          value={headerStyleCfg?.color1 || '#a1c4fd'}
-                          onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || {}), color1: e.target.value })} />
+                          value={navStyleCfg?.color1 || '#a1c4fd'}
+                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color1: e.target.value })} />
                         <span style={{ color: 'var(--text-muted)' }}>→</span>
                         <input type="color" className="cal-color-input"
-                          value={headerStyleCfg?.color2 || '#c2e9fb'}
-                          onChange={(e) => setHeaderStyleCfg({ ...(headerStyleCfg || {}), color2: e.target.value })} />
+                          value={navStyleCfg?.color2 || '#c2e9fb'}
+                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), color2: e.target.value })} />
                         <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Gradient colors</span>
                       </div>
                     )}
                   </>
                 );
               })()}
-              {!(headerStyleCfg?.enabled) && (
-                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 20 }}>
-                  Solid header. Enable to add a gradient.
-                </p>
-              )}
 
               {/* Theme */}
-              <h3 style={{ marginBottom: 12, marginTop: headerStyleCfg?.enabled ? 16 : 0 }}>Theme</h3>
+              <h3 style={{ marginBottom: 12, marginTop: 16 }}>Theme</h3>
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
                   { value: 'auto',  icon: '🌓', label: 'Auto'  },

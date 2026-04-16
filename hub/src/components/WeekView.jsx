@@ -40,6 +40,23 @@ export default function WeekView() {
   const [eventIconsCfg]   = useConfig('event_icons');
   const [cardStyleCfg]    = useConfig('card_style');
   const [eventFiltersCfg] = useConfig('event_filters');
+  const [navStyleCfg]     = useConfig('nav_style');
+
+  const navBg = (() => {
+    const preset = navStyleCfg?.preset;
+    if (!preset || preset === 'none') return {};
+    if (preset === 'accent') return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
+    const PRESETS = {
+      sunrise:  'linear-gradient(90deg,#ffecd2,#fcb69f)',
+      ocean:    'linear-gradient(90deg,#a1c4fd,#c2e9fb)',
+      forest:   'linear-gradient(90deg,#d4fc79,#96e6a1)',
+      twilight: 'linear-gradient(90deg,#a18cd1,#fbc2eb)',
+      slate:    'linear-gradient(90deg,#e0eafc,#cfdef3)',
+      custom:   `linear-gradient(90deg,${navStyleCfg.color1 || '#a1c4fd'},${navStyleCfg.color2 || '#c2e9fb'})`,
+    };
+    const bg = PRESETS[preset];
+    return bg ? { background: bg } : {};
+  })();
   const isMobile    = useIsMobile();
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
@@ -131,7 +148,7 @@ export default function WeekView() {
     <div className="main-area">
       {/* Desktop nav */}
       {!isMobile && (
-        <div className="week-nav">
+        <div className="week-nav" style={navBg}>
           <button className="btn-icon" onClick={prevWeek}>‹</button>
           <span>{formatWeekLabel(days)}</span>
           <button className="btn" onClick={goToday}>Today</button>
@@ -141,7 +158,7 @@ export default function WeekView() {
 
       {/* Mobile nav */}
       {isMobile && (
-        <div className="week-nav">
+        <div className="week-nav" style={navBg}>
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
           <button className="btn-icon" onClick={() => setMobileDayIdx((i) => Math.max(0, i - 1))}>‹</button>
           <span style={{ flex: 1, textAlign: 'center' }}>
