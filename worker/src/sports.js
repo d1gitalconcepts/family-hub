@@ -347,8 +347,22 @@ async function enrichGolf(event, config) {
     if (!Object.prototype.hasOwnProperty.call(scoreFirstOrder, s)) scoreFirstOrder[s] = c.order;
   }
 
-  // Regex to detect a time string like "1:40 PM" or "10:05 AM"
+  // Regex to detect a pre-formatted time string like "1:40 PM" or "10:05 AM"
   const TEE_TIME_RE = /^\d{1,2}:\d{2}\s*(AM|PM)/i;
+
+  // Parse ESPN's raw tee-time datetime string: "Thu Apr 16 10:05:00 PDT 2026"
+  // and format as "10:05 AM". ESPN stores times in PDT and displays them as-is.
+  function formatTeeTime(raw) {
+    if (!raw) return null;
+    const m = raw.match(/(\d{1,2}):(\d{2}):\d{2}/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    if (h > 12) h -= 12;
+    if (h === 0) h = 12;
+    return `${h}:${min} ${ampm}`;
+  }
 
   function mapCompetitor(c) {
     // Per-round linescores (top-level, one per round)
@@ -358,10 +372,10 @@ async function enrichGolf(event, config) {
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
 
-    // Tee time: primary source is statistics.categories[0].stats[6].displayValue
-    // (confirmed from ESPN API response); fallback to c.status.teeTime or a
-    // time-looking string in the round's displayValue.
-    const statsTeeTime = c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
+    // Tee time: statistics.categories[0].stats[6].displayValue contains a raw
+    // datetime string like "Thu Apr 16 10:05:00 PDT 2026" — format to "10:05 AM".
+    const rawTeeTime = c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
+    const statsTeeTime = formatTeeTime(rawTeeTime);
     const statusTeeTime = c.status?.teeTime || null;
     const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
     const teeTime = statsTeeTime || statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
