@@ -333,20 +333,56 @@ async function enrichGolf(event, config) {
   const trackedNames = (display.trackedGolfers || []).map((n) => n.toLowerCase());
 
   const comp = ev.competitions?.[0];
-  const competitors = (comp?.competitors || []).sort((a, b) => {
-    const posA = parseInt(a.status?.position?.id || a.sortOrder || 9999, 10);
-    const posB = parseInt(b.status?.position?.id || b.sortOrder || 9999, 10);
-    return posA - posB;
-  });
+  const currentRound = comp?.status?.period || 1;
+
+  // Competitors come pre-sorted by position (order field = leaderboard position)
+  const competitors = comp?.competitors || [];
+
+  // Tie detection: find first order for each score value
+  const scoreCounts = {};
+  const scoreFirstOrder = {};
+  for (const c of competitors) {
+    const s = c.score;
+    scoreCounts[s] = (scoreCounts[s] || 0) + 1;
+    if (!Object.prototype.hasOwnProperty.call(scoreFirstOrder, s)) scoreFirstOrder[s] = c.order;
+  }
 
   function mapCompetitor(c) {
+    // Per-round linescores (top-level, one per round)
+    const roundLinescores = (c.linescores || []).filter((ls) => ls.period != null);
+
+    // Current round entry
+    const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
+    const todayDisplay = currentRoundLs?.displayValue;
+    const isNotStarted = !todayDisplay || todayDisplay === '-';
+
+    // Thru: count of per-hole entries in current round's inner linescores
+    const innerHoles = currentRoundLs?.linescores?.length || 0;
+    let thru;
+    if (innerHoles >= 18)   thru = 'F';
+    else if (innerHoles > 0) thru = String(innerHoles);
+    else if (isNotStarted)   thru = '-';
+    else                     thru = 'F';
+
+    // Round scores: completed or in-progress rounds (exclude placeholders with no displayValue)
+    const rounds = roundLinescores
+      .filter((ls) => ls.displayValue && ls.displayValue !== '-')
+      .sort((a, b) => a.period - b.period)
+      .map((ls) => ls.displayValue);
+
+    // Position text with tie prefix
+    const isTied = scoreCounts[c.score] > 1;
+    const posText = c.order != null
+      ? (isTied ? `T${scoreFirstOrder[c.score]}` : String(c.order))
+      : '—';
+
     return {
-      positionText: c.status?.position?.displayName || c.status?.type?.shortDetail || '—',
+      positionText: posText,
       name: c.athlete?.displayName || '?',
-      score: c.score?.displayValue || 'E',
-      today: c.statistics?.find((s) => s.name === 'scoringAverage')?.displayValue || null,
-      thru: c.status?.thru != null ? String(c.status.thru) : (c.status?.type?.shortDetail || '—'),
-      rounds: (c.linescores || []).map((l) => l.displayValue),
+      score: c.score || 'E',
+      today: isNotStarted ? null : todayDisplay,
+      thru,
+      rounds,
     };
   }
 
@@ -361,7 +397,6 @@ async function enrichGolf(event, config) {
     : [];
 
   const statusStr = comp?.status?.type?.description || ev.status?.type?.description || 'In Progress';
-  const currentRound = comp?.status?.period || null;
 
   return {
     tournamentName: ev.name || 'PGA Tour',
