@@ -424,52 +424,22 @@ async function main() {
   const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
 
   // Run headless unless a DISPLAY is set (e.g. via xvfb-run --auto-servernum).
-  // Keep's editor dialog never opens in true headless mode; xvfb-run gives a
-  // virtual display so Chromium behaves like a real browser session.
+  // Keep's editor dialog requires a real (or virtual) display to open.
   const headless = !process.env.DISPLAY;
   if (!headless) console.log(`[${ts}] Running non-headless (DISPLAY=${process.env.DISPLAY})`);
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext({ storageState: SESSION_FILE });
-  const page    = await context.newPage();
 
-  // Override document.visibilityState — headless Chrome reports 'hidden' by default.
-  // Also intercept Keep's updateUserInfoFromInitialSyncRead — Keep embeds full note
-  // sync data in an inline <script> via this function call. By intercepting it before
-  // any page JS runs, we capture the complete note data without opening the editor.
-  await page.addInitScript(() => {
+  // Apply visibility overrides to every page opened from this context.
+  // Headless Chrome reports document.hidden = true which can suppress Keep's
+  // animations and event handlers; we force it to appear visible.
+  await context.addInitScript(() => {
     Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
-
-    // Intercept Keep's data functions using Object.defineProperty so our setter
-    // fires even when Keep's external JS assigns the function after init script.
-    // We intercept several candidate names — the one(s) that carry note content
-    // will appear in __keepSyncCaptures.
-    window.__keepSyncCaptures = [];
-    function _interceptFn(name) {
-      let _impl = null;
-      Object.defineProperty(window, name, {
-        configurable: true, enumerable: true,
-        get() {
-          return function(data) {
-            window.__keepSyncCaptures.push({ fn: name, data });
-            if (typeof _impl === 'function') return _impl.call(this, data);
-          };
-        },
-        set(fn) { _impl = fn; },
-      });
-    }
-    // Known and guessed Keep sync function names
-    [
-      'updateUserInfoFromInitialSyncRead',
-      'updateNotesFromInitialSyncRead',
-      'buildNotesFromInitialSyncRead',
-      'addNotesFromInitialSyncRead',
-      'updateNoteFromInitialSyncRead',
-      'updateListFromInitialSyncRead',
-      'loadNotesFromInitialSyncRead',
-      'syncNotesFromRead',
-    ].forEach(_interceptFn);
   });
+
+  // Main page — used for session check and fallback (no-URL) notes.
+  const page = await context.newPage();
 
   try {
     await page.goto('https://keep.google.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -496,10 +466,6 @@ async function main() {
       ).forEach((el) => el.remove());
     }).catch(() => {});
 
-    // Open every target note in the editor one at a time so we get full content.
-    // Primary method: navigate to the note's direct URL (hash-based SPA navigation)
-    // which opens the editor automatically — no clicking required.
-    // Fallback: card-click approach for notes without a configured URL.
     const allNotes = [];
 
     for (const noteName of TARGET_NOTES) {
@@ -514,56 +480,67 @@ async function main() {
       const noteUrl = NOTE_URLS[noteName];
 
       if (noteUrl) {
-        // ── Primary path: navigate to note URL → editor opens → DOM scrape ────
-        // Keep's SPA opens the note editor when its hash URL is loaded.
-        // We wait for div[role="dialog"] then read the full contenteditable text.
-        const noteId = new URL(noteUrl).hash.replace(/^#(LIST|NOTE)\//, '');
+        // ── Primary path: fresh tab → note URL cold-load → editor opens → scrape
+        // Opening the URL in a brand-new tab mirrors what happens when a user
+        // clicks a Keep note link in their browser — Keep initialises and opens
+        // the note editor automatically from the hash (#LIST/... or #NOTE/...).
+        // Navigating to the hash on an already-loaded Keep SPA page does NOT
+        // reliably open the editor; a fresh tab avoids that issue.
+        console.log(`[${ts}] Opening "${noteName}" in fresh tab`);
+        const notePage = await context.newPage();
 
-        console.log(`[${ts}] Navigating to "${noteName}": ${noteUrl}`);
-        await page.goto(noteUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        try {
+          // Use 'load' (not 'domcontentloaded') so Keep's app JS has time to run
+          await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
 
-        // Wait up to 6s for the editor dialog to open
-        await page.waitForSelector('div[role="dialog"]', { timeout: 6000 }).catch(() => {});
-        // Give the note content a moment to fully render
-        await page.waitForTimeout(1500);
+          // Wait up to 10 s for the note editor dialog to appear
+          await notePage.waitForSelector('div[role="dialog"]', { timeout: 10000 }).catch(() => {});
+          // Give the note content extra time to finish rendering
+          await notePage.waitForTimeout(2000);
 
-        const editorIsOpen = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
-        console.log(`[${ts}] Editor dialog for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed (card-only scrape)'}`);
+          const editorIsOpen = await notePage.evaluate(
+            () => !!document.querySelector('div[role="dialog"]')
+          ).catch(() => false);
+          console.log(`[${ts}] Editor for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed — card-only'}`);
 
-        // Diagnostic: sync data (informational only — protobuf makes API interception unreliable)
-        const captures = await page.evaluate(() => window.__keepSyncCaptures || []).catch(() => []);
-        if (captures.length) {
-          captures.forEach(c => console.log(`[${ts}]   fn=${c.fn} keys=${Object.keys(c.data||{}).join(', ')}`));
-        }
-        // Reset captures for next note
-        await page.evaluate(() => { window.__keepSyncCaptures = []; }).catch(() => {});
-
-        // DOM scrape — scrapeKeep handles both editor (dialog) and card-preview views
-        await page.waitForFunction(
-          () => document.querySelectorAll('div[role="textbox"]').length > 0,
-          { timeout: 8000, polling: 300 }
-        ).catch(() => {});
-
-        const scraped = await scrapeKeep(page, [noteName]);
-        const itemCount = scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0;
-        console.log(`[${ts}] Scraped "${noteName}": ${itemCount} item(s) (editor ${editorIsOpen ? 'open' : 'closed'})`);
-        allNotes.push(...scraped);
-
-        // Apply pending checkbox updates (still need editor open for this — skip for now if no dialog)
-        if (pendingUpdates.length) {
-          const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
-          if (appliedIds.length) {
-            console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
-            await clearPendingKeepUpdates(appliedIds);
+          if (!editorIsOpen) {
+            // Diagnostic: show what's in the DOM so we can troubleshoot
+            const info = await notePage.evaluate(() => ({
+              url:   window.location.href,
+              roles: [...new Set([...document.querySelectorAll('[role]')].map(e => e.getAttribute('role')))],
+            })).catch(() => ({}));
+            console.log(`[${ts}]   Page URL: ${info.url}`);
+            console.log(`[${ts}]   Roles: ${(info.roles || []).join(', ')}`);
           }
-          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
-          if (notApplied.length) await clearPendingKeepUpdates(notApplied);
+
+          // Ensure note textboxes are present before scraping
+          await notePage.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 8000, polling: 300 }
+          ).catch(() => {});
+
+          const scraped = await scrapeKeep(notePage, [noteName]);
+          const itemCount = scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0;
+          console.log(`[${ts}] Scraped "${noteName}": ${itemCount} item(s)`);
+          allNotes.push(...scraped);
+
+          // Apply pending checkbox updates while the editor is open
+          if (pendingUpdates.length) {
+            const appliedIds = await applyKeepUpdates(notePage, pendingUpdates, noteName);
+            if (appliedIds.length) {
+              console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+              await clearPendingKeepUpdates(appliedIds);
+            }
+            const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+            if (notApplied.length) await clearPendingKeepUpdates(notApplied);
+          }
+        } finally {
+          await notePage.close();
         }
 
       } else {
-        // ── Fallback path: search + click ────────────────────────────────────
-        // Used for notes not in keep_note_urls. Less reliable but keeps working
-        // for notes the user hasn't configured a URL for.
+        // ── Fallback path: search + click on main page ────────────────────────
+        // Used for notes not yet configured with a URL in Hub Settings.
         console.log(`[${ts}] No URL for "${noteName}" — trying search+click fallback`);
 
         const escapedName = noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
