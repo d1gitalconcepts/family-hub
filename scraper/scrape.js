@@ -397,11 +397,19 @@ async function main() {
           }
         }
 
-        // Click the title via Playwright locator — trusted CDP mouse event, scroll-aware.
-        // In Keep's card grid, clicking the title area opens the full note editor.
-        console.log(`[${ts}] Clicking title for "${noteName}" via locator`);
-        await titleLocator.first().click();
-        clicked = true;
+        // Click the card BODY (just below the title) to open the full note editor.
+        // Clicking directly on the title textbox triggers inline-editing, not the dialog.
+        // We use boundingBox() for exact coordinates then page.mouse.click() for a
+        // trusted CDP mouse event.
+        const titleBox = await titleLocator.first().boundingBox();
+        if (titleBox) {
+          const cx = titleBox.x + titleBox.width / 2;
+          // 20px below the title's bottom edge lands in the card body content area
+          const cy = titleBox.y + titleBox.height + 20;
+          console.log(`[${ts}] Clicking card body for "${noteName}" at x=${Math.round(cx)} y=${Math.round(cy)} (title bottom=${Math.round(titleBox.y + titleBox.height)})`);
+          await page.mouse.click(cx, cy);
+          clicked = true;
+        }
       }
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
@@ -450,14 +458,20 @@ async function main() {
             }
           }
 
-          // Re-use the same locator — after search, the title element is in the results
+          // Re-use the same locator — after search, the title element is in the results.
+          // Click the card body below the title (not the title itself) to open the editor.
           const searchResultLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
           if (await searchResultLocator.count() > 0) {
             await searchResultLocator.first().scrollIntoViewIfNeeded();
             await page.waitForTimeout(200);
-            console.log(`[${ts}] Clicking search result for "${noteName}" via locator`);
-            await searchResultLocator.first().click();
-            clicked = true;
+            const titleBox = await searchResultLocator.first().boundingBox();
+            if (titleBox) {
+              const cx = titleBox.x + titleBox.width / 2;
+              const cy = titleBox.y + titleBox.height + 20;
+              console.log(`[${ts}] Clicking card body for "${noteName}" (search) at x=${Math.round(cx)} y=${Math.round(cy)}`);
+              await page.mouse.click(cx, cy);
+              clicked = true;
+            }
           }
         } else {
           console.warn(`[${ts}] Search bar not found — cannot search for "${noteName}"`);
