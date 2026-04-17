@@ -347,6 +347,9 @@ async function enrichGolf(event, config) {
     if (!Object.prototype.hasOwnProperty.call(scoreFirstOrder, s)) scoreFirstOrder[s] = c.order;
   }
 
+  // Regex to detect a time string like "1:40 PM" or "10:05 AM"
+  const TEE_TIME_RE = /^\d{1,2}:\d{2}\s*(AM|PM)/i;
+
   function mapCompetitor(c) {
     // Per-round linescores (top-level, one per round)
     const roundLinescores = (c.linescores || []).filter((ls) => ls.period != null);
@@ -354,14 +357,21 @@ async function enrichGolf(event, config) {
     // Current round entry
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
-    const isNotStarted = !todayDisplay || todayDisplay === '-';
+
+    // Tee time: ESPN may put it in c.status.teeTime, or in the round's displayValue
+    // when the player hasn't started (e.g. "1:40 PM")
+    const statusTeeTime = c.status?.teeTime || null;
+    const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
+    const teeTime = statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
+
+    const isNotStarted = !todayDisplay || todayDisplay === '-' || displayIsTeeTime;
 
     // Thru: count of per-hole entries in current round's inner linescores
     const innerHoles = currentRoundLs?.linescores?.length || 0;
     let thru;
-    if (innerHoles >= 18)   thru = 'F';
+    if (innerHoles >= 18)    thru = 'F';
     else if (innerHoles > 0) thru = String(innerHoles);
-    else if (isNotStarted)   thru = '-';
+    else if (isNotStarted)   thru = teeTime || '-';
     else                     thru = 'F';
 
     // Round scores: completed or in-progress rounds (exclude placeholders with no displayValue)
@@ -380,9 +390,9 @@ async function enrichGolf(event, config) {
     const rawScore = c.score;
     const normScore = (!rawScore || rawScore === '0' || rawScore === 'E') ? 'E' : rawScore;
 
-    // Normalise today: same treatment
-    const normToday = (!todayDisplay || todayDisplay === '-' || todayDisplay === '0') ? null
-                    : todayDisplay === 'E' ? 'E'
+    // Normalise today: guard against tee-time strings leaking into Today column
+    const normToday = isNotStarted ? null
+                    : (!todayDisplay || todayDisplay === '-' || todayDisplay === '0') ? null
                     : todayDisplay;
 
     return {
