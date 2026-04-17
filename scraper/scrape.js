@@ -351,18 +351,31 @@ async function scrapeKeep(page, targetNotes) {
         // Plain text note
         const lines = [];
 
-        if (isInDialog) {
-          // Editor is open: content lives in contenteditable div(s).
-          // The first contenteditable is usually the title; the body is a second one.
-          const editables = Array.from(noteContainer.querySelectorAll('[contenteditable="true"]'));
-          // Find the body editable: non-empty, and not just the title text
+        // When Keep opens a note via URL it focuses the body in-place —
+        // document.activeElement becomes the contenteditable with ALL lines.
+        // This works even when no dialog/modal is present.
+        const activeEl = document.activeElement;
+        if (activeEl?.isContentEditable) {
+          const t = activeEl.innerText?.trim() ?? '';
+          if (t && t !== title) {
+            t.split('\n').forEach((l) => {
+              const trimmed = l.trim();
+              if (trimmed && trimmed !== title) lines.push(trimmed);
+            });
+          }
+        }
+
+        // If active element didn't give us content, try any contenteditable in
+        // the dialog or note container (handles click-to-open editor dialog too).
+        if (!lines.length) {
+          const container = document.querySelector('div[role="dialog"]') || noteContainer;
+          const editables = Array.from(container.querySelectorAll('[contenteditable="true"]'));
           const bodyEditable =
             editables.find((el) => {
               const t = el.innerText.trim();
-              return t && t !== title && t.length > 0;
+              return t && t !== title;
             }) ||
-            editables[1] ||
-            editables[0];
+            editables[1];
 
           if (bodyEditable) {
             bodyEditable.innerText.split('\n').forEach((l) => {
@@ -372,7 +385,7 @@ async function scrapeKeep(page, targetNotes) {
           }
         }
 
-        // Fallback (card preview or contenteditable not found): span-based selector
+        // Final fallback: span-based selector (card preview — may be truncated)
         if (!lines.length) {
           const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
           if (textSpans.length > 0) {
@@ -485,65 +498,45 @@ async function main() {
         const notePage = await context.newPage();
 
         try {
-          // Load Keep home so the SPA fully initialises before we interact.
-          await notePage.goto('https://keep.google.com', { waitUntil: 'load', timeout: 30000 });
-          await notePage.waitForFunction(
-            () => document.querySelectorAll('div[role="textbox"]').length > 0,
-            { timeout: 20000, polling: 500 }
-          ).catch(() => {});
-          await notePage.waitForTimeout(2000);
-
-          // Bring tab to front — required for mouse events to be trusted by Keep.
+          // Navigate directly to the note URL.
+          // Keep processes the hash and opens the note in an editable focused-card
+          // state — NOT a dialog modal. The note body becomes document.activeElement
+          // (a contenteditable div) with ALL lines present, including those beyond
+          // the card's visual height limit.
+          await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
           await notePage.bringToFront();
 
-          // Keep note cards have role="button" on the clickable outer container.
-          // Use XPath to find the ancestor div[role="button"] of the title textbox,
-          // then click it to open the editor — more reliable than coordinate guessing.
-          const noteSafeName = noteName.replace(/'/g, "\\'");
-          const cardLocator = notePage.locator(
-            `xpath=//div[@role='textbox'][normalize-space(.)='${noteSafeName}']/ancestor::div[@role='button'][1]`
+          // Wait for Keep to finish loading and focus the note content.
+          // Poll for a non-title contenteditable becoming active (the note body).
+          let focusedEditable = false;
+          for (let i = 0; i < 24 && !focusedEditable; i++) {
+            await notePage.waitForTimeout(250);
+            focusedEditable = await notePage.evaluate((title) => {
+              const a = document.activeElement;
+              if (!a || !a.isContentEditable) return false;
+              const t = a.innerText?.trim() ?? '';
+              return t.length > 0 && t !== title;
+            }, noteName).catch(() => false);
+          }
+
+          const activeInfo = await notePage.evaluate((title) => {
+            const a = document.activeElement;
+            const editorOpen = !!document.querySelector('div[role="dialog"]');
+            return {
+              editorOpen,
+              editable:   a?.isContentEditable ?? false,
+              tag:        a?.tagName ?? '?',
+              lineCount:  a?.isContentEditable
+                ? (a.innerText?.split('\n').filter(l => l.trim()).length ?? 0)
+                : 0,
+              preview:    a?.innerText?.trim()?.slice(0, 80) ?? '',
+            };
+          }, noteName).catch(() => ({}));
+
+          console.log(
+            `[${ts}] "${noteName}": dialog=${activeInfo.editorOpen} focusedEditable=${activeInfo.editable}` +
+            ` lines≈${activeInfo.lineCount} preview="${activeInfo.preview?.slice(0, 40)}"`
           );
-
-          let editorIsOpen = false;
-          const cardCount = await cardLocator.count().catch(() => 0);
-          console.log(`[${ts}] Note card found: ${cardCount > 0 ? 'yes' : 'NO — checking all textboxes'}`);
-
-          if (cardCount > 0) {
-            await cardLocator.first().scrollIntoViewIfNeeded().catch(() => {});
-            await notePage.waitForTimeout(300);
-            const box = await cardLocator.first().boundingBox().catch(() => null);
-            if (box) {
-              // Click 60px below the card top — past title buttons, into the body
-              await notePage.mouse.click(box.x + box.width / 2, box.y + 60);
-              await notePage.waitForSelector('div[role="dialog"]', { timeout: 8000 }).catch(() => {});
-              await notePage.waitForTimeout(1000);
-              editorIsOpen = await notePage.evaluate(
-                () => !!document.querySelector('div[role="dialog"]')
-              ).catch(() => false);
-            }
-          }
-
-          console.log(`[${ts}] Editor for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed — card-only'}`);
-
-          if (!editorIsOpen) {
-            // Diagnostic snapshot
-            const info = await notePage.evaluate(() => {
-              const btns = [...document.querySelectorAll('div[role="button"]')];
-              const cardBtns = btns.filter(b => b.querySelector('div[role="textbox"]'));
-              return {
-                url:       location.href,
-                allBtns:   btns.length,
-                cardBtns:  cardBtns.length,
-                cardTitles: cardBtns.slice(0, 6).map(b => b.querySelector('div[role="textbox"]')?.innerText?.trim() || '?'),
-              };
-            }).catch(() => ({}));
-            console.log(`[${ts}]   URL: ${info.url}`);
-            console.log(`[${ts}]   div[role="button"] total: ${info.allBtns}, with textbox: ${info.cardBtns}`);
-            console.log(`[${ts}]   Card titles: ${(info.cardTitles || []).join(' | ')}`);
-            const screenshotPath = path.join(__dirname, `debug-${slugify(noteName)}.png`);
-            await notePage.screenshot({ path: screenshotPath, fullPage: false }).catch(() => {});
-            console.log(`[${ts}]   Screenshot → ${screenshotPath}`);
-          }
 
           // Ensure note textboxes are present before scraping
           await notePage.waitForFunction(
