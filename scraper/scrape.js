@@ -414,18 +414,22 @@ async function main() {
     Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
 
-    // Intercept Keep's sync data function — runs before page scripts
+    // Intercept Keep's sync data function using Object.defineProperty so our
+    // setter fires even when Keep's external JS assigns/overwrites the function
+    // after our init script has run. The getter wraps whatever Keep assigns.
     window.__keepSyncCaptures = [];
-    const _patchKeep = () => {
-      const _orig = window.updateUserInfoFromInitialSyncRead;
-      window.updateUserInfoFromInitialSyncRead = function(data) {
-        window.__keepSyncCaptures.push(data);
-        if (typeof _orig === 'function') return _orig.call(this, data);
-      };
-    };
-    _patchKeep();
-    // Also patch after DOMContentLoaded in case Keep defines the function late
-    document.addEventListener('DOMContentLoaded', _patchKeep);
+    let _keepImpl = null;
+    Object.defineProperty(window, 'updateUserInfoFromInitialSyncRead', {
+      configurable: true,
+      enumerable:   true,
+      get() {
+        return function(data) {
+          window.__keepSyncCaptures.push(data);
+          if (typeof _keepImpl === 'function') return _keepImpl.call(this, data);
+        };
+      },
+      set(fn) { _keepImpl = fn; },
+    });
   });
 
   try {
