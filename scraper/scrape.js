@@ -315,20 +315,34 @@ async function scrapeKeep(page, targetNotes) {
 
       if (!noteContainer) return;
 
-      const allCheckboxes = Array.from(noteContainer.querySelectorAll('div[role="checkbox"]'));
+      // Start with checkboxes visible in the shallow noteContainer, then try
+      // to expand by walking up from document.activeElement. When a note is
+      // opened via its URL, Keep renders the FULL checklist in the DOM — the
+      // checked-items section is often in a parent element above noteContainer.
+      let allCheckboxes = Array.from(noteContainer.querySelectorAll('div[role="checkbox"]'));
+
+      const activeEl = document.activeElement;
+      if (activeEl && activeEl.isContentEditable) {
+        let el = activeEl.parentElement;
+        while (el && el !== document.body && el !== document.documentElement) {
+          const cbs = el.querySelectorAll('div[role="checkbox"]');
+          if (cbs.length > allCheckboxes.length) {
+            // Only use this wider container if it still contains our note's title
+            const hasTitleEl = [...el.querySelectorAll('div[role="textbox"]')]
+              .some((t) => t.innerText.trim() === title);
+            if (hasTitleEl) allCheckboxes = Array.from(cbs);
+          }
+          el = el.parentElement;
+        }
+      }
 
       if (allCheckboxes.length > 0) {
         // Checklist note.
+        // Use aria-checked attribute (reliable) instead of obfuscated CSS classes.
         const RECENT_CHECKED_LIMIT = 30;
-        const unchecked = allCheckboxes.filter((cb) => {
-          const p3 = cb.parentElement?.parentElement?.parentElement;
-          return !p3?.classList.contains('barxie-MPu53c');
-        });
+        const unchecked     = allCheckboxes.filter((cb) => cb.getAttribute('aria-checked') !== 'true');
         const recentChecked = allCheckboxes
-          .filter((cb) => {
-            const p3 = cb.parentElement?.parentElement?.parentElement;
-            return p3?.classList.contains('barxie-MPu53c');
-          })
+          .filter((cb) => cb.getAttribute('aria-checked') === 'true')
           .slice(0, RECENT_CHECKED_LIMIT);
         const checkboxItems = [...unchecked, ...recentChecked];
 
@@ -336,13 +350,16 @@ async function scrapeKeep(page, targetNotes) {
         checkboxItems.forEach((checkbox) => {
           const checked = checkbox.getAttribute('aria-checked') === 'true';
           const row     = checkbox.parentElement?.parentElement;
-          const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
-          let text = textSpan?.innerText?.trim();
+          let text = '';
+          // Strategy 1: Google Sans Text span (card view)
+          text = row?.querySelector('span[style*="Google Sans Text"]')?.innerText?.trim() || '';
+          // Strategy 2: contenteditable in the row (focused / editor view)
+          if (!text) text = row?.querySelector('[contenteditable="true"]')?.innerText?.trim() || '';
+          // Strategy 3: clone row and strip the checkbox element
           if (!text && row) {
             const clone = row.cloneNode(true);
-            const cb = clone.querySelector('[role="checkbox"]');
-            if (cb) cb.remove();
-            text = clone.innerText?.trim();
+            clone.querySelector('[role="checkbox"]')?.remove();
+            text = clone.innerText?.trim() || '';
           }
           if (text) items.push({ text, checked });
         });
