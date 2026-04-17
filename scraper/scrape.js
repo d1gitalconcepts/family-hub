@@ -400,12 +400,19 @@ async function main() {
 
       if (noteUrl) {
         // ── Primary path: navigate directly to the note URL ─────────────────
-        // Keep's SPA opens the editor dialog when the hash changes to a note ID.
-        const hash = new URL(noteUrl).hash; // e.g. "#LIST/1Yxhz9T..."
-        console.log(`[${ts}] Opening "${noteName}" via URL hash: ${hash}`);
-        await page.evaluate((h) => { window.location.hash = h; }, hash);
+        // Keep only processes the note hash on page load, not on subsequent hash
+        // changes. Use page.goto() so each note gets a fresh navigation with the
+        // hash already in the URL when Keep initialises its router.
+        console.log(`[${ts}] Navigating to "${noteName}": ${noteUrl}`);
+        await page.goto(noteUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-        // Wait for the editor dialog to appear
+        // Wait for Keep's note grid AND the editor dialog to appear.
+        // The grid must load first (proves Keep is initialised), then the dialog.
+        await page.waitForFunction(
+          () => document.querySelectorAll('div[role="textbox"]').length > 0,
+          { timeout: 20000, polling: 400 }
+        ).catch(() => {});
+
         let dialogOpened = false;
         for (let i = 0; i < 24; i++) {
           await page.waitForTimeout(250);
@@ -438,9 +445,7 @@ async function main() {
         const scraped = await scrapeKeep(page, [noteName]);
         allNotes.push(...scraped);
 
-        // Close editor: clear the hash to return to the grid
-        await page.evaluate(() => { window.location.hash = ''; });
-        await page.waitForTimeout(600);
+        // No need to "close" — next iteration navigates to the next note URL.
 
       } else {
         // ── Fallback path: search + click ────────────────────────────────────
