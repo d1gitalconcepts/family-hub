@@ -233,52 +233,57 @@ async function applyKeepUpdates(page, updates, noteName) {
 
 // ── Scraping logic (mirrors content.js) ──────────────────────────────────────
 
-// Parse a Keep API JSON response and extract note content.
-// Keep's API format isn't documented — we probe the structure and log what we find.
-function parseKeepApiResponse(body, noteName) {
-  try {
-    const data = JSON.parse(body);
-    // Log top-level keys so we can understand the shape
-    console.log(`[API] Top-level keys: ${Object.keys(data).join(', ')}`);
+// Parse Keep's sync data (captured from updateUserInfoFromInitialSyncRead calls)
+// and extract the target note's content. Logs structure to aid debugging.
+function parseKeepSyncData(captures, noteName, noteId) {
+  const id = slugify(noteName);
 
-    // Try common Keep API shapes:
-    // 1. data.notes / data.items array
-    // 2. data.note (single note)
-    // 3. Nested arrays from sync responses
-    const candidates = [
-      data.note,
-      data.notes?.[0],
-      data.items?.[0],
-      ...(Array.isArray(data) ? data : []),
-    ].filter(Boolean);
+  for (const data of captures) {
+    // Keep's sync response has a top-level "notes" array (or "nodes" in newer versions)
+    const notesArray = data.notes ?? data.nodes ?? data.items ?? [];
+    if (!Array.isArray(notesArray) || !notesArray.length) continue;
 
-    for (const note of candidates) {
-      console.log(`[API] Note candidate keys: ${Object.keys(note).join(', ')}`);
-      const id = slugify(noteName);
-      // Text note
-      if (typeof note.textContent === 'string' || typeof note.text === 'string') {
-        const text = note.textContent ?? note.text ?? '';
-        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-        console.log(`[API] Text note "${noteName}": ${lines.length} lines`);
-        return { id, title: noteName, type: 'text', lines, scrapedAt: new Date().toISOString() };
-      }
-      // List note
-      const listItems = note.listContent ?? note.items ?? note.checkListItems;
-      if (Array.isArray(listItems)) {
-        const items = listItems.map(item => ({
-          text: item.text ?? item.value ?? item.title ?? '',
-          checked: item.checked ?? item.isChecked ?? false,
-        })).filter(i => i.text);
-        console.log(`[API] List note "${noteName}": ${items.length} items`);
-        return { id, title: noteName, type: 'checklist', items, scrapedAt: new Date().toISOString() };
-      }
+    console.log(`[Sync] notes array length: ${notesArray.length}, first note keys: ${Object.keys(notesArray[0] || {}).join(', ')}`);
+
+    // Find our note by ID match or title match
+    const note = notesArray.find((n) => {
+      const nId = n.serverId ?? n.id ?? n.noteId ?? '';
+      return nId === noteId || nId.includes(noteId) || noteId.includes(nId);
+    }) ?? notesArray.find((n) => {
+      const title = n.title ?? n.name ?? '';
+      return title.trim() === noteName;
+    });
+
+    if (!note) {
+      console.log(`[Sync] Note "${noteName}" not found in this capture (IDs: ${notesArray.slice(0,3).map(n=>n.serverId??n.id??'?').join(', ')}...)`);
+      continue;
     }
-    console.warn(`[API] Unrecognised response shape — raw (first 300): ${body.slice(0, 300)}`);
-    return null;
-  } catch (err) {
-    console.warn(`[API] JSON parse failed: ${err.message}. Raw (first 200): ${body.slice(0, 200)}`);
-    return null;
+
+    console.log(`[Sync] Found note "${noteName}" — keys: ${Object.keys(note).join(', ')}`);
+
+    // Text note
+    const text = note.textContent ?? note.text ?? note.body ?? '';
+    if (typeof text === 'string' && text.trim()) {
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      console.log(`[Sync] Text note "${noteName}": ${lines.length} lines`);
+      return { id, title: noteName, type: 'text', lines, scrapedAt: new Date().toISOString() };
+    }
+
+    // Checklist note
+    const listItems = note.listContent ?? note.items ?? note.listItems ?? note.checkListItems ?? [];
+    if (Array.isArray(listItems) && listItems.length) {
+      const items = listItems.map(item => ({
+        text:    item.text ?? item.value ?? item.title ?? '',
+        checked: item.checked ?? item.isChecked ?? false,
+      })).filter(i => i.text.trim());
+      console.log(`[Sync] Checklist note "${noteName}": ${items.length} items`);
+      return { id, title: noteName, type: 'checklist', items, scrapedAt: new Date().toISOString() };
+    }
+
+    console.warn(`[Sync] Found note but unrecognised content shape — keys: ${Object.keys(note).join(', ')}`);
   }
+
+  return null;
 }
 
 async function scrapeKeep(page, targetNotes) {
@@ -401,12 +406,26 @@ async function main() {
   const context = await browser.newContext({ storageState: SESSION_FILE });
   const page    = await context.newPage();
 
-  // Override document.visibilityState — headless Chrome reports 'hidden' by default,
-  // which some Google apps (including Keep) use to suppress user-interaction handlers.
+  // Override document.visibilityState — headless Chrome reports 'hidden' by default.
+  // Also intercept Keep's updateUserInfoFromInitialSyncRead — Keep embeds full note
+  // sync data in an inline <script> via this function call. By intercepting it before
+  // any page JS runs, we capture the complete note data without opening the editor.
   await page.addInitScript(() => {
     Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
+
+    // Intercept Keep's sync data function — runs before page scripts
+    window.__keepSyncCaptures = [];
+    const _patchKeep = () => {
+      const _orig = window.updateUserInfoFromInitialSyncRead;
+      window.updateUserInfoFromInitialSyncRead = function(data) {
+        window.__keepSyncCaptures.push(data);
+        if (typeof _orig === 'function') return _orig.call(this, data);
+      };
+    };
+    _patchKeep();
+    // Also patch after DOMContentLoaded in case Keep defines the function late
+    document.addEventListener('DOMContentLoaded', _patchKeep);
   });
 
   try {
@@ -481,33 +500,42 @@ async function main() {
         for (let i = 0; i < 32 && !capturedNote; i++) await page.waitForTimeout(250);
         page.off('response', onResponse);
 
-        // DOM fallback (API interception only works if Keep uses JSON — it uses protobuf)
-        if (!capturedNote) {
-          // Check if full note content is embedded in an inline <script> tag
-          const inlineData = await page.evaluate((id) => {
-            for (const s of document.querySelectorAll('script:not([src])')) {
-              if (s.textContent.includes(id)) {
-                return s.textContent.slice(0, 4000);
-              }
-            }
-            return null;
-          }, noteId);
+        // Read Keep's sync data captured by our addInitScript interceptor.
+        // Wait up to 5s for the function to be called after page load.
+        let syncData = null;
+        for (let i = 0; i < 20 && !syncData; i++) {
+          await page.waitForTimeout(250);
+          const captures = await page.evaluate(() => window.__keepSyncCaptures || []).catch(() => []);
+          if (captures.length) syncData = captures;
+        }
 
-          if (inlineData) {
-            console.log(`[${ts}] Found inline script data for "${noteName}" (first 300): ${inlineData.slice(0, 300)}`);
+        if (syncData?.length) {
+          console.log(`[${ts}] Captured ${syncData.length} sync data call(s) for "${noteName}"`);
+          // Log structure of first capture to understand the shape
+          const firstKeys = Object.keys(syncData[0] || {}).join(', ');
+          console.log(`[${ts}] Sync data keys: ${firstKeys}`);
+          const parsed = parseKeepSyncData(syncData, noteName, noteId);
+          if (parsed) {
+            allNotes.push(parsed);
+          } else {
+            console.warn(`[${ts}] Could not extract note from sync data — falling back to DOM`);
+            const scraped = await scrapeKeep(page, [noteName]);
+            allNotes.push(...scraped);
           }
-
-          // Wait for Keep to render as much DOM content as possible
+        } else {
+          // DOM fallback
+          console.warn(`[${ts}] No sync data captured for "${noteName}" — falling back to DOM scrape`);
           await page.waitForFunction(
             () => document.querySelectorAll('div[role="textbox"]').length > 0,
             { timeout: 10000, polling: 400 }
           ).catch(() => {});
-          await page.waitForTimeout(2000); // extra settle for lazy-rendered content
-
           const scraped = await scrapeKeep(page, [noteName]);
-          console.warn(`[${ts}] DOM scrape for "${noteName}": ${scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0} items (may be truncated)`);
+          console.log(`[${ts}] DOM scrape for "${noteName}": ${scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0} items`);
           allNotes.push(...scraped);
         }
+
+        // Reset captures for next note
+        await page.evaluate(() => { window.__keepSyncCaptures = []; }).catch(() => {});
 
         // Apply pending checkbox updates (still need editor open for this — skip for now if no dialog)
         if (pendingUpdates.length) {
