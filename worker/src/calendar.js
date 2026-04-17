@@ -75,9 +75,12 @@ export async function syncMealCalendar(env, lines, config = {}) {
       ));
 
       if (correct.length === 0) {
+        const endDate = new Date(date + 'T00:00:00Z');
+        endDate.setUTCDate(endDate.getUTCDate() + 1);
+        const endDateStr = endDate.toISOString().split('T')[0];
         await googlePost(env,
           `${CAL_BASE}/calendars/${encodeURIComponent(calendarId)}/events`,
-          { summary: expected, description: url || undefined, start: { date }, end: { date } }
+          { summary: expected, description: url || undefined, start: { date }, end: { date: endDateStr } }
         );
         console.log(`[Calendar] Created ${date}: ${meal}`);
       }
@@ -107,12 +110,25 @@ async function getOrCreateMealCalendar(env) {
 
   const res        = await googleGet(env, `${CAL_BASE}/users/me/calendarList`);
   const candidates = (res.items || []).filter((c) => c.summary === MEAL_CAL_NAME);
+  const accessible = [];
   for (const cal of candidates) {
-    if (await verifyCalendarAccessible(env, cal.id)) {
-      await setConfigValue(env, 'meal_planning_calendar_id', cal.id);
-      console.log(`[Calendar] Found existing "${MEAL_CAL_NAME}" calendar.`);
-      return cal.id;
+    if (await verifyCalendarAccessible(env, cal.id)) accessible.push(cal);
+  }
+
+  if (accessible.length > 1) {
+    // More than one "Meal Planning" calendar — keep the first, delete the rest.
+    // Duplicate calendars cause duplicate events that the sync can't clean up.
+    console.warn(`[Calendar] Found ${accessible.length} "${MEAL_CAL_NAME}" calendars — removing duplicates.`);
+    for (const dup of accessible.slice(1)) {
+      await googleDelete(env, `${CAL_BASE}/calendars/${encodeURIComponent(dup.id)}`).catch(() => {});
+      console.warn(`[Calendar] Deleted duplicate calendar: ${dup.id}`);
     }
+  }
+
+  if (accessible.length >= 1) {
+    await setConfigValue(env, 'meal_planning_calendar_id', accessible[0].id);
+    console.log(`[Calendar] Found existing "${MEAL_CAL_NAME}" calendar.`);
+    return accessible[0].id;
   }
 
   const created = await googlePost(env, `${CAL_BASE}/calendars`, { summary: MEAL_CAL_NAME });
