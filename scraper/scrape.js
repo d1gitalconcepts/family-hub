@@ -370,58 +370,39 @@ async function main() {
         ).forEach((el) => el.remove());
       });
 
-      // Try to click the note directly if it's already visible on screen (e.g. pinned notes).
-      // Return coordinates so we can use page.mouse.click() (trusted event) instead of
-      // el.click() (synthetic/untrusted, may be ignored by Keep's React handlers).
+      // Find the note title element. Playwright's locator.click() dispatches real CDP
+      // mouse events (isTrusted=true) — unlike el.click() from page.evaluate which is synthetic.
+      const escapedName = noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const titleLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
       let usedSearch = false;
-      // Scroll the note card into view using Playwright's locator (reliable, handles all cases),
-      // then measure the card container in the browser to get accurate viewport coordinates.
-      // page.mouse.click() is used (not el.click()) because Keep requires trusted mouse events.
-      const titleLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) });
-      let noteCoords = null;
+      let clicked = false;
+
       if (await titleLocator.count() > 0) {
         await titleLocator.first().scrollIntoViewIfNeeded();
-        await page.waitForTimeout(200); // let scroll position settle before measuring
-        noteCoords = await page.evaluate((name) => {
-          const els = document.querySelectorAll('div[role="textbox"]');
-          for (const el of els) {
-            if (el.innerText.trim() === name) {
-              // Click the card container (has jsaction), not just the textbox
-              const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
-              const target = card || el;
-              const r = target.getBoundingClientRect();
-              return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
-            }
+        await page.waitForTimeout(300); // let scroll and Keep's handlers settle
+
+        // Apply checkbox updates FIRST — card view is clean, editor overlay not yet open.
+        if (pendingUpdates.length) {
+          const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
+          if (appliedIds.length) {
+            console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+            await clearPendingKeepUpdates(appliedIds);
+            await page.waitForTimeout(600);
           }
-          return null;
-        }, noteName);
-      }
-      if (noteCoords) console.log(`[${ts}] Clicking card for "${noteName}" at x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)}`);
-
-      // Apply checkbox updates FIRST — before any note-open click.
-      // The note-open click triggers Keep's overlay/dimmed state which intercepts
-      // subsequent clicks. Card view is clean at this point and checkboxes are accessible.
-      if (noteCoords && pendingUpdates.length) {
-        const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
-        if (appliedIds.length) {
-          console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
-          await clearPendingKeepUpdates(appliedIds);
-          await page.waitForTimeout(600); // let Keep register the clicks
+          const skipped = pendingUpdates.length - appliedIds.length;
+          if (skipped > 0) {
+            console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
+            const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+            await clearPendingKeepUpdates(notApplied);
+          }
         }
-        const skipped = pendingUpdates.length - appliedIds.length;
-        if (skipped > 0) {
-          console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
-          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
-          await clearPendingKeepUpdates(notApplied);
-        }
-      }
 
-      // Now click the note to open it for scraping full content
-      if (noteCoords) {
-        await page.waitForTimeout(300);
-        await page.mouse.click(noteCoords.x, noteCoords.y);
+        // Click the title via Playwright locator — trusted CDP mouse event, scroll-aware.
+        // In Keep's card grid, clicking the title area opens the full note editor.
+        console.log(`[${ts}] Clicking title for "${noteName}" via locator`);
+        await titleLocator.first().click();
+        clicked = true;
       }
-      let clicked = !!noteCoords;
 
       // Fallback: use Keep's search bar to surface notes not in the initial viewport.
       if (!clicked) {
@@ -469,21 +450,15 @@ async function main() {
             }
           }
 
-          noteCoords = await page.evaluate((name) => {
-            const els = document.querySelectorAll('div[role="textbox"]');
-            for (const el of els) {
-              if (el.innerText.trim() === name) {
-                const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
-                const target = card || el;
-                const r = target.getBoundingClientRect();
-                return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
-              }
-            }
-            return null;
-          }, noteName);
-
-          if (noteCoords) await page.mouse.click(noteCoords.x, noteCoords.y);
-          clicked = !!noteCoords;
+          // Re-use the same locator — after search, the title element is in the results
+          const searchResultLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
+          if (await searchResultLocator.count() > 0) {
+            await searchResultLocator.first().scrollIntoViewIfNeeded();
+            await page.waitForTimeout(200);
+            console.log(`[${ts}] Clicking search result for "${noteName}" via locator`);
+            await searchResultLocator.first().click();
+            clicked = true;
+          }
         } else {
           console.warn(`[${ts}] Search bar not found — cannot search for "${noteName}"`);
         }
