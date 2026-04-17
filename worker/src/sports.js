@@ -376,11 +376,20 @@ async function enrichGolf(event, config) {
       ? (isTied ? `T${scoreFirstOrder[c.score]}` : String(c.order))
       : '—';
 
+    // Normalise score: API may return "0", "", null, or "E" for even par
+    const rawScore = c.score;
+    const normScore = (!rawScore || rawScore === '0' || rawScore === 'E') ? 'E' : rawScore;
+
+    // Normalise today: same treatment
+    const normToday = (!todayDisplay || todayDisplay === '-' || todayDisplay === '0') ? null
+                    : todayDisplay === 'E' ? 'E'
+                    : todayDisplay;
+
     return {
       positionText: posText,
       name: c.athlete?.displayName || '?',
-      score: c.score || 'E',
-      today: isNotStarted ? null : todayDisplay,
+      score: normScore,
+      today: isNotStarted ? null : normToday,
       thru,
       rounds,
     };
@@ -398,6 +407,11 @@ async function enrichGolf(event, config) {
 
   const statusStr = comp?.status?.type?.description || ev.status?.type?.description || 'In Progress';
 
+  // Build ESPN leaderboard deep-link using the event ID from the API
+  const espnUrl = ev.id
+    ? `https://www.espn.com/golf/leaderboard?tournamentId=${ev.id}`
+    : 'https://www.espn.com/golf/leaderboard';
+
   return {
     tournamentName: ev.name || 'PGA Tour',
     status: statusStr,
@@ -405,6 +419,7 @@ async function enrichGolf(event, config) {
     leaderboard: top,
     trackedGolfers: tracked,
     cutLine: comp?.notes?.find((n) => n.type === 'cut')?.headline || null,
+    espnUrl,
   };
 }
 

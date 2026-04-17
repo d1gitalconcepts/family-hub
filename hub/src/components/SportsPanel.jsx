@@ -374,7 +374,7 @@ function NhlPanel({ data, detail }) {
 // ── Golf Panel ───────────────────────────────────────────────────────────────
 
 function GolfPanel({ data, detail }) {
-  const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine } = data;
+  const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine, espnUrl } = data;
   const hasRounds = leaderboard?.[0]?.rounds?.length > 1;
   const showBox = detail === 'boxscore' || detail === 'all';
   const showAll = detail === 'all';
@@ -439,6 +439,19 @@ function GolfPanel({ data, detail }) {
 
       {showAll && cutLine && (
         <div className="sports-record">Cut: {cutLine}</div>
+      )}
+
+      {espnUrl && (
+        <div style={{ marginTop: 8, textAlign: 'right' }}>
+          <a
+            href={espnUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', textDecoration: 'none' }}
+          >
+            Full leaderboard ↗
+          </a>
+        </div>
       )}
     </div>
   );
