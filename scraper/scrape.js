@@ -338,12 +338,13 @@ async function scrapeKeep(page, targetNotes) {
 
       if (allCheckboxes.length > 0) {
         // Checklist note.
-        // Use aria-checked attribute (reliable) instead of obfuscated CSS classes.
-        const RECENT_CHECKED_LIMIT = 30;
+        // Always include ALL unchecked items, then fill up to TOTAL_ITEM_CAP
+        // with the most-recent checked items.
+        const TOTAL_ITEM_CAP = 50;
         const unchecked     = allCheckboxes.filter((cb) => cb.getAttribute('aria-checked') !== 'true');
         const recentChecked = allCheckboxes
           .filter((cb) => cb.getAttribute('aria-checked') === 'true')
-          .slice(0, RECENT_CHECKED_LIMIT);
+          .slice(0, Math.max(0, TOTAL_ITEM_CAP - unchecked.length));
         const checkboxItems = [...unchecked, ...recentChecked];
 
         const items = [];
