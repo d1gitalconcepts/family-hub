@@ -127,11 +127,11 @@ async function fetchKeepNotesTitles() {
 }
 
 // Returns a map of { "Note Title": "https://keep.google.com/u/0/#TYPE/ID" }
-// Stored in Supabase config under key "keep_note_urls".
+// Reads the url field from each entry in the keep_notes config array.
 async function fetchKeepNoteUrls() {
   await supabaseAuth();
   const res = await fetch(
-    `${CONFIG.SUPABASE_URL}/rest/v1/config?key=eq.keep_note_urls&select=value`,
+    `${CONFIG.SUPABASE_URL}/rest/v1/config?key=eq.keep_notes&select=value`,
     {
       headers: {
         'apikey':        CONFIG.SUPABASE_ANON_KEY,
@@ -141,7 +141,12 @@ async function fetchKeepNoteUrls() {
   );
   if (!res.ok) return {};
   const rows = await res.json();
-  return rows[0]?.value || {};
+  const notes = rows[0]?.value;
+  if (!Array.isArray(notes)) return {};
+  // Build { title -> url } map from notes that have a url field
+  return Object.fromEntries(
+    notes.filter((n) => n.title && n.url).map((n) => [n.title.trim(), n.url.trim()])
+  );
 }
 
 // ── Keep write-back ───────────────────────────────────────────────────────────

@@ -1347,7 +1347,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
                   Configure which Google Keep notes the scraper reads and the sidebar displays.
                   The <strong>Note Title</strong> must match the exact title in Google Keep.
-                  After adding a new note, the scraper will pick it up automatically on the next run.
+                  Paste the <strong>Note URL</strong> from Keep (open the note, copy the browser URL) so
+                  the scraper can open it directly — required to read full note content past the card preview.
                 </p>
 
                 {notes.map((note, i) => (
@@ -1400,8 +1401,24 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         title="Remove note"
                       >✕</button>
                     </div>
-                    <div style={{ paddingLeft: 24, fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                      key: {note.key || <em style={{ fontFamily: 'var(--font)' }}>auto-generated from title</em>}
+                    <div style={{ paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+                          Note URL{' '}
+                          <span style={{ opacity: 0.6 }}>(open in Keep → copy browser URL)</span>
+                          {note.url && <span style={{ color: 'var(--success)', marginLeft: 6 }}>✓</span>}
+                        </span>
+                        <input
+                          className="cal-name-input"
+                          value={note.url || ''}
+                          onChange={(e) => updateNote(i, 'url', e.target.value.trim())}
+                          placeholder="https://keep.google.com/u/0/#LIST/..."
+                          style={{ fontFamily: 'monospace', fontSize: 'var(--s-xs)' }}
+                        />
+                      </div>
+                      <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                        key: {note.key || <em style={{ fontFamily: 'var(--font)' }}>auto-generated from title</em>}
+                      </div>
                     </div>
                   </div>
                 ))}
