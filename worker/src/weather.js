@@ -120,7 +120,7 @@ async function pollWeatherOpenMeteo(env) {
     windspeed_unit:   'mph',
     precipitation_unit: 'inch',
     timezone:         'auto',
-    forecast_days:    7,
+    forecast_days:    14,
   });
 
   let res;
@@ -186,7 +186,7 @@ async function pollForecast(env, lat, lon) {
     temperature_unit: 'fahrenheit',
     windspeed_unit:   'mph',
     timezone:   'auto',
-    forecast_days: 7,
+    forecast_days: 14,
   });
 
   let res;
