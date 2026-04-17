@@ -219,20 +219,20 @@ async function scrapeKeep(page, targetNotes) {
     const results = [];
     const titleElements = document.querySelectorAll('div[role="textbox"]');
 
-    // Prefer open-editor version of a note (.oT9UPb) over card version
+    // Prefer open-editor (dialog) version of a note over card preview version
+    const dialog = document.querySelector('div[role="dialog"]');
     const byTitle = {};
     titleElements.forEach((titleEl) => {
       const title = titleEl.innerText.trim();
       if (!targetNotes.includes(title)) return;
-      const container = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
-      const isEditor  = container?.classList?.contains('oT9UPb');
+      const isEditor = dialog && dialog.contains(titleEl);
       if (!byTitle[title] || isEditor) byTitle[title] = titleEl;
     });
 
     Object.entries(byTitle).forEach(([title, titleEl]) => {
-      const p4 = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
+      const isInDialog = dialog && dialog.contains(titleEl);
       const noteContainer =
-        (p4?.classList?.contains('oT9UPb') ? p4 : null) ||
+        (isInDialog ? dialog : null) ||
         titleEl.closest('[data-note]') ||
         titleEl.parentElement?.parentElement?.parentElement ||
         titleEl.parentElement?.parentElement;
@@ -374,23 +374,29 @@ async function main() {
       // Return coordinates so we can use page.mouse.click() (trusted event) instead of
       // el.click() (synthetic/untrusted, may be ignored by Keep's React handlers).
       let usedSearch = false;
-      // Scroll the note into view and get its card body coordinates.
-      // page.mouse.click() only works on viewport-visible coordinates — if the
-      // note card is scrolled out of view, the click lands nowhere.
-      let noteCoords = await page.evaluate((name) => {
-        const els = document.querySelectorAll('div[role="textbox"]');
-        for (const el of els) {
-          if (el.innerText.trim() === name) {
-            // Scroll the textbox itself into view (not a container which may be huge)
-            el.scrollIntoView({ behavior: 'instant', block: 'center' });
-            const r = el.getBoundingClientRect();
-            // Click ~60px below the textbox center to land in the card body, not the title
-            return { x: r.x + r.width / 2, y: r.y + 60, debug: { elY: r.y, elH: r.height } };
+      // Scroll the note card into view using Playwright's locator (reliable, handles all cases),
+      // then measure the card container in the browser to get accurate viewport coordinates.
+      // page.mouse.click() is used (not el.click()) because Keep requires trusted mouse events.
+      const titleLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) });
+      let noteCoords = null;
+      if (await titleLocator.count() > 0) {
+        await titleLocator.first().scrollIntoViewIfNeeded();
+        await page.waitForTimeout(200); // let scroll position settle before measuring
+        noteCoords = await page.evaluate((name) => {
+          const els = document.querySelectorAll('div[role="textbox"]');
+          for (const el of els) {
+            if (el.innerText.trim() === name) {
+              // Click the card container (has jsaction), not just the textbox
+              const card = el.closest('div[jsaction]') || el.parentElement?.parentElement?.parentElement;
+              const target = card || el;
+              const r = target.getBoundingClientRect();
+              return { x: r.x + r.width / 2, y: r.y + r.height * 0.65 };
+            }
           }
-        }
-        return null;
-      }, noteName);
-      if (noteCoords) console.log(`[${ts}] Note coords for "${noteName}": x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)} (textbox at y=${Math.round(noteCoords.debug.elY)} h=${Math.round(noteCoords.debug.elH)})`);
+          return null;
+        }, noteName);
+      }
+      if (noteCoords) console.log(`[${ts}] Clicking card for "${noteName}" at x=${Math.round(noteCoords.x)} y=${Math.round(noteCoords.y)}`);
 
       // Apply checkbox updates FIRST — before any note-open click.
       // The note-open click triggers Keep's overlay/dimmed state which intercepts
@@ -492,23 +498,11 @@ async function main() {
         continue;
       }
 
-      // Wait for the editor to actually open before scraping.
-      await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(600);
-
-      // Debug: screenshot + DOM state after click
-      await page.screenshot({ path: `/tmp/keep-debug-${slugify(noteName)}.png` });
-      const editorInfo = await page.evaluate(() => {
-        const editor = document.querySelector('.oT9UPb');
-        const textboxes = Array.from(document.querySelectorAll('div[role="textbox"]')).map((el) => {
-          const p4 = el.parentElement?.parentElement?.parentElement?.parentElement;
-          return { text: el.innerText.trim().slice(0, 40), p4class: p4?.className?.slice(0, 60) };
-        });
-        if (!editor) return { open: false, textboxes };
-        const spans = editor.querySelectorAll('span[style*="Google Sans Text"]');
-        return { open: true, spans: spans.length, text: editor.innerText.slice(0, 120), textboxes };
-      });
-      console.log(`[${ts}] Editor for "${noteName}": ${JSON.stringify(editorInfo)}`);
+      // Wait for the editor dialog to open before scraping.
+      const dialogOpened = await page.waitForSelector('div[role="dialog"]', { timeout: 5000 })
+        .then(() => true).catch(() => false);
+      if (!dialogOpened) console.warn(`[${ts}] Editor dialog did not open for "${noteName}" — will scrape card preview only.`);
+      await page.waitForTimeout(400);
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);
