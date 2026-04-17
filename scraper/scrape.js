@@ -208,132 +208,92 @@ async function applyKeepUpdates(page, updates, noteName) {
   return appliedIds;
 }
 
-// ── Scraping logic ────────────────────────────────────────────────────────────
-
-// Read a single note's content from the DOM. Prefers the open editor (.oT9UPb)
-// over the card view, which Keep truncates for long text notes.
-function readNoteFromDom(title) {
-  function slugify(str) {
-    return str.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  }
-
-  const titleElements = document.querySelectorAll('div[role="textbox"]');
-  let titleEl = null;
-
-  for (const el of titleElements) {
-    if (el.innerText.trim() !== title) continue;
-    const container = el.parentElement?.parentElement?.parentElement?.parentElement;
-    if (container?.classList?.contains('oT9UPb')) { titleEl = el; break; } // prefer editor
-    if (!titleEl) titleEl = el;
-  }
-
-  if (!titleEl) return null;
-
-  const p4 = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
-  const noteContainer =
-    (p4?.classList?.contains('oT9UPb') ? p4 : null) ||
-    titleEl.closest('[data-note]') ||
-    titleEl.parentElement?.parentElement?.parentElement ||
-    titleEl.parentElement?.parentElement;
-
-  if (!noteContainer) return null;
-
-  const allCheckboxes = Array.from(noteContainer.querySelectorAll('div[role="checkbox"]'));
-
-  if (allCheckboxes.length > 0) {
-    // Checklist note — same logic as before
-    const RECENT_CHECKED_LIMIT = 30;
-    const unchecked = allCheckboxes.filter((cb) => {
-      const p3 = cb.parentElement?.parentElement?.parentElement;
-      return !p3?.classList.contains('barxie-MPu53c');
-    });
-    const recentChecked = allCheckboxes
-      .filter((cb) => {
-        const p3 = cb.parentElement?.parentElement?.parentElement;
-        return p3?.classList.contains('barxie-MPu53c');
-      })
-      .slice(0, RECENT_CHECKED_LIMIT);
-
-    const items = [];
-    [...unchecked, ...recentChecked].forEach((checkbox) => {
-      const checked  = checkbox.getAttribute('aria-checked') === 'true';
-      const row      = checkbox.parentElement?.parentElement;
-      const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
-      let text = textSpan?.innerText?.trim();
-      if (!text && row) {
-        const clone = row.cloneNode(true);
-        const cb = clone.querySelector('[role="checkbox"]');
-        if (cb) cb.remove();
-        text = clone.innerText?.trim();
-      }
-      if (text) items.push({ text, checked });
-    });
-    return { id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toISOString() };
-  } else {
-    // Text note — read full content (only accurate when editor is open)
-    const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
-    const lines = [];
-    if (textSpans.length > 0) {
-      textSpans.forEach((span) => {
-        const text = span.innerText.trim();
-        if (text) lines.push(text);
-      });
-    } else {
-      noteContainer.querySelectorAll('span, div').forEach((el) => {
-        if (el.children.length === 0) {
-          const text = el.innerText?.trim();
-          if (text && text !== title) lines.push(text);
-        }
-      });
-    }
-    return { id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toISOString() };
-  }
-}
+// ── Scraping logic (mirrors content.js) ──────────────────────────────────────
 
 async function scrapeKeep(page, targetNotes) {
-  const results = [];
+  return page.evaluate((targetNotes) => {
+    function slugify(title) {
+      return title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
 
-  for (const noteTitle of targetNotes) {
-    // Check if note is already open in the editor
-    const alreadyOpen = await page.evaluate((title) => {
-      const editors = document.querySelectorAll('.oT9UPb div[role="textbox"]');
-      return Array.from(editors).some((el) => el.innerText.trim() === title);
-    }, noteTitle);
+    const results = [];
+    const titleElements = document.querySelectorAll('div[role="textbox"]');
 
-    if (!alreadyOpen) {
-      // Click the card to open the full editor — card view truncates text notes
-      const clicked = await page.evaluate((title) => {
-        const titleElements = document.querySelectorAll('div[role="textbox"]');
-        for (const el of titleElements) {
-          if (el.innerText.trim() !== title) continue;
-          const container = el.parentElement?.parentElement?.parentElement?.parentElement;
-          if (!container?.classList?.contains('oT9UPb')) {
-            el.scrollIntoView({ behavior: 'instant', block: 'center' });
-            el.click();
-            return true;
+    // Prefer open-editor version of a note (.oT9UPb) over card version
+    const byTitle = {};
+    titleElements.forEach((titleEl) => {
+      const title = titleEl.innerText.trim();
+      if (!targetNotes.includes(title)) return;
+      const container = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
+      const isEditor  = container?.classList?.contains('oT9UPb');
+      if (!byTitle[title] || isEditor) byTitle[title] = titleEl;
+    });
+
+    Object.entries(byTitle).forEach(([title, titleEl]) => {
+      const p4 = titleEl.parentElement?.parentElement?.parentElement?.parentElement;
+      const noteContainer =
+        (p4?.classList?.contains('oT9UPb') ? p4 : null) ||
+        titleEl.closest('[data-note]') ||
+        titleEl.parentElement?.parentElement?.parentElement ||
+        titleEl.parentElement?.parentElement;
+
+      if (!noteContainer) return;
+
+      const allCheckboxes = Array.from(noteContainer.querySelectorAll('div[role="checkbox"]'));
+
+      if (allCheckboxes.length > 0) {
+        // Checklist note.
+        const RECENT_CHECKED_LIMIT = 30;
+        const unchecked = allCheckboxes.filter((cb) => {
+          const p3 = cb.parentElement?.parentElement?.parentElement;
+          return !p3?.classList.contains('barxie-MPu53c');
+        });
+        const recentChecked = allCheckboxes
+          .filter((cb) => {
+            const p3 = cb.parentElement?.parentElement?.parentElement;
+            return p3?.classList.contains('barxie-MPu53c');
+          })
+          .slice(0, RECENT_CHECKED_LIMIT);
+        const checkboxItems = [...unchecked, ...recentChecked];
+
+        const items = [];
+        checkboxItems.forEach((checkbox) => {
+          const checked = checkbox.getAttribute('aria-checked') === 'true';
+          const row     = checkbox.parentElement?.parentElement;
+          const textSpan = row?.querySelector('span[style*="Google Sans Text"]');
+          let text = textSpan?.innerText?.trim();
+          if (!text && row) {
+            const clone = row.cloneNode(true);
+            const cb = clone.querySelector('[role="checkbox"]');
+            if (cb) cb.remove();
+            text = clone.innerText?.trim();
           }
+          if (text) items.push({ text, checked });
+        });
+        results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toISOString() });
+      } else {
+        // Plain text note — only fully readable when the editor is open
+        const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
+        const lines = [];
+        if (textSpans.length > 0) {
+          textSpans.forEach((span) => {
+            const text = span.innerText.trim();
+            if (text) lines.push(text);
+          });
+        } else {
+          noteContainer.querySelectorAll('span, div').forEach((el) => {
+            if (el.children.length === 0) {
+              const text = el.innerText?.trim();
+              if (text && text !== title) lines.push(text);
+            }
+          });
         }
-        return false;
-      }, noteTitle);
-
-      if (clicked) {
-        await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
-        await page.waitForTimeout(400);
+        results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toISOString() });
       }
-    }
+    });
 
-    // Read the full note content from the open editor
-    const noteData = await page.evaluate(readNoteFromDom, noteTitle);
-    if (noteData) results.push(noteData);
-
-    // Close the note if we opened it
-    if (!alreadyOpen) {
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(300);
-    }
-  }
-
-  return results;
+    return results;
+  }, targetNotes);
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -532,7 +492,10 @@ async function main() {
         continue;
       }
 
-      await page.waitForTimeout(400);
+      // Wait for the editor to actually open before scraping — 400ms was not
+      // enough for text notes with long content (meal plan was still truncated).
+      await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(600);
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);
