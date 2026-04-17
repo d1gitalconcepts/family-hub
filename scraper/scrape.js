@@ -392,7 +392,12 @@ async function main() {
   // to their hash URL instead of trying to click cards — much more reliable.
   const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
 
-  const browser = await chromium.launch({ headless: true });
+  // Run headless unless a DISPLAY is set (e.g. via xvfb-run --auto-servernum).
+  // Keep's editor dialog never opens in true headless mode; xvfb-run gives a
+  // virtual display so Chromium behaves like a real browser session.
+  const headless = !process.env.DISPLAY;
+  if (!headless) console.log(`[${ts}] Running non-headless (DISPLAY=${process.env.DISPLAY})`);
+  const browser = await chromium.launch({ headless });
   const context = await browser.newContext({ storageState: SESSION_FILE });
   const page    = await context.newPage();
 
