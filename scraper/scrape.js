@@ -348,22 +348,48 @@ async function scrapeKeep(page, targetNotes) {
         });
         results.push({ id: slugify(title), title, type: 'checklist', items, scrapedAt: new Date().toISOString() });
       } else {
-        // Plain text note — only fully readable when the editor is open
-        const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
+        // Plain text note
         const lines = [];
-        if (textSpans.length > 0) {
-          textSpans.forEach((span) => {
-            const text = span.innerText.trim();
-            if (text) lines.push(text);
-          });
-        } else {
-          noteContainer.querySelectorAll('span, div').forEach((el) => {
-            if (el.children.length === 0) {
-              const text = el.innerText?.trim();
-              if (text && text !== title) lines.push(text);
-            }
-          });
+
+        if (isInDialog) {
+          // Editor is open: content lives in contenteditable div(s).
+          // The first contenteditable is usually the title; the body is a second one.
+          const editables = Array.from(noteContainer.querySelectorAll('[contenteditable="true"]'));
+          // Find the body editable: non-empty, and not just the title text
+          const bodyEditable =
+            editables.find((el) => {
+              const t = el.innerText.trim();
+              return t && t !== title && t.length > 0;
+            }) ||
+            editables[1] ||
+            editables[0];
+
+          if (bodyEditable) {
+            bodyEditable.innerText.split('\n').forEach((l) => {
+              const trimmed = l.trim();
+              if (trimmed && trimmed !== title) lines.push(trimmed);
+            });
+          }
         }
+
+        // Fallback (card preview or contenteditable not found): span-based selector
+        if (!lines.length) {
+          const textSpans = noteContainer.querySelectorAll('span[style*="Google Sans Text"]');
+          if (textSpans.length > 0) {
+            textSpans.forEach((span) => {
+              const text = span.innerText.trim();
+              if (text) lines.push(text);
+            });
+          } else {
+            noteContainer.querySelectorAll('span, div').forEach((el) => {
+              if (el.children.length === 0) {
+                const text = el.innerText?.trim();
+                if (text && text !== title) lines.push(text);
+              }
+            });
+          }
+        }
+
         results.push({ id: slugify(title), title, type: 'text', lines, scrapedAt: new Date().toISOString() });
       }
     });
@@ -414,22 +440,35 @@ async function main() {
     Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
 
-    // Intercept Keep's sync data function using Object.defineProperty so our
-    // setter fires even when Keep's external JS assigns/overwrites the function
-    // after our init script has run. The getter wraps whatever Keep assigns.
+    // Intercept Keep's data functions using Object.defineProperty so our setter
+    // fires even when Keep's external JS assigns the function after init script.
+    // We intercept several candidate names — the one(s) that carry note content
+    // will appear in __keepSyncCaptures.
     window.__keepSyncCaptures = [];
-    let _keepImpl = null;
-    Object.defineProperty(window, 'updateUserInfoFromInitialSyncRead', {
-      configurable: true,
-      enumerable:   true,
-      get() {
-        return function(data) {
-          window.__keepSyncCaptures.push(data);
-          if (typeof _keepImpl === 'function') return _keepImpl.call(this, data);
-        };
-      },
-      set(fn) { _keepImpl = fn; },
-    });
+    function _interceptFn(name) {
+      let _impl = null;
+      Object.defineProperty(window, name, {
+        configurable: true, enumerable: true,
+        get() {
+          return function(data) {
+            window.__keepSyncCaptures.push({ fn: name, data });
+            if (typeof _impl === 'function') return _impl.call(this, data);
+          };
+        },
+        set(fn) { _impl = fn; },
+      });
+    }
+    // Known and guessed Keep sync function names
+    [
+      'updateUserInfoFromInitialSyncRead',
+      'updateNotesFromInitialSyncRead',
+      'buildNotesFromInitialSyncRead',
+      'addNotesFromInitialSyncRead',
+      'updateNoteFromInitialSyncRead',
+      'updateListFromInitialSyncRead',
+      'loadNotesFromInitialSyncRead',
+      'syncNotesFromRead',
+    ].forEach(_interceptFn);
   });
 
   try {
@@ -475,71 +514,40 @@ async function main() {
       const noteUrl = NOTE_URLS[noteName];
 
       if (noteUrl) {
-        // ── Primary path: intercept Keep's API response for this note ─────────
-        // When Keep loads a note URL it fetches full note data from its backend.
-        // We capture that JSON response directly — no editor dialog required.
-        // Note IDs in Keep URLs look like: #LIST/1Yxhz9T... or #NOTE/1Njzl9j...
+        // ── Primary path: navigate to note URL → editor opens → DOM scrape ────
+        // Keep's SPA opens the note editor when its hash URL is loaded.
+        // We wait for div[role="dialog"] then read the full contenteditable text.
         const noteId = new URL(noteUrl).hash.replace(/^#(LIST|NOTE)\//, '');
-        let capturedNote = null;
 
-        const onResponse = async (response) => {
-          const url = response.url();
-          // Keep's API endpoints that return note data
-          if (!url.includes('keep.google.com') && !url.includes('keep.googleapis.com')) return;
-          if (!url.includes('notes') && !url.includes('list') && !url.includes('sync')) return;
-          try {
-            const ct = response.headers()['content-type'] || '';
-            if (!ct.includes('json')) return;
-            const body = await response.text();
-            if (!body.includes(noteId)) return; // not this note's response
-            console.log(`[${ts}] Captured API response for "${noteName}": ${url.slice(0, 80)}`);
-            capturedNote = { url, body };
-          } catch {}
-        };
-        page.on('response', onResponse);
-
-        console.log(`[${ts}] Loading "${noteName}" to intercept API: ${noteUrl}`);
+        console.log(`[${ts}] Navigating to "${noteName}": ${noteUrl}`);
         await page.goto(noteUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        // Wait up to 8 seconds for the API call
-        for (let i = 0; i < 32 && !capturedNote; i++) await page.waitForTimeout(250);
-        page.off('response', onResponse);
 
-        // Read Keep's sync data captured by our addInitScript interceptor.
-        // Wait up to 5s for the function to be called after page load.
-        let syncData = null;
-        for (let i = 0; i < 20 && !syncData; i++) {
-          await page.waitForTimeout(250);
-          const captures = await page.evaluate(() => window.__keepSyncCaptures || []).catch(() => []);
-          if (captures.length) syncData = captures;
+        // Wait up to 6s for the editor dialog to open
+        await page.waitForSelector('div[role="dialog"]', { timeout: 6000 }).catch(() => {});
+        // Give the note content a moment to fully render
+        await page.waitForTimeout(1500);
+
+        const editorIsOpen = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
+        console.log(`[${ts}] Editor dialog for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed (card-only scrape)'}`);
+
+        // Diagnostic: sync data (informational only — protobuf makes API interception unreliable)
+        const captures = await page.evaluate(() => window.__keepSyncCaptures || []).catch(() => []);
+        if (captures.length) {
+          captures.forEach(c => console.log(`[${ts}]   fn=${c.fn} keys=${Object.keys(c.data||{}).join(', ')}`));
         }
-
-        if (syncData?.length) {
-          console.log(`[${ts}] Captured ${syncData.length} sync data call(s) for "${noteName}"`);
-          // Log structure of first capture to understand the shape
-          const firstKeys = Object.keys(syncData[0] || {}).join(', ');
-          console.log(`[${ts}] Sync data keys: ${firstKeys}`);
-          const parsed = parseKeepSyncData(syncData, noteName, noteId);
-          if (parsed) {
-            allNotes.push(parsed);
-          } else {
-            console.warn(`[${ts}] Could not extract note from sync data — falling back to DOM`);
-            const scraped = await scrapeKeep(page, [noteName]);
-            allNotes.push(...scraped);
-          }
-        } else {
-          // DOM fallback
-          console.warn(`[${ts}] No sync data captured for "${noteName}" — falling back to DOM scrape`);
-          await page.waitForFunction(
-            () => document.querySelectorAll('div[role="textbox"]').length > 0,
-            { timeout: 10000, polling: 400 }
-          ).catch(() => {});
-          const scraped = await scrapeKeep(page, [noteName]);
-          console.log(`[${ts}] DOM scrape for "${noteName}": ${scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0} items`);
-          allNotes.push(...scraped);
-        }
-
         // Reset captures for next note
         await page.evaluate(() => { window.__keepSyncCaptures = []; }).catch(() => {});
+
+        // DOM scrape — scrapeKeep handles both editor (dialog) and card-preview views
+        await page.waitForFunction(
+          () => document.querySelectorAll('div[role="textbox"]').length > 0,
+          { timeout: 8000, polling: 300 }
+        ).catch(() => {});
+
+        const scraped = await scrapeKeep(page, [noteName]);
+        const itemCount = scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0;
+        console.log(`[${ts}] Scraped "${noteName}": ${itemCount} item(s) (editor ${editorIsOpen ? 'open' : 'closed'})`);
+        allNotes.push(...scraped);
 
         // Apply pending checkbox updates (still need editor open for this — skip for now if no dialog)
         if (pendingUpdates.length) {
