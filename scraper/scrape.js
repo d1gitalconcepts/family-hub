@@ -321,6 +321,14 @@ async function main() {
   const context = await browser.newContext({ storageState: SESSION_FILE });
   const page    = await context.newPage();
 
+  // Override document.visibilityState — headless Chrome reports 'hidden' by default,
+  // which some Google apps (including Keep) use to suppress user-interaction handlers.
+  await page.addInitScript(() => {
+    Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
+    Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
   try {
     await page.goto('https://keep.google.com', { waitUntil: 'domcontentloaded', timeout: 30000 });
 
@@ -407,19 +415,24 @@ async function main() {
           // 20px below the title's bottom edge lands in the card body content area
           const cy = titleBox.y + titleBox.height + 20;
 
-          // Diagnostic: what element is actually at those coordinates?
+          // Diagnostic: what element is at those coordinates + nearest jsaction ancestor?
           const elAt = await page.evaluate(({ x, y }) => {
             const el = document.elementFromPoint(x, y);
             if (!el) return { found: false };
+            // Walk up to find nearest ancestor with jsaction
+            let jsEl = el;
+            while (jsEl && !jsEl.getAttribute('jsaction')) jsEl = jsEl.parentElement;
             return {
               found: true, tag: el.tagName,
               role: el.getAttribute('role') || '',
-              jsaction: (el.getAttribute('jsaction') || '').slice(0, 80),
               text: (el.innerText || '').trim().slice(0, 40),
-              className: (el.className || '').slice(0, 80),
+              nearestJsactionTag: jsEl?.tagName || 'none',
+              nearestJsaction: (jsEl?.getAttribute('jsaction') || 'none').slice(0, 120),
+              visibilityState: document.visibilityState,
+              hasFocus: document.hasFocus(),
             };
           }, { x: cx, y: cy });
-          console.log(`[${ts}] "${noteName}" element at (${Math.round(cx)},${Math.round(cy)}): ${JSON.stringify(elAt)}`);
+          console.log(`[${ts}] "${noteName}" at (${Math.round(cx)},${Math.round(cy)}): ${JSON.stringify(elAt)}`);
           console.log(`[${ts}] Clicking card body for "${noteName}" at x=${Math.round(cx)} y=${Math.round(cy)} (title bottom=${Math.round(titleBox.y + titleBox.height)})`);
           await page.mouse.click(cx, cy);
           clicked = true;
