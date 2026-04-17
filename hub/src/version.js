@@ -1,6 +1,14 @@
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.6.1';
 
 export const CHANGELOG = [
+  {
+    version: '1.6.1',
+    date: 'April 2026',
+    notes: [
+      'Fixed duplicate Saturday meal events — all-day events now use the correct exclusive end date per Google Calendar API spec',
+      'Worker now deduplicates "Meal Planning" calendars if multiple were accidentally created',
+    ],
+  },
   {
     version: '1.6.0',
     date: 'April 2026',

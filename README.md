@@ -53,7 +53,7 @@ See **[Scraper standalone setup](#scraper-standalone-setup)** below — the scra
 
 ### 3. Cloudflare Worker (calendar + weather sync)
 
-The worker runs every 5 minutes on Cloudflare's free tier and syncs Google Calendar events, weather data, and the 7-day forecast into Supabase.
+The worker runs every 5 minutes on Cloudflare's free tier and syncs Google Calendar events, weather data, and the 14-day forecast into Supabase.
 
 **Prerequisites:** A free [Cloudflare account](https://cloudflare.com) and Node.js installed.
 
@@ -93,6 +93,13 @@ npx wrangler deploy
 ```
 
 The worker will now sync every 5 minutes automatically.
+
+**On-demand sync** (useful for testing or after config changes):
+
+```bash
+curl -X POST https://<your-worker>.workers.dev/sync          # calendar + weather
+curl -X POST https://<your-worker>.workers.dev/sync-sports   # sports enrichment only
+```
 
 ### 4. Hub (React frontend)
 
