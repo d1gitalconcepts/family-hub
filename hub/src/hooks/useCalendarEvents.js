@@ -8,12 +8,19 @@ export function useCalendarEvents(weekStart, weekEnd) {
     if (!weekStart || !weekEnd) return;
 
     async function fetchEvents() {
+      const weekStartDate = weekStart.toISOString().split('T')[0];
+      const weekEndDate   = weekEnd.toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
         .or(
+          // Timed events within the week
           `and(is_all_day.eq.false,start_at.gte.${weekStart.toISOString()},start_at.lte.${weekEnd.toISOString()}),` +
-          `and(is_all_day.eq.true,start_date.gte.${weekStart.toISOString().split('T')[0]},start_date.lte.${weekEnd.toISOString().split('T')[0]})`
+          // All-day events starting within the week
+          `and(is_all_day.eq.true,start_date.gte.${weekStartDate},start_date.lte.${weekEndDate}),` +
+          // Multi-day all-day events that started before this week but extend into it
+          `and(is_all_day.eq.true,start_date.lt.${weekStartDate},end_date.gt.${weekStartDate})`
         )
         .order('start_at', { ascending: true });
 

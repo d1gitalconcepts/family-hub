@@ -35,7 +35,14 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
       .filter((e) => {
         if (!unfiltered && !visibleIds.has(e.calendar_id)) return false;
         if (isEventHidden(e, filterRules)) return false;
-        if (e.is_all_day) return e.start_date === dateStr;
+        if (e.is_all_day) {
+          // Multi-day all-day events: end_date is exclusive (Google Calendar spec)
+          // Show the event on every day in [start_date, end_date)
+          if (e.end_date && e.end_date > e.start_date) {
+            return dateStr >= e.start_date && dateStr < e.end_date;
+          }
+          return e.start_date === dateStr;
+        }
         if (!e.start_at) return false;
         return new Date(e.start_at).toISOString().split('T')[0] === dateStr;
       })

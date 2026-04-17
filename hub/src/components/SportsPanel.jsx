@@ -29,6 +29,7 @@ const SPORT_EMOJI = {
   mlb:    '⚾',
   nfl:    '🏈',
   nhl:    '🏒',
+  nba:    '🏀',
   golf:   '⛳',
   f1:     '🏎️',
   nascar: '🏁',
@@ -191,6 +192,65 @@ function NflPanel({ data, detail }) {
       {showBox && (homeRecord || awayRecord) && (
         <div className="sports-record">
           {awayRecord} · {homeRecord}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── NBA Panel ────────────────────────────────────────────────────────────────
+
+function NbaPanel({ data, detail }) {
+  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock } = data;
+  const showBox = detail === 'boxscore' || detail === 'all';
+  const quarters = homeLinescores?.length > 4
+    ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
+    : ['Q1','Q2','Q3','Q4'];
+
+  return (
+    <div>
+      <div className="sports-panel-header">
+        <StatusBadge sport="nba" status={status} />
+        {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
+      </div>
+
+      <div className="sports-score-row">
+        <div className="sports-score-team sports-score-team--away">
+          <span>{awayTeam?.abbrev}</span>
+          {showBox && awayRecord && <span className="sports-score-record">{awayRecord}</span>}
+        </div>
+        <div className="sports-score-num">{awayScore ?? '—'}</div>
+        <div className="sports-score-divider">·</div>
+        <div className="sports-score-num">{homeScore ?? '—'}</div>
+        <div className="sports-score-team sports-score-team--home">
+          <span>{homeTeam?.abbrev}</span>
+          {showBox && homeRecord && <span className="sports-score-record">{homeRecord}</span>}
+        </div>
+      </div>
+
+      {showBox && homeLinescores?.length > 0 && (
+        <div className="sports-linescore-wrap">
+          <table className="sports-linescore">
+            <thead>
+              <tr>
+                <th></th>
+                {quarters.map((q) => <th key={q}>{q}</th>)}
+                <th className="col-totals">T</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{awayTeam?.abbrev}</td>
+                {(awayLinescores || []).map((s, i) => <td key={i}>{s}</td>)}
+                <td className="col-totals">{awayScore ?? '—'}</td>
+              </tr>
+              <tr>
+                <td>{homeTeam?.abbrev}</td>
+                {(homeLinescores || []).map((s, i) => <td key={i}>{s}</td>)}
+                <td className="col-totals">{homeScore ?? '—'}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -467,6 +527,7 @@ export default function SportsPanel({ enrichment, detailLevel = 'all' }) {
     <div className="sports-panel">
       {sport === 'mlb'    && <MlbPanel    data={data} detail={detail} />}
       {sport === 'nfl'    && <NflPanel    data={data} detail={detail} />}
+      {sport === 'nba'    && <NbaPanel    data={data} detail={detail} />}
       {sport === 'nhl'    && <NhlPanel    data={data} detail={detail} />}
       {sport === 'golf'   && <GolfPanel   data={data} detail={detail} />}
       {sport === 'f1'     && <F1Panel     data={data} detail={detail} />}

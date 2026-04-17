@@ -116,6 +116,47 @@ async function enrichNfl(event, config) {
   };
 }
 
+// ── NBA ──────────────────────────────────────────────────────────────────────
+
+async function enrichNba(event, config) {
+  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  if (!dateStr) throw new Error('No date for NBA event');
+
+  const yyyymmdd = dateStr.replace(/-/g, '');
+  const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${yyyymmdd}`;
+  const json = await fetchJson(url);
+
+  const abbrev = (config.teamId || '').toLowerCase();
+  const game = (json?.events || []).find((ev) => {
+    const comps = ev?.competitions?.[0]?.competitors || [];
+    return comps.some((c) => c.team?.abbreviation?.toLowerCase() === abbrev);
+  });
+  if (!game) return null;
+
+  const comp = game.competitions?.[0];
+  const competitors = comp?.competitors || [];
+  const home = competitors.find((c) => c.homeAway === 'home');
+  const away = competitors.find((c) => c.homeAway === 'away');
+
+  const status = comp?.status?.type?.description || 'Scheduled';
+  const period = comp?.status?.period || null;
+  const clock  = comp?.status?.displayClock || null;
+
+  return {
+    status,
+    homeTeam: { abbrev: home?.team?.abbreviation, name: home?.team?.displayName },
+    awayTeam: { abbrev: away?.team?.abbreviation, name: away?.team?.displayName },
+    homeScore: home?.score != null ? Number(home.score) : null,
+    awayScore: away?.score != null ? Number(away.score) : null,
+    homeLinescores: (home?.linescores || []).map((l) => l.value),
+    awayLinescores: (away?.linescores || []).map((l) => l.value),
+    homeRecord: home?.records?.[0]?.summary || null,
+    awayRecord: away?.records?.[0]?.summary || null,
+    period,
+    clock,
+  };
+}
+
 // ── NHL ──────────────────────────────────────────────────────────────────────
 
 async function enrichNhl(event, config) {
@@ -271,8 +312,14 @@ async function enrichNhl(event, config) {
 // ── Golf ─────────────────────────────────────────────────────────────────────
 
 async function enrichGolf(event, config) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
-  if (!dateStr) throw new Error('No date for Golf event');
+  const startStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  if (!startStr) throw new Error('No date for Golf event');
+
+  // For multi-day tournaments use today's date so ESPN returns the live leaderboard.
+  // Fall back to start date if today is outside the event window.
+  const todayStr = new Date().toISOString().split('T')[0];
+  const endStr   = event.end_date || startStr;
+  const dateStr  = (todayStr >= startStr && todayStr < endStr) ? todayStr : startStr;
 
   const yyyymmdd = dateStr.replace(/-/g, '');
   const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${yyyymmdd}`;
@@ -532,6 +579,9 @@ export async function enrichSportsEvents(env) {
           break;
         case 'nfl':
           data = await enrichNfl(event, config);
+          break;
+        case 'nba':
+          data = await enrichNba(event, config);
           break;
         case 'nhl':
           data = await enrichNhl(event, config);
