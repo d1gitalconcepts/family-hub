@@ -406,6 +406,20 @@ async function main() {
           const cx = titleBox.x + titleBox.width / 2;
           // 20px below the title's bottom edge lands in the card body content area
           const cy = titleBox.y + titleBox.height + 20;
+
+          // Diagnostic: what element is actually at those coordinates?
+          const elAt = await page.evaluate(({ x, y }) => {
+            const el = document.elementFromPoint(x, y);
+            if (!el) return { found: false };
+            return {
+              found: true, tag: el.tagName,
+              role: el.getAttribute('role') || '',
+              jsaction: (el.getAttribute('jsaction') || '').slice(0, 80),
+              text: (el.innerText || '').trim().slice(0, 40),
+              className: (el.className || '').slice(0, 80),
+            };
+          }, { x: cx, y: cy });
+          console.log(`[${ts}] "${noteName}" element at (${Math.round(cx)},${Math.round(cy)}): ${JSON.stringify(elAt)}`);
           console.log(`[${ts}] Clicking card body for "${noteName}" at x=${Math.round(cx)} y=${Math.round(cy)} (title bottom=${Math.round(titleBox.y + titleBox.height)})`);
           await page.mouse.click(cx, cy);
           clicked = true;
@@ -487,11 +501,15 @@ async function main() {
         continue;
       }
 
-      // Wait for the editor dialog to open before scraping.
-      const dialogOpened = await page.waitForSelector('div[role="dialog"]', { timeout: 5000 })
-        .then(() => true).catch(() => false);
+      // Poll for the editor dialog — avoids waitForSelector throwing on context changes.
+      let dialogOpened = false;
+      for (let i = 0; i < 20; i++) {
+        await page.waitForTimeout(250);
+        const hasDialog = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
+        if (hasDialog) { dialogOpened = true; break; }
+      }
+      console.log(`[${ts}] Dialog poll result for "${noteName}": ${dialogOpened}`);
       if (!dialogOpened) console.warn(`[${ts}] Editor dialog did not open for "${noteName}" — will scrape card preview only.`);
-      await page.waitForTimeout(400);
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);
