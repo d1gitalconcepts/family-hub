@@ -480,37 +480,70 @@ async function main() {
       const noteUrl = NOTE_URLS[noteName];
 
       if (noteUrl) {
-        // ── Primary path: fresh tab → note URL cold-load → editor opens → scrape
-        // Opening the URL in a brand-new tab mirrors what happens when a user
-        // clicks a Keep note link in their browser — Keep initialises and opens
-        // the note editor automatically from the hash (#LIST/... or #NOTE/...).
-        // Navigating to the hash on an already-loaded Keep SPA page does NOT
-        // reliably open the editor; a fresh tab avoids that issue.
+        // ── Primary path: fresh tab → Keep home → hash-navigate → click → scrape
         console.log(`[${ts}] Opening "${noteName}" in fresh tab`);
         const notePage = await context.newPage();
 
         try {
-          // Use 'load' (not 'domcontentloaded') so Keep's app JS has time to run
-          await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
+          // Load Keep home first so the SPA fully initialises, then navigate to
+          // the specific note hash. This two-step load is more reliable than a
+          // cold direct-URL load because Keep's router is already running.
+          await notePage.goto('https://keep.google.com', { waitUntil: 'load', timeout: 30000 });
+          await notePage.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 20000, polling: 500 }
+          ).catch(() => {});
+          await notePage.waitForTimeout(1500);
 
-          // Wait up to 10 s for the note editor dialog to appear
-          await notePage.waitForSelector('div[role="dialog"]', { timeout: 10000 }).catch(() => {});
-          // Give the note content extra time to finish rendering
-          await notePage.waitForTimeout(2000);
+          // Trigger the note editor by pushing the hash into the URL and firing a
+          // hashchange event — this is what a normal browser does when you click a
+          // Keep note link. Uses history.pushState so no page reload occurs.
+          const noteHash = new URL(noteUrl).hash; // '#LIST/...' or '#NOTE/...'
+          await notePage.evaluate((hash) => {
+            const oldURL = location.href;
+            const newURL = location.href.split('#')[0] + hash;
+            history.pushState(null, '', newURL);
+            window.dispatchEvent(new HashChangeEvent('hashchange', { oldURL, newURL }));
+          }, noteHash);
 
-          const editorIsOpen = await notePage.evaluate(
+          // Wait up to 8 s for the note editor dialog to appear
+          await notePage.waitForSelector('div[role="dialog"]', { timeout: 8000 }).catch(() => {});
+          await notePage.waitForTimeout(1000);
+
+          let editorIsOpen = await notePage.evaluate(
             () => !!document.querySelector('div[role="dialog"]')
           ).catch(() => false);
+
+          // If the hash event didn't open the editor, try clicking the note card body.
+          if (!editorIsOpen) {
+            console.log(`[${ts}] hashchange didn't open editor — trying click`);
+            const clickCoords = await notePage.evaluate((noteName) => {
+              for (const el of document.querySelectorAll('div[role="textbox"]')) {
+                if (el.innerText.trim() !== noteName) continue;
+                const r = el.getBoundingClientRect();
+                // Click below the title, in the note body area
+                return { x: r.left + Math.min(60, r.width / 2), y: r.bottom + 14 };
+              }
+              return null;
+            }, noteName);
+
+            if (clickCoords) {
+              await notePage.mouse.click(clickCoords.x, clickCoords.y);
+              await notePage.waitForSelector('div[role="dialog"]', { timeout: 6000 }).catch(() => {});
+              await notePage.waitForTimeout(1000);
+              editorIsOpen = await notePage.evaluate(
+                () => !!document.querySelector('div[role="dialog"]')
+              ).catch(() => false);
+            }
+          }
+
           console.log(`[${ts}] Editor for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed — card-only'}`);
 
           if (!editorIsOpen) {
-            // Diagnostic: show what's in the DOM so we can troubleshoot
-            const info = await notePage.evaluate(() => ({
-              url:   window.location.href,
-              roles: [...new Set([...document.querySelectorAll('[role]')].map(e => e.getAttribute('role')))],
-            })).catch(() => ({}));
-            console.log(`[${ts}]   Page URL: ${info.url}`);
-            console.log(`[${ts}]   Roles: ${(info.roles || []).join(', ')}`);
+            // Save a screenshot so we can see exactly what Keep looks like in Playwright
+            const screenshotPath = path.join(__dirname, `debug-${slugify(noteName)}.png`);
+            await notePage.screenshot({ path: screenshotPath, fullPage: false }).catch(() => {});
+            console.log(`[${ts}]   Screenshot → ${screenshotPath} (scp to desktop to inspect)`);
           }
 
           // Ensure note textboxes are present before scraping
