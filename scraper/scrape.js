@@ -476,19 +476,31 @@ async function main() {
         for (let i = 0; i < 32 && !capturedNote; i++) await page.waitForTimeout(250);
         page.off('response', onResponse);
 
-        if (capturedNote) {
-          console.log(`[${ts}] API interception succeeded for "${noteName}" — parsing response`);
-          const parsed = parseKeepApiResponse(capturedNote.body, noteName);
-          if (parsed) { allNotes.push(parsed); }
-          else console.warn(`[${ts}] Could not parse API response for "${noteName}"`);
-        } else {
-          console.warn(`[${ts}] No API response captured for "${noteName}" — falling back to DOM scrape`);
-          // DOM fallback: scrape whatever Keep has rendered (may be card preview only)
+        // DOM fallback (API interception only works if Keep uses JSON — it uses protobuf)
+        if (!capturedNote) {
+          // Check if full note content is embedded in an inline <script> tag
+          const inlineData = await page.evaluate((id) => {
+            for (const s of document.querySelectorAll('script:not([src])')) {
+              if (s.textContent.includes(id)) {
+                return s.textContent.slice(0, 4000);
+              }
+            }
+            return null;
+          }, noteId);
+
+          if (inlineData) {
+            console.log(`[${ts}] Found inline script data for "${noteName}" (first 300): ${inlineData.slice(0, 300)}`);
+          }
+
+          // Wait for Keep to render as much DOM content as possible
           await page.waitForFunction(
             () => document.querySelectorAll('div[role="textbox"]').length > 0,
             { timeout: 10000, polling: 400 }
           ).catch(() => {});
+          await page.waitForTimeout(2000); // extra settle for lazy-rendered content
+
           const scraped = await scrapeKeep(page, [noteName]);
+          console.warn(`[${ts}] DOM scrape for "${noteName}": ${scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0} items (may be truncated)`);
           allNotes.push(...scraped);
         }
 
