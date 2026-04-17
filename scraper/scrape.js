@@ -492,10 +492,18 @@ async function main() {
         continue;
       }
 
-      // Wait for the editor to actually open before scraping — 400ms was not
-      // enough for text notes with long content (meal plan was still truncated).
+      // Wait for the editor to actually open before scraping.
       await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(600);
+
+      // Debug: confirm editor state before scraping
+      const editorInfo = await page.evaluate(() => {
+        const editor = document.querySelector('.oT9UPb');
+        if (!editor) return { open: false };
+        const spans = editor.querySelectorAll('span[style*="Google Sans Text"]');
+        return { open: true, spans: spans.length, text: editor.innerText.slice(0, 120) };
+      });
+      console.log(`[${ts}] Editor for "${noteName}": ${JSON.stringify(editorInfo)}`);
 
       // Scrape this note while the editor is open (full content visible)
       const scraped = await scrapeKeep(page, [noteName]);
