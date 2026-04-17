@@ -1,6 +1,18 @@
-export const APP_VERSION = '1.5.2';
+export const APP_VERSION = '1.6.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.6.0',
+    date: 'April 2026',
+    notes: [
+      'Keep scraper now reads full note content via focused-card URL navigation — Meal Planning no longer truncated at 10 lines',
+      'Checklist notes (Shopping List etc.) now read the full item list from the focused card DOM, not just the card preview',
+      'Checklist item cap: all unchecked items always included, up to 50 total items per note',
+      'Scraper runs fully headless (no xvfb-run required) — faster and simpler cron setup',
+      '14-day weather forecast (was 7 days)',
+      'Keep note URLs configurable per-note in Hub Settings (Keep Notes tab)',
+    ],
+  },
   {
     version: '1.5.2',
     date: 'April 2026',

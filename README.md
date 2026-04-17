@@ -1,6 +1,6 @@
 # Family Hub
 
-A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, live weather, a 7-day forecast, and a sidebar with Google Keep checklists that sync bidirectionally. Sports calendars are automatically enriched with live scores, box scores, and game detail from public APIs — MLB, NHL, NFL, Golf, F1, and NASCAR.
+A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, live weather, a 14-day forecast, and a sidebar with Google Keep checklists that sync bidirectionally. Sports calendars are automatically enriched with live scores, box scores, and game detail from public APIs — MLB, NHL, NFL, Golf, F1, and NASCAR.
 
 ![Family Hub screenshot](docs/screenshot.png)
 
@@ -206,13 +206,15 @@ By default the scraper looks for a note called **"Shopping List"**. To add more 
 insert into config (key, value) values (
   'keep_notes',
   '[
-    {"title": "Shopping List",  "key": "shopping-list",  "label": "Shopping List",  "visible": true},
-    {"title": "Packing List",   "key": "packing-list",   "label": "Packing List",   "visible": true}
+    {"title": "Shopping List", "key": "shopping-list", "label": "Shopping List", "visible": true, "url": "https://keep.google.com/u/0/#LIST/YOUR_NOTE_ID"},
+    {"title": "Packing List",  "key": "packing-list",  "label": "Packing List",  "visible": true, "url": "https://keep.google.com/u/0/#LIST/YOUR_NOTE_ID"}
   ]'
 );
 ```
 
 The `title` must match the note title in Google Keep exactly. The `key` is a URL-safe slug used as the row key in the `notes` table.
+
+**The `url` field is important** — it's the direct link to the note in Google Keep (open the note in your browser and copy the URL from the address bar). Without it the scraper can only read the card preview (~10 items); with it, the scraper reads the full note content by navigating directly to the note URL. If you're using the full hub, you can set these URLs from the **Keep Notes** tab in Settings instead of editing SQL directly.
 
 ### Step 5 — Test it
 
@@ -255,6 +257,8 @@ Add this line (adjust the path):
 ```
 */5 * * * * /usr/bin/node /home/youruser/family-hub/scraper/scrape.js >> /home/youruser/family-hub/scraper/scraper.log 2>&1
 ```
+
+> **No virtual display needed.** The scraper runs fully headless — no `xvfb-run` or display server required.
 
 If you only need one-way sync (Keep → hub, no write-back), you can skip pm2 and use the cron job alone.
 
