@@ -126,6 +126,24 @@ async function fetchKeepNotesTitles() {
   return withMeal.length ? withMeal : DEFAULT_NOTE_TITLES;
 }
 
+// Returns a map of { "Note Title": "https://keep.google.com/u/0/#TYPE/ID" }
+// Stored in Supabase config under key "keep_note_urls".
+async function fetchKeepNoteUrls() {
+  await supabaseAuth();
+  const res = await fetch(
+    `${CONFIG.SUPABASE_URL}/rest/v1/config?key=eq.keep_note_urls&select=value`,
+    {
+      headers: {
+        'apikey':        CONFIG.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${_jwt}`,
+      },
+    }
+  );
+  if (!res.ok) return {};
+  const rows = await res.json();
+  return rows[0]?.value || {};
+}
+
 // ── Keep write-back ───────────────────────────────────────────────────────────
 
 // Apply pending checkbox updates while the note editor is open.
@@ -317,6 +335,10 @@ async function main() {
   });
   console.log(`[${ts}] Target notes: ${TARGET_NOTES.join(', ')}`);
 
+  // Direct note URLs (keep_note_urls config) let us open notes by navigating
+  // to their hash URL instead of trying to click cards — much more reliable.
+  const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
+
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ storageState: SESSION_FILE });
   const page    = await context.newPage();
@@ -354,36 +376,10 @@ async function main() {
       ).forEach((el) => el.remove());
     }).catch(() => {});
 
-    // DIAGNOSTIC: print data attributes and outerHTML snippet of the first note card
-    // to learn where Keep stores note IDs (for URL-based navigation approach).
-    const cardDiag = await page.evaluate(() => {
-      const el = document.querySelector('div[role="textbox"]');
-      if (!el) return { found: false };
-      // Walk up 10 levels, collect all data-* attrs, id, and the outerHTML of the 8th ancestor
-      let parent = el;
-      const allAttrs = {};
-      for (let i = 0; i < 12; i++) {
-        Array.from(parent.attributes || []).forEach(a => {
-          if (a.name.startsWith('data-') || a.name === 'id' || a.name === 'itemid') {
-            allAttrs[`L${i}:${a.name}`] = a.value.slice(0, 80);
-          }
-        });
-        parent = parent.parentElement;
-        if (!parent || parent === document.body) break;
-      }
-      // Also grab outerHTML of 7 levels up (the card container)
-      let card = el;
-      for (let i = 0; i < 7; i++) card = card?.parentElement;
-      return { title: el.innerText.trim().slice(0, 30), attrs: allAttrs, html: card?.outerHTML?.slice(0, 600) };
-    });
-    console.log(`[${ts}] CARD DIAG attrs: ${JSON.stringify(cardDiag.attrs)}`);
-    console.log(`[${ts}] CARD DIAG html: ${cardDiag.html}`);
-
     // Open every target note in the editor one at a time so we get full content.
-    // - Text notes: card view truncates long content with "…"; editor shows all.
-    // - Checklist notes: card view caps visible items (~10-15); editor shows all,
-    //   but also exposes historical completed items. scrapeKeep() filters those
-    //   out by stopping at Keep's "X checked items" section toggle.
+    // Primary method: navigate to the note's direct URL (hash-based SPA navigation)
+    // which opens the editor automatically — no clicking required.
+    // Fallback: card-click approach for notes without a configured URL.
     const allNotes = [];
 
     for (const noteName of TARGET_NOTES) {
@@ -395,26 +391,30 @@ async function main() {
         console.log(`[${ts}] ${pendingUpdates.length} pending Keep update(s) for "${noteName}"`);
       }
 
-      // Remove any overlays that could intercept mouse clicks (Google Translate banner, etc.)
-      // Do this before every note click attempt, not just in the search fallback.
-      await page.evaluate(() => {
-        document.querySelectorAll(
-          '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
-        ).forEach((el) => el.remove());
-      });
+      const noteUrl = NOTE_URLS[noteName];
 
-      // Find the note title element. Playwright's locator.click() dispatches real CDP
-      // mouse events (isTrusted=true) — unlike el.click() from page.evaluate which is synthetic.
-      const escapedName = noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const titleLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
-      let usedSearch = false;
-      let clicked = false;
+      if (noteUrl) {
+        // ── Primary path: navigate directly to the note URL ─────────────────
+        // Keep's SPA opens the editor dialog when the hash changes to a note ID.
+        const hash = new URL(noteUrl).hash; // e.g. "#LIST/1Yxhz9T..."
+        console.log(`[${ts}] Opening "${noteName}" via URL hash: ${hash}`);
+        await page.evaluate((h) => { window.location.hash = h; }, hash);
 
-      if (await titleLocator.count() > 0) {
-        await titleLocator.first().scrollIntoViewIfNeeded();
-        await page.waitForTimeout(300); // let scroll and Keep's handlers settle
+        // Wait for the editor dialog to appear
+        let dialogOpened = false;
+        for (let i = 0; i < 24; i++) {
+          await page.waitForTimeout(250);
+          dialogOpened = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
+          if (dialogOpened) break;
+        }
 
-        // Apply checkbox updates FIRST — card view is clean, editor overlay not yet open.
+        if (!dialogOpened) {
+          console.warn(`[${ts}] Editor did not open for "${noteName}" via URL — skipping.`);
+          continue;
+        }
+        console.log(`[${ts}] Editor opened for "${noteName}"`);
+
+        // Apply pending checkbox updates in the open editor
         if (pendingUpdates.length) {
           const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
           if (appliedIds.length) {
@@ -424,146 +424,99 @@ async function main() {
           }
           const skipped = pendingUpdates.length - appliedIds.length;
           if (skipped > 0) {
-            console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
+            console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied`);
             const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
             await clearPendingKeepUpdates(notApplied);
           }
         }
 
-        // Click the card BODY (just below the title) to open the full note editor.
-        // Clicking directly on the title textbox triggers inline-editing, not the dialog.
-        // We use boundingBox() for exact coordinates then page.mouse.click() for a
-        // trusted CDP mouse event.
-        const titleBox = await titleLocator.first().boundingBox();
-        if (titleBox) {
-          const cx = titleBox.x + titleBox.width / 2;
-          // 20px below the title's bottom edge lands in the card body content area
-          const cy = titleBox.y + titleBox.height + 20;
+        const scraped = await scrapeKeep(page, [noteName]);
+        allNotes.push(...scraped);
 
-          // Diagnostic: what element is at those coordinates + nearest jsaction ancestor?
-          const elAt = await page.evaluate(({ x, y }) => {
-            const el = document.elementFromPoint(x, y);
-            if (!el) return { found: false };
-            // Walk up to find nearest ancestor with jsaction
-            let jsEl = el;
-            while (jsEl && !jsEl.getAttribute('jsaction')) jsEl = jsEl.parentElement;
-            return {
-              found: true, tag: el.tagName,
-              role: el.getAttribute('role') || '',
-              text: (el.innerText || '').trim().slice(0, 40),
-              nearestJsactionTag: jsEl?.tagName || 'none',
-              nearestJsaction: (jsEl?.getAttribute('jsaction') || 'none').slice(0, 120),
-              visibilityState: document.visibilityState,
-              hasFocus: document.hasFocus(),
-            };
-          }, { x: cx, y: cy });
-          console.log(`[${ts}] "${noteName}" at (${Math.round(cx)},${Math.round(cy)}): ${JSON.stringify(elAt)}`);
-          console.log(`[${ts}] Clicking card body for "${noteName}" at x=${Math.round(cx)} y=${Math.round(cy)} (title bottom=${Math.round(titleBox.y + titleBox.height)})`);
-          await page.mouse.click(cx, cy);
-          clicked = true;
-        }
-      }
+        // Close editor: clear the hash to return to the grid
+        await page.evaluate(() => { window.location.hash = ''; });
+        await page.waitForTimeout(600);
 
-      // Fallback: use Keep's search bar to surface notes not in the initial viewport.
-      if (!clicked) {
-        console.log(`[${ts}] "${noteName}" not on screen — searching…`);
+      } else {
+        // ── Fallback path: search + click ────────────────────────────────────
+        // Used for notes not in keep_note_urls. Less reliable but keeps working
+        // for notes the user hasn't configured a URL for.
+        console.log(`[${ts}] No URL for "${noteName}" — trying search+click fallback`);
 
-        const searchFocused = await page.evaluate(() => {
-          document.querySelectorAll(
-            '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate'
-          ).forEach((el) => el.remove());
-          const input = document.querySelector('input[aria-label="Search"]');
-          if (!input) return false;
-          input.value = '';
-          input.focus();
-          return true;
-        });
+        const escapedName = noteName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let usedSearch = false;
+        let clicked = false;
 
-        if (searchFocused) {
-          usedSearch = true;
-          await page.keyboard.type(noteName, { delay: 40 });
-          await page.waitForFunction(
-            (name) => {
-              const els = document.querySelectorAll('div[role="textbox"]');
-              for (const el of els) {
-                if (el.innerText.trim() === name) return true;
-              }
-              return false;
-            },
-            noteName,
-            { timeout: 8000, polling: 300 }
-          ).catch(() => {});
-
-          // Apply updates to search result card before opening note
+        // Check if the note is visible in the grid
+        const titleLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
+        if (await titleLocator.count() > 0) {
+          await titleLocator.first().scrollIntoViewIfNeeded();
+          await page.waitForTimeout(300);
           if (pendingUpdates.length) {
             const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
-            if (appliedIds.length) {
-              console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
-              await clearPendingKeepUpdates(appliedIds);
-              await page.waitForTimeout(600);
-            }
-            const skipped = pendingUpdates.length - appliedIds.length;
-            if (skipped > 0) {
-              console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied (item not found)`);
-              const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
-              await clearPendingKeepUpdates(notApplied);
-            }
+            if (appliedIds.length) { await clearPendingKeepUpdates(appliedIds); await page.waitForTimeout(600); }
+            const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+            if (notApplied.length) await clearPendingKeepUpdates(notApplied);
           }
-
-          // Re-use the same locator — after search, the title element is in the results.
-          // Click the card body below the title (not the title itself) to open the editor.
-          const searchResultLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
-          if (await searchResultLocator.count() > 0) {
-            await searchResultLocator.first().scrollIntoViewIfNeeded();
-            await page.waitForTimeout(200);
-            const titleBox = await searchResultLocator.first().boundingBox();
-            if (titleBox) {
-              const cx = titleBox.x + titleBox.width / 2;
-              const cy = titleBox.y + titleBox.height + 20;
-              console.log(`[${ts}] Clicking card body for "${noteName}" (search) at x=${Math.round(cx)} y=${Math.round(cy)}`);
-              await page.mouse.click(cx, cy);
-              clicked = true;
-            }
+          const titleBox = await titleLocator.first().boundingBox();
+          if (titleBox) {
+            await page.mouse.click(titleBox.x + titleBox.width / 2, titleBox.y + titleBox.height + 20);
+            clicked = true;
           }
-        } else {
-          console.warn(`[${ts}] Search bar not found — cannot search for "${noteName}"`);
         }
-      }
 
-      if (!clicked) {
-        console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
+        // Search fallback
+        if (!clicked) {
+          const searchFocused = await page.evaluate(() => {
+            const input = document.querySelector('input[aria-label="Search"]');
+            if (!input) return false;
+            input.value = ''; input.focus(); return true;
+          });
+          if (searchFocused) {
+            usedSearch = true;
+            await page.keyboard.type(noteName, { delay: 40 });
+            await page.waitForFunction(
+              (name) => Array.from(document.querySelectorAll('div[role="textbox"]')).some(el => el.innerText.trim() === name),
+              noteName, { timeout: 8000, polling: 300 }
+            ).catch(() => {});
+            if (pendingUpdates.length) {
+              const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
+              if (appliedIds.length) { await clearPendingKeepUpdates(appliedIds); await page.waitForTimeout(600); }
+              const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+              if (notApplied.length) await clearPendingKeepUpdates(notApplied);
+            }
+            const srLocator = page.locator('div[role="textbox"]').filter({ hasText: new RegExp(`^${escapedName}$`) });
+            if (await srLocator.count() > 0) {
+              const box = await srLocator.first().boundingBox();
+              if (box) { await page.mouse.click(box.x + box.width / 2, box.y + box.height + 20); clicked = true; }
+            }
+          }
+        }
+
+        if (!clicked) {
+          console.warn(`[${ts}] Note not found: "${noteName}" — skipping.`);
+          if (usedSearch) { await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
+          continue;
+        }
+
+        let dialogOpened = false;
+        for (let i = 0; i < 20; i++) {
+          await page.waitForTimeout(250);
+          dialogOpened = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
+          if (dialogOpened) break;
+        }
+        if (!dialogOpened) console.warn(`[${ts}] Editor did not open for "${noteName}" — scraping card preview only.`);
+
+        const scraped = await scrapeKeep(page, [noteName]);
+        allNotes.push(...scraped);
+
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(600);
         if (usedSearch) {
+          await page.waitForTimeout(400);
           await page.keyboard.press('Escape');
           await page.waitForTimeout(400);
         }
-        continue;
-      }
-
-      // Poll for the editor dialog — avoids waitForSelector throwing on context changes.
-      let dialogOpened = false;
-      for (let i = 0; i < 20; i++) {
-        await page.waitForTimeout(250);
-        const hasDialog = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
-        if (hasDialog) { dialogOpened = true; break; }
-      }
-      console.log(`[${ts}] Dialog poll result for "${noteName}": ${dialogOpened}`);
-      if (!dialogOpened) console.warn(`[${ts}] Editor dialog did not open for "${noteName}" — will scrape card preview only.`);
-
-      // Scrape this note while the editor is open (full content visible)
-      const scraped = await scrapeKeep(page, [noteName]);
-      allNotes.push(...scraped);
-
-      // Close the editor and wait for it to animate away
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(600);
-
-      // If we used search to find this note, clear it so the next note
-      // starts from the main grid (important for pinned/visible notes).
-      // Extra wait first — give Keep time to finish animating the editor closed.
-      if (usedSearch) {
-        await page.waitForTimeout(400);
-        await page.keyboard.press('Escape'); // exits search mode, returns to main grid
-        await page.waitForTimeout(400);
       }
     }
 
