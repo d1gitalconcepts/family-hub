@@ -358,11 +358,13 @@ async function enrichGolf(event, config) {
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
 
-    // Tee time: ESPN may put it in c.status.teeTime, or in the round's displayValue
-    // when the player hasn't started (e.g. "1:40 PM")
+    // Tee time: primary source is statistics.categories[0].stats[6].displayValue
+    // (confirmed from ESPN API response); fallback to c.status.teeTime or a
+    // time-looking string in the round's displayValue.
+    const statsTeeTime = c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
     const statusTeeTime = c.status?.teeTime || null;
     const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
-    const teeTime = statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
+    const teeTime = statsTeeTime || statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
 
     const isNotStarted = !todayDisplay || todayDisplay === '-' || displayIsTeeTime;
 
