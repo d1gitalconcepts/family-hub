@@ -233,6 +233,54 @@ async function applyKeepUpdates(page, updates, noteName) {
 
 // ── Scraping logic (mirrors content.js) ──────────────────────────────────────
 
+// Parse a Keep API JSON response and extract note content.
+// Keep's API format isn't documented — we probe the structure and log what we find.
+function parseKeepApiResponse(body, noteName) {
+  try {
+    const data = JSON.parse(body);
+    // Log top-level keys so we can understand the shape
+    console.log(`[API] Top-level keys: ${Object.keys(data).join(', ')}`);
+
+    // Try common Keep API shapes:
+    // 1. data.notes / data.items array
+    // 2. data.note (single note)
+    // 3. Nested arrays from sync responses
+    const candidates = [
+      data.note,
+      data.notes?.[0],
+      data.items?.[0],
+      ...(Array.isArray(data) ? data : []),
+    ].filter(Boolean);
+
+    for (const note of candidates) {
+      console.log(`[API] Note candidate keys: ${Object.keys(note).join(', ')}`);
+      const id = slugify(noteName);
+      // Text note
+      if (typeof note.textContent === 'string' || typeof note.text === 'string') {
+        const text = note.textContent ?? note.text ?? '';
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        console.log(`[API] Text note "${noteName}": ${lines.length} lines`);
+        return { id, title: noteName, type: 'text', lines, scrapedAt: new Date().toISOString() };
+      }
+      // List note
+      const listItems = note.listContent ?? note.items ?? note.checkListItems;
+      if (Array.isArray(listItems)) {
+        const items = listItems.map(item => ({
+          text: item.text ?? item.value ?? item.title ?? '',
+          checked: item.checked ?? item.isChecked ?? false,
+        })).filter(i => i.text);
+        console.log(`[API] List note "${noteName}": ${items.length} items`);
+        return { id, title: noteName, type: 'checklist', items, scrapedAt: new Date().toISOString() };
+      }
+    }
+    console.warn(`[API] Unrecognised response shape — raw (first 300): ${body.slice(0, 300)}`);
+    return null;
+  } catch (err) {
+    console.warn(`[API] JSON parse failed: ${err.message}. Raw (first 200): ${body.slice(0, 200)}`);
+    return null;
+  }
+}
+
 async function scrapeKeep(page, targetNotes) {
   return page.evaluate((targetNotes) => {
     function slugify(title) {
@@ -399,53 +447,61 @@ async function main() {
       const noteUrl = NOTE_URLS[noteName];
 
       if (noteUrl) {
-        // ── Primary path: navigate directly to the note URL ─────────────────
-        // Keep only processes the note hash on page load, not on subsequent hash
-        // changes. Use page.goto() so each note gets a fresh navigation with the
-        // hash already in the URL when Keep initialises its router.
-        console.log(`[${ts}] Navigating to "${noteName}": ${noteUrl}`);
+        // ── Primary path: intercept Keep's API response for this note ─────────
+        // When Keep loads a note URL it fetches full note data from its backend.
+        // We capture that JSON response directly — no editor dialog required.
+        // Note IDs in Keep URLs look like: #LIST/1Yxhz9T... or #NOTE/1Njzl9j...
+        const noteId = new URL(noteUrl).hash.replace(/^#(LIST|NOTE)\//, '');
+        let capturedNote = null;
+
+        const onResponse = async (response) => {
+          const url = response.url();
+          // Keep's API endpoints that return note data
+          if (!url.includes('keep.google.com') && !url.includes('keep.googleapis.com')) return;
+          if (!url.includes('notes') && !url.includes('list') && !url.includes('sync')) return;
+          try {
+            const ct = response.headers()['content-type'] || '';
+            if (!ct.includes('json')) return;
+            const body = await response.text();
+            if (!body.includes(noteId)) return; // not this note's response
+            console.log(`[${ts}] Captured API response for "${noteName}": ${url.slice(0, 80)}`);
+            capturedNote = { url, body };
+          } catch {}
+        };
+        page.on('response', onResponse);
+
+        console.log(`[${ts}] Loading "${noteName}" to intercept API: ${noteUrl}`);
         await page.goto(noteUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        // Wait up to 8 seconds for the API call
+        for (let i = 0; i < 32 && !capturedNote; i++) await page.waitForTimeout(250);
+        page.off('response', onResponse);
 
-        // Wait for Keep's note grid AND the editor dialog to appear.
-        // The grid must load first (proves Keep is initialised), then the dialog.
-        await page.waitForFunction(
-          () => document.querySelectorAll('div[role="textbox"]').length > 0,
-          { timeout: 20000, polling: 400 }
-        ).catch(() => {});
-
-        let dialogOpened = false;
-        for (let i = 0; i < 24; i++) {
-          await page.waitForTimeout(250);
-          dialogOpened = await page.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
-          if (dialogOpened) break;
+        if (capturedNote) {
+          console.log(`[${ts}] API interception succeeded for "${noteName}" — parsing response`);
+          const parsed = parseKeepApiResponse(capturedNote.body, noteName);
+          if (parsed) { allNotes.push(parsed); }
+          else console.warn(`[${ts}] Could not parse API response for "${noteName}"`);
+        } else {
+          console.warn(`[${ts}] No API response captured for "${noteName}" — falling back to DOM scrape`);
+          // DOM fallback: scrape whatever Keep has rendered (may be card preview only)
+          await page.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 10000, polling: 400 }
+          ).catch(() => {});
+          const scraped = await scrapeKeep(page, [noteName]);
+          allNotes.push(...scraped);
         }
 
-        if (!dialogOpened) {
-          console.warn(`[${ts}] Editor did not open for "${noteName}" via URL — skipping.`);
-          continue;
-        }
-        console.log(`[${ts}] Editor opened for "${noteName}"`);
-
-        // Apply pending checkbox updates in the open editor
+        // Apply pending checkbox updates (still need editor open for this — skip for now if no dialog)
         if (pendingUpdates.length) {
           const appliedIds = await applyKeepUpdates(page, pendingUpdates, noteName);
           if (appliedIds.length) {
             console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
             await clearPendingKeepUpdates(appliedIds);
-            await page.waitForTimeout(600);
           }
-          const skipped = pendingUpdates.length - appliedIds.length;
-          if (skipped > 0) {
-            console.warn(`[${ts}] ${skipped} update(s) for "${noteName}" could not be applied`);
-            const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
-            await clearPendingKeepUpdates(notApplied);
-          }
+          const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
+          if (notApplied.length) await clearPendingKeepUpdates(notApplied);
         }
-
-        const scraped = await scrapeKeep(page, [noteName]);
-        allNotes.push(...scraped);
-
-        // No need to "close" — next iteration navigates to the next note URL.
 
       } else {
         // ── Fallback path: search + click ────────────────────────────────────
