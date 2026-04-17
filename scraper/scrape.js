@@ -354,6 +354,31 @@ async function main() {
       ).forEach((el) => el.remove());
     }).catch(() => {});
 
+    // DIAGNOSTIC: print data attributes and outerHTML snippet of the first note card
+    // to learn where Keep stores note IDs (for URL-based navigation approach).
+    const cardDiag = await page.evaluate(() => {
+      const el = document.querySelector('div[role="textbox"]');
+      if (!el) return { found: false };
+      // Walk up 10 levels, collect all data-* attrs, id, and the outerHTML of the 8th ancestor
+      let parent = el;
+      const allAttrs = {};
+      for (let i = 0; i < 12; i++) {
+        Array.from(parent.attributes || []).forEach(a => {
+          if (a.name.startsWith('data-') || a.name === 'id' || a.name === 'itemid') {
+            allAttrs[`L${i}:${a.name}`] = a.value.slice(0, 80);
+          }
+        });
+        parent = parent.parentElement;
+        if (!parent || parent === document.body) break;
+      }
+      // Also grab outerHTML of 7 levels up (the card container)
+      let card = el;
+      for (let i = 0; i < 7; i++) card = card?.parentElement;
+      return { title: el.innerText.trim().slice(0, 30), attrs: allAttrs, html: card?.outerHTML?.slice(0, 600) };
+    });
+    console.log(`[${ts}] CARD DIAG attrs: ${JSON.stringify(cardDiag.attrs)}`);
+    console.log(`[${ts}] CARD DIAG html: ${cardDiag.html}`);
+
     // Open every target note in the editor one at a time so we get full content.
     // - Text notes: card view truncates long content with "…"; editor shows all.
     // - Checklist notes: card view caps visible items (~10-15); editor shows all,
