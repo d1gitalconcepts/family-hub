@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Family Hub - Headless Google Keep Scraper
 // Runs every 5 minutes via cron. Reuses saved Google session.
-// Writes Shopping List + Meal Planning notes to Supabase.
+// Navigates to each note's direct URL so Keep focuses the note body,
+// then reads full content from document.activeElement (contenteditable).
 //
 // Cron entry (edit with: crontab -e):
-//   */5 * * * * /usr/bin/node /path/to/family-hub/scraper/scrape.js >> /path/to/family-hub/scraper/scraper.log 2>&1
+//   */5 * * * * /usr/bin/node /home/thomascj/family-hub/scraper/scrape.js >> /home/thomascj/family-hub/scraper/scraper.log 2>&1
 
 const { chromium } = require('playwright');
 const path = require('path');
@@ -454,11 +455,7 @@ async function main() {
   // to their hash URL instead of trying to click cards — much more reliable.
   const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
 
-  // Run headless unless a DISPLAY is set (e.g. via xvfb-run --auto-servernum).
-  // Keep's editor dialog requires a real (or virtual) display to open.
-  const headless = !process.env.DISPLAY;
-  if (!headless) console.log(`[${ts}] Running non-headless (DISPLAY=${process.env.DISPLAY})`);
-  const browser = await chromium.launch({ headless });
+  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ storageState: SESSION_FILE });
 
   // Apply visibility overrides to every page opened from this context.
