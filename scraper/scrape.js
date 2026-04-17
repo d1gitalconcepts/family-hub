@@ -485,51 +485,37 @@ async function main() {
         const notePage = await context.newPage();
 
         try {
-          // Load Keep home first so the SPA fully initialises, then navigate to
-          // the specific note hash. This two-step load is more reliable than a
-          // cold direct-URL load because Keep's router is already running.
+          // Load Keep home so the SPA fully initialises before we interact.
           await notePage.goto('https://keep.google.com', { waitUntil: 'load', timeout: 30000 });
           await notePage.waitForFunction(
             () => document.querySelectorAll('div[role="textbox"]').length > 0,
             { timeout: 20000, polling: 500 }
           ).catch(() => {});
-          await notePage.waitForTimeout(1500);
+          await notePage.waitForTimeout(2000);
 
-          // Trigger the note editor by pushing the hash into the URL and firing a
-          // hashchange event — this is what a normal browser does when you click a
-          // Keep note link. Uses history.pushState so no page reload occurs.
-          const noteHash = new URL(noteUrl).hash; // '#LIST/...' or '#NOTE/...'
-          await notePage.evaluate((hash) => {
-            const oldURL = location.href;
-            const newURL = location.href.split('#')[0] + hash;
-            history.pushState(null, '', newURL);
-            window.dispatchEvent(new HashChangeEvent('hashchange', { oldURL, newURL }));
-          }, noteHash);
+          // Bring tab to front — required for mouse events to be trusted by Keep.
+          await notePage.bringToFront();
 
-          // Wait up to 8 s for the note editor dialog to appear
-          await notePage.waitForSelector('div[role="dialog"]', { timeout: 8000 }).catch(() => {});
-          await notePage.waitForTimeout(1000);
+          // Keep note cards have role="button" on the clickable outer container.
+          // Use XPath to find the ancestor div[role="button"] of the title textbox,
+          // then click it to open the editor — more reliable than coordinate guessing.
+          const noteSafeName = noteName.replace(/'/g, "\\'");
+          const cardLocator = notePage.locator(
+            `xpath=//div[@role='textbox'][normalize-space(.)='${noteSafeName}']/ancestor::div[@role='button'][1]`
+          );
 
-          let editorIsOpen = await notePage.evaluate(
-            () => !!document.querySelector('div[role="dialog"]')
-          ).catch(() => false);
+          let editorIsOpen = false;
+          const cardCount = await cardLocator.count().catch(() => 0);
+          console.log(`[${ts}] Note card found: ${cardCount > 0 ? 'yes' : 'NO — checking all textboxes'}`);
 
-          // If the hash event didn't open the editor, try clicking the note card body.
-          if (!editorIsOpen) {
-            console.log(`[${ts}] hashchange didn't open editor — trying click`);
-            const clickCoords = await notePage.evaluate((noteName) => {
-              for (const el of document.querySelectorAll('div[role="textbox"]')) {
-                if (el.innerText.trim() !== noteName) continue;
-                const r = el.getBoundingClientRect();
-                // Click below the title, in the note body area
-                return { x: r.left + Math.min(60, r.width / 2), y: r.bottom + 14 };
-              }
-              return null;
-            }, noteName);
-
-            if (clickCoords) {
-              await notePage.mouse.click(clickCoords.x, clickCoords.y);
-              await notePage.waitForSelector('div[role="dialog"]', { timeout: 6000 }).catch(() => {});
+          if (cardCount > 0) {
+            await cardLocator.first().scrollIntoViewIfNeeded().catch(() => {});
+            await notePage.waitForTimeout(300);
+            const box = await cardLocator.first().boundingBox().catch(() => null);
+            if (box) {
+              // Click 60px below the card top — past title buttons, into the body
+              await notePage.mouse.click(box.x + box.width / 2, box.y + 60);
+              await notePage.waitForSelector('div[role="dialog"]', { timeout: 8000 }).catch(() => {});
               await notePage.waitForTimeout(1000);
               editorIsOpen = await notePage.evaluate(
                 () => !!document.querySelector('div[role="dialog"]')
@@ -540,10 +526,23 @@ async function main() {
           console.log(`[${ts}] Editor for "${noteName}": ${editorIsOpen ? 'OPEN ✓' : 'closed — card-only'}`);
 
           if (!editorIsOpen) {
-            // Save a screenshot so we can see exactly what Keep looks like in Playwright
+            // Diagnostic snapshot
+            const info = await notePage.evaluate(() => {
+              const btns = [...document.querySelectorAll('div[role="button"]')];
+              const cardBtns = btns.filter(b => b.querySelector('div[role="textbox"]'));
+              return {
+                url:       location.href,
+                allBtns:   btns.length,
+                cardBtns:  cardBtns.length,
+                cardTitles: cardBtns.slice(0, 6).map(b => b.querySelector('div[role="textbox"]')?.innerText?.trim() || '?'),
+              };
+            }).catch(() => ({}));
+            console.log(`[${ts}]   URL: ${info.url}`);
+            console.log(`[${ts}]   div[role="button"] total: ${info.allBtns}, with textbox: ${info.cardBtns}`);
+            console.log(`[${ts}]   Card titles: ${(info.cardTitles || []).join(' | ')}`);
             const screenshotPath = path.join(__dirname, `debug-${slugify(noteName)}.png`);
             await notePage.screenshot({ path: screenshotPath, fullPage: false }).catch(() => {});
-            console.log(`[${ts}]   Screenshot → ${screenshotPath} (scp to desktop to inspect)`);
+            console.log(`[${ts}]   Screenshot → ${screenshotPath}`);
           }
 
           // Ensure note textboxes are present before scraping
