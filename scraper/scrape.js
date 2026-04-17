@@ -496,12 +496,17 @@ async function main() {
       await page.waitForSelector('.oT9UPb', { timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(600);
 
-      // Debug: confirm editor state before scraping
+      // Debug: screenshot + DOM state after click
+      await page.screenshot({ path: `/tmp/keep-debug-${slugify(noteName)}.png` });
       const editorInfo = await page.evaluate(() => {
         const editor = document.querySelector('.oT9UPb');
-        if (!editor) return { open: false };
+        const textboxes = Array.from(document.querySelectorAll('div[role="textbox"]')).map((el) => {
+          const p4 = el.parentElement?.parentElement?.parentElement?.parentElement;
+          return { text: el.innerText.trim().slice(0, 40), p4class: p4?.className?.slice(0, 60) };
+        });
+        if (!editor) return { open: false, textboxes };
         const spans = editor.querySelectorAll('span[style*="Google Sans Text"]');
-        return { open: true, spans: spans.length, text: editor.innerText.slice(0, 120) };
+        return { open: true, spans: spans.length, text: editor.innerText.slice(0, 120), textboxes };
       });
       console.log(`[${ts}] Editor for "${noteName}": ${JSON.stringify(editorInfo)}`);
 
