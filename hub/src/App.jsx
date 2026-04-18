@@ -10,6 +10,13 @@ import { useConfig } from './hooks/useConfig';
 import { APP_VERSION, CHANGELOG } from './version';
 import './styles/index.css';
 
+function makeMonogramDataUrl(text, bg = '#1a73e8') {
+  const letters = ((text || 'H').slice(0, 3)).toUpperCase();
+  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : 11;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="22" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-weight="700" font-size="${fontSize}" fill="white">${letters}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 768px)').matches);
   useEffect(() => {
@@ -26,6 +33,8 @@ export default function App() {
   const [accentColorCfg] = useConfig('accent_color');
   const [fontSizeCfg]    = useConfig('font_size');
   const [faviconCfg]     = useConfig('favicon');
+  const [monogramText]   = useConfig('monogram_text');
+  const [customIcon]     = useConfig('custom_icon');
   const [role, setRole]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -144,23 +153,30 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const FAVICON_SRCS = {
-      house:    '/favicon-house.svg',
-      calendar: '/favicon-calendar.svg',
-      hub:      '/favicon-hub.svg',
-      mono:     '/favicon-mono.svg',
-      bolt:     '/favicon.svg',
-    };
-    const src = FAVICON_SRCS[faviconCfg] || FAVICON_SRCS.house;
+    let src;
+    if (faviconCfg === 'mono') {
+      const bg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
+      src = makeMonogramDataUrl(monogramText, bg);
+    } else if (faviconCfg === 'custom' && customIcon) {
+      src = customIcon;
+    } else {
+      const FAVICON_SRCS = {
+        house:    '/favicon-house.svg',
+        calendar: '/favicon-calendar.svg',
+        hub:      '/favicon-hub.svg',
+        bolt:     '/favicon.svg',
+      };
+      src = FAVICON_SRCS[faviconCfg] || FAVICON_SRCS.house;
+    }
     let link = document.querySelector('link[rel="icon"]');
     if (!link) {
       link = document.createElement('link');
       link.rel = 'icon';
-      link.type = 'image/svg+xml';
       document.head.appendChild(link);
     }
+    link.type = faviconCfg === 'custom' ? 'image/png' : 'image/svg+xml';
     link.href = src;
-  }, [faviconCfg]);
+  }, [faviconCfg, monogramText, customIcon, accentColorCfg]);
 
   useEffect(() => {
     if (theme === 'auto') {
@@ -211,7 +227,15 @@ export default function App() {
       <header className="app-header">
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <img
-            src={faviconCfg === 'bolt' ? '/favicon.svg' : `/favicon-${faviconCfg || 'house'}.svg`}
+            src={(() => {
+              if (faviconCfg === 'mono') {
+                const bg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
+                return makeMonogramDataUrl(monogramText, bg);
+              }
+              if (faviconCfg === 'custom' && customIcon) return customIcon;
+              if (faviconCfg === 'bolt') return '/favicon.svg';
+              return `/favicon-${faviconCfg || 'house'}.svg`;
+            })()}
             width="22" height="22"
             alt=""
             style={{ display: 'block', flexShrink: 0 }}

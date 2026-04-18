@@ -2,6 +2,13 @@ import { useRef, useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useTaskLists } from '../hooks/useTaskLists';
 
+function makeMonogramDataUrl(text, bg = '#1a73e8') {
+  const letters = ((text || 'H').slice(0, 3)).toUpperCase();
+  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : 11;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="22" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-weight="700" font-size="${fontSize}" fill="white">${letters}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [activeTab, setActiveTab] = useState('calendars');
 
@@ -23,6 +30,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
   const [mealPlanCfg,      setMealPlanCfg]      = useConfig('meal_plan');
   const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
+  const [monogramText,     setMonogramText]     = useConfig('monogram_text');
+  const [customIcon,       setCustomIcon]       = useConfig('custom_icon');
   const [weatherSource,    setWeatherSource]    = useConfig('weather_source');
   const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
   const allTaskLists = useTaskLists();
@@ -1893,32 +1902,106 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
               {/* Favicon */}
               <h3 style={{ marginBottom: 10 }}>App Icon</h3>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-                {[
-                  { id: 'house',    label: 'House',    src: '/favicon-house.svg'    },
-                  { id: 'calendar', label: 'Calendar', src: '/favicon-calendar.svg' },
-                  { id: 'hub',      label: 'Hub',      src: '/favicon-hub.svg'      },
-                  { id: 'mono',     label: 'Monogram', src: '/favicon-mono.svg'     },
-                  { id: 'bolt',     label: 'Bolt',     src: '/favicon.svg'          },
-                ].map(({ id, label, src }) => {
-                  const active = (faviconCfg || 'house') === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => setFaviconCfg(id)}
-                      style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                        padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                        border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                        background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                      }}
-                    >
-                      <img src={src} width="28" height="28" alt={label} style={{ display: 'block' }} />
-                      <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
-                    </button>
-                  );
-                })}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                {(() => {
+                  const monoBg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
+                  const options = [
+                    { id: 'house',    label: 'House',    src: '/favicon-house.svg'    },
+                    { id: 'calendar', label: 'Calendar', src: '/favicon-calendar.svg' },
+                    { id: 'hub',      label: 'Hub',      src: '/favicon-hub.svg'      },
+                    { id: 'mono',     label: 'Monogram', src: makeMonogramDataUrl(monogramText, monoBg) },
+                    { id: 'bolt',     label: 'Bolt',     src: '/favicon.svg'          },
+                    { id: 'custom',   label: 'Custom',   src: customIcon || null      },
+                  ];
+                  return options.map(({ id, label, src }) => {
+                    const active = (faviconCfg || 'house') === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setFaviconCfg(id)}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                          padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                          border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                          background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                        }}
+                      >
+                        {src
+                          ? <img src={src} width="28" height="28" alt={label} style={{ display: 'block', borderRadius: 4 }} />
+                          : <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--text-muted)', border: '1.5px dashed var(--border)', borderRadius: 4 }}>+</span>
+                        }
+                        <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                      </button>
+                    );
+                  });
+                })()}
               </div>
+
+              {/* Monogram text input */}
+              {(faviconCfg || 'house') === 'mono' && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Monogram text (1–3 characters)</label>
+                  <input
+                    type="text"
+                    className="login-input"
+                    value={monogramText ?? ''}
+                    placeholder="H"
+                    maxLength={3}
+                    onChange={(e) => setMonogramText(e.target.value || null)}
+                    style={{ fontSize: 'var(--s-md)', width: 80 }}
+                  />
+                </div>
+              )}
+
+              {/* Custom icon upload */}
+              {(faviconCfg || 'house') === 'custom' && (
+                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {customIcon && (
+                    <img src={customIcon} width="40" height="40" alt="Custom icon" style={{ borderRadius: 6, flexShrink: 0 }} />
+                  )}
+                  <label style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                    padding: '7px 14px', borderRadius: 8, fontSize: 'var(--s-sm)',
+                    border: '1.5px solid var(--accent)', color: 'var(--accent)',
+                    background: 'color-mix(in srgb, var(--accent) 6%, var(--surface))',
+                  }}>
+                    {customIcon ? 'Change icon' : 'Upload icon'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const img = new Image();
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 64;
+                            canvas.height = 64;
+                            canvas.getContext('2d').drawImage(img, 0, 0, 64, 64);
+                            setCustomIcon(canvas.toDataURL('image/png'));
+                          };
+                          img.src = ev.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {customIcon && (
+                    <button
+                      onClick={() => { setCustomIcon(null); setFaviconCfg('house'); }}
+                      style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div style={{ marginBottom: 12 }} />
 
               {/* Text Size */}
               <h3 style={{ marginBottom: 10 }}>Text Size</h3>
