@@ -18,10 +18,11 @@ export async function getPlacePhoto(location, apiKey, isPast = false) {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const { url, expires } = JSON.parse(cached);
-      // Past events: use any cached value forever — no point refreshing old venues
       if (isPast || Date.now() < expires) return url || null;
     }
   } catch {}
+
+  if (isPast) return null;
 
   try {
     const searchRes = await fetch('https://places.googleapis.com/v1/places:searchText', {
