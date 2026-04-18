@@ -364,8 +364,6 @@ async function enrichGolf(event, config) {
     return `${h}:${min} ${ampm}`;
   }
 
-  let _loggedUnstarted = false;
-
   function mapCompetitor(c) {
     // Per-round linescores (top-level, one per round)
     const roundLinescores = (c.linescores || []).filter((ls) => ls.period != null);
@@ -377,17 +375,15 @@ async function enrichGolf(event, config) {
     const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
     const isNotStarted = !todayDisplay || todayDisplay === '-' || displayIsTeeTime;
 
-    // Debug: log the full structure of the first unstarted player so we can find the tee time field
-    if (isNotStarted && !_loggedUnstarted) {
-      _loggedUnstarted = true;
-      console.log('[Golf] unstarted competitor keys:', JSON.stringify(Object.keys(c)));
-      console.log('[Golf] unstarted status:', JSON.stringify(c.status));
-      console.log('[Golf] unstarted linescores:', JSON.stringify(c.linescores).slice(0, 500));
-    }
-
-    // Tee time field location TBD — using status.teeTime and display-value fallbacks for now
+    // Tee time: statistics.categories[0].stats[6].displayValue
+    // Raw value: "Thu Apr 17 10:05:00 PDT 2026" — format to "10:05 AM"
+    // NOTE: ESPN only populates statistics when a round hasn't started yet.
+    // On an active round day the field is [] and tee times aren't available.
+    const rawTeeTime =
+      c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
+    const statsTeeTime = formatTeeTime(rawTeeTime);
     const statusTeeTime = c.status?.teeTime || null;
-    const teeTime = statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
+    const teeTime = statsTeeTime || statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
 
     // Thru: count of per-hole entries in current round's inner linescores
     const innerHoles = currentRoundLs?.linescores?.length || 0;
