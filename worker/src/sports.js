@@ -364,6 +364,8 @@ async function enrichGolf(event, config) {
     return `${h}:${min} ${ampm}`;
   }
 
+  let _loggedUnstarted = false;
+
   function mapCompetitor(c) {
     // Per-round linescores (top-level, one per round)
     const roundLinescores = (c.linescores || []).filter((ls) => ls.period != null);
@@ -372,20 +374,20 @@ async function enrichGolf(event, config) {
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
 
-    // Tee time: statistics.categories[0].stats[6].displayValue (or [0].categories[0]
-    // if statistics is an array). Raw value is "Thu Apr 16 10:05:00 PDT 2026".
-    const rawTeeTime =
-      c.statistics?.categories?.[0]?.stats?.[6]?.displayValue ||
-      c.statistics?.[0]?.categories?.[0]?.stats?.[6]?.displayValue ||
-      null;
-    if (rawTeeTime) console.log('[Golf] tee time raw:', rawTeeTime);
-    else if (!rawTeeTime && c.statistics) console.log('[Golf] statistics present but no tee time at stats[6]:', JSON.stringify(c.statistics).slice(0, 200));
-    const statsTeeTime = formatTeeTime(rawTeeTime);
-    const statusTeeTime = c.status?.teeTime || null;
     const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
-    const teeTime = statsTeeTime || statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
-
     const isNotStarted = !todayDisplay || todayDisplay === '-' || displayIsTeeTime;
+
+    // Debug: log the full structure of the first unstarted player so we can find the tee time field
+    if (isNotStarted && !_loggedUnstarted) {
+      _loggedUnstarted = true;
+      console.log('[Golf] unstarted competitor keys:', JSON.stringify(Object.keys(c)));
+      console.log('[Golf] unstarted status:', JSON.stringify(c.status));
+      console.log('[Golf] unstarted linescores:', JSON.stringify(c.linescores).slice(0, 500));
+    }
+
+    // Tee time field location TBD — using status.teeTime and display-value fallbacks for now
+    const statusTeeTime = c.status?.teeTime || null;
+    const teeTime = statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
 
     // Thru: count of per-hole entries in current round's inner linescores
     const innerHoles = currentRoundLs?.linescores?.length || 0;
