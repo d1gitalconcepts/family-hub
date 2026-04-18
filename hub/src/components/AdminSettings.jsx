@@ -2036,6 +2036,28 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   <button className="btn" onClick={saveTitleKey}>{titleSaved ? 'Saved!' : 'Save'}</button>
                 </div>
 
+                <h3 style={{ marginBottom: 8, marginTop: 20 }}>Calendars</h3>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Only search for title photos on events from these calendars.
+                </p>
+                {(calConfig || []).filter(c => !c.virtual).map(cal => {
+                  const checked = (titleCfg?.calendarIds || []).includes(cal.id);
+                  return (
+                    <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const current = titleCfg?.calendarIds || [];
+                          mergeTitle({ calendarIds: checked ? current.filter(id => id !== cal.id) : [...current, cal.id] });
+                        }}
+                      />
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: cal.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 'var(--s-base)' }}>{cal.emoji ? `${cal.emoji} ` : ''}{cal.name}</span>
+                    </label>
+                  );
+                })}
+
               </div>
             );
           })()}

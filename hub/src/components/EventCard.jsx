@@ -115,8 +115,12 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const locPhotoUrl    = usePlacePhoto(venueQuery, locEnabled, placesPhotosCfg?.api_key, isPast, refreshDays);
 
   // Title photo (Unsplash / Pexels) — fallback when no location photo
-  const titleCfg       = placesPhotosCfg?.titlePhotos;
-  const titleEnabled   = !locPhotoUrl && !!(titleCfg?.enabled && titleCfg?.provider && titleCfg?.api_key);
+  const titleCfg        = placesPhotosCfg?.titlePhotos;
+  const titleCalIds     = titleCfg?.calendarIds;
+  const titleEnabled    = !locPhotoUrl && !!(
+    titleCfg?.enabled && titleCfg?.provider && titleCfg?.api_key &&
+    titleCalIds?.length > 0 && titleCalIds.includes(event.calendar_id)
+  );
   const titlePhotoUrl  = useTitlePhoto(event.summary, titleEnabled, titleCfg?.provider, titleCfg?.api_key, isPast, refreshDays);
 
   const photoUrl          = locPhotoUrl || titlePhotoUrl;
