@@ -3,13 +3,23 @@ import { createPortal } from 'react-dom';
 import SportsPanel from './SportsPanel';
 import { useConfig } from '../hooks/useConfig';
 import { getPlacePhoto, getSportVenueQuery } from '../utils/placePhoto';
+import { getTitlePhoto } from '../utils/titlePhoto';
 
-function usePlacePhoto(location, enabled, apiKey, isPast) {
+function usePlacePhoto(location, enabled, apiKey, isPast, refreshDays) {
   const [photoUrl, setPhotoUrl] = useState(null);
   useEffect(() => {
     if (!enabled || !location || !apiKey) { setPhotoUrl(null); return; }
-    getPlacePhoto(location, apiKey, isPast).then(url => setPhotoUrl(url || null));
-  }, [location, enabled, apiKey, isPast]);
+    getPlacePhoto(location, apiKey, isPast, refreshDays).then(url => setPhotoUrl(url || null));
+  }, [location, enabled, apiKey, isPast, refreshDays]);
+  return photoUrl;
+}
+
+function useTitlePhoto(title, enabled, provider, apiKey, isPast, refreshDays) {
+  const [photoUrl, setPhotoUrl] = useState(null);
+  useEffect(() => {
+    if (!enabled || !title || !provider || !apiKey) { setPhotoUrl(null); return; }
+    getTitlePhoto(title, provider, apiKey, isPast, refreshDays).then(url => setPhotoUrl(url || null));
+  }, [title, enabled, provider, apiKey, isPast, refreshDays]);
   return photoUrl;
 }
 
@@ -89,12 +99,25 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const color = calColor || event.cal_color || '#4285f4';
 
   const [placesPhotosCfg] = useConfig('places_photos');
-  const placesEnabled     = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
-  const showPhotoOnCard   = placesPhotosCfg?.showOnCard   !== false;
-  const showPhotoOnPopout = placesPhotosCfg?.showOnPopout !== false;
-  const venueQuery = event.location || getSportVenueQuery(enrichment);
-  const isPast = event.start_at ? new Date(event.start_at) < new Date() : !!event.start_date && event.start_date < new Date().toISOString().slice(0, 10);
-  const photoUrl = usePlacePhoto(venueQuery, placesEnabled, placesPhotosCfg?.api_key, isPast);
+  const refreshDays    = placesPhotosCfg?.refreshDays ?? 7;
+  const isPast = event.start_at
+    ? new Date(event.start_at) < new Date()
+    : !!event.start_date && event.start_date < new Date().toISOString().slice(0, 10);
+
+  // Location photo (Google Places)
+  const locEnabled     = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
+  const venueQuery     = event.location || getSportVenueQuery(enrichment);
+  const locPhotoUrl    = usePlacePhoto(venueQuery, locEnabled, placesPhotosCfg?.api_key, isPast, refreshDays);
+
+  // Title photo (Unsplash / Pexels) — fallback when no location photo
+  const titleCfg       = placesPhotosCfg?.titlePhotos;
+  const titleEnabled   = !locPhotoUrl && !!(titleCfg?.enabled && titleCfg?.provider && titleCfg?.api_key);
+  const titlePhotoUrl  = useTitlePhoto(event.summary, titleEnabled, titleCfg?.provider, titleCfg?.api_key, isPast, refreshDays);
+
+  const photoUrl          = locPhotoUrl || titlePhotoUrl;
+  const activeCfg         = locPhotoUrl ? placesPhotosCfg : titleCfg;
+  const showPhotoOnCard   = activeCfg?.showOnCard   !== false;
+  const showPhotoOnPopout = activeCfg?.showOnPopout !== false;
 
   // Link preview — only for non-sport events where description is a URL
   const descUrl = !enrichment && event.description?.trim() && (() => {

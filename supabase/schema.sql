@@ -111,3 +111,25 @@ create policy "admin write sports_enrichment"
   on sports_enrichment for all to authenticated
   using (auth.email() = 'admin@hub.local')
   with check (auth.email() = 'admin@hub.local');
+
+-- PLACE PHOTOS
+-- ============================================================
+-- Shared cache for location photos (Google Places) and title
+-- photos (Unsplash / Pexels). Keyed by search query string.
+
+create table if not exists place_photos (
+  query       text primary key,
+  photo_url   text,
+  source      text not null,
+  fetched_at  timestamptz default now()
+);
+
+alter table place_photos enable row level security;
+
+create policy "authenticated read place_photos"
+  on place_photos for select to authenticated using (true);
+
+create policy "admin write place_photos"
+  on place_photos for all to authenticated
+  using (auth.email() = 'admin@hub.local')
+  with check (auth.email() = 'admin@hub.local');

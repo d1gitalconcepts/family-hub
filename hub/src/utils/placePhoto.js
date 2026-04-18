@@ -1,4 +1,4 @@
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
+import { getCachedPhoto, setCachedPhoto } from './photoCache';
 
 export function getSportVenueQuery(enrichment) {
   if (!enrichment?.data) return null;
@@ -10,17 +10,15 @@ export function getSportVenueQuery(enrichment) {
   return null;
 }
 
-export async function getPlacePhoto(location, apiKey, isPast = false) {
+export async function getPlacePhoto(location, apiKey, isPast = false, refreshDays = 7) {
   if (!location || !apiKey) return null;
 
-  const cacheKey = `fh_place_photo_${location}`;
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const { url, expires } = JSON.parse(cached);
-      if (isPast || Date.now() < expires) return url || null;
-    }
-  } catch {}
+  const cached = await getCachedPhoto(location);
+  if (cached) {
+    const age = Date.now() - new Date(cached.fetched_at).getTime();
+    const ttl = refreshDays * 24 * 60 * 60 * 1000;
+    if (isPast || age < ttl) return cached.photo_url || null;
+  }
 
   if (isPast) return null;
 
@@ -39,8 +37,7 @@ export async function getPlacePhoto(location, apiKey, isPast = false) {
     const searchData = await searchRes.json();
     const photoName = searchData.places?.[0]?.photos?.[0]?.name;
     if (!photoName) {
-      // Cache null so we don't keep hitting the API for locations with no photo
-      localStorage.setItem(cacheKey, JSON.stringify({ url: null, expires: Date.now() + CACHE_TTL }));
+      await setCachedPhoto(location, null, 'places');
       return null;
     }
 
@@ -51,7 +48,7 @@ export async function getPlacePhoto(location, apiKey, isPast = false) {
 
     const photoData = await photoRes.json();
     const url = photoData.photoUri || null;
-    localStorage.setItem(cacheKey, JSON.stringify({ url, expires: Date.now() + CACHE_TTL }));
+    await setCachedPhoto(location, url, 'places');
     return url;
   } catch {
     return null;

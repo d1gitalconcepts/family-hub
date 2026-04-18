@@ -46,6 +46,8 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [locationMsg,    setLocationMsg]    = useState('');
   const [placesApiKey,   setPlacesApiKey]   = useState('');
   const [placesSaved,    setPlacesSaved]    = useState(false);
+  const [titleApiKey,    setTitleApiKey]    = useState('');
+  const [titleSaved,     setTitleSaved]     = useState(false);
 
   // Sync inputs when weatherKeys loads from Supabase
   useEffect(() => {
@@ -55,6 +57,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
   useEffect(() => {
     if (placesPhotosCfg?.api_key) setPlacesApiKey(placesPhotosCfg.api_key);
+    if (placesPhotosCfg?.titlePhotos?.api_key) setTitleApiKey(placesPhotosCfg.titlePhotos.api_key);
   }, [placesPhotosCfg]);
   const weatherEnabled = weatherConfig?.enabled !== false;
   const weatherFields  = weatherConfig?.fields  || ['temp','feelsLike','humidity','windspeed','rain'];
@@ -1896,66 +1899,143 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
           {/* ── Places tab ────────────────────────────────────── */}
           {activeTab === 'places' && (() => {
-            const enabled = placesPhotosCfg?.enabled ?? false;
+            const titleCfg = placesPhotosCfg?.titlePhotos || {};
+
+            function merge(patch)      { setPlacesPhotosCfg({ ...placesPhotosCfg, ...patch }); }
+            function mergeTitle(patch) { setPlacesPhotosCfg({ ...placesPhotosCfg, titlePhotos: { ...titleCfg, ...patch } }); }
 
             function savePlacesKey() {
-              setPlacesPhotosCfg({ ...placesPhotosCfg, api_key: placesApiKey.trim() });
+              merge({ api_key: placesApiKey.trim() });
               setPlacesSaved(true);
               setTimeout(() => setPlacesSaved(false), 2500);
             }
+            function saveTitleKey() {
+              mergeTitle({ api_key: titleApiKey.trim() });
+              setTitleSaved(true);
+              setTimeout(() => setTitleSaved(false), 2500);
+            }
+
+            const SectionDivider = ({ label }) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '24px 0 16px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              </div>
+            );
+            const OptionPicker = ({ options, value, onChange }) => (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                {options.map(({ id, label, desc }) => {
+                  const active = value === id;
+                  return (
+                    <button key={id} onClick={() => onChange(id)} style={{
+                      flex: 1, padding: '8px 10px', borderRadius: 8, cursor: 'pointer', textAlign: 'center',
+                      border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                    }}>
+                      <div style={{ fontSize: 'var(--s-base)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text)' }}>{label}</div>
+                      {desc && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{desc}</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            );
 
             return (
               <div className="settings-section">
-                <h3 style={{ marginBottom: 8 }}>Location Photos</h3>
-                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 16 }}>
-                  When an event has a location, fetch a photo from Google Places and display it as the card and popout background.
-                  Photos are cached locally for 24 hours.
+
+                {/* ── Refresh interval ── */}
+                <h3 style={{ marginBottom: 8 }}>Photo Refresh</h3>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
+                  How often to re-fetch photos from their source. Photos are stored in Supabase and shared across all devices.
+                </p>
+                <OptionPicker
+                  options={[
+                    { id: 7,  label: 'Weekly',  desc: 'Refresh every 7 days'  },
+                    { id: 30, label: 'Monthly', desc: 'Refresh every 30 days' },
+                  ]}
+                  value={placesPhotosCfg?.refreshDays ?? 7}
+                  onChange={(v) => merge({ refreshDays: v })}
+                />
+
+                <SectionDivider label="Location Photos" />
+
+                {/* ── Location photos (Google Places) ── */}
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  When an event has a location or known venue, fetch a photo from Google Places.
                 </p>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, enabled: e.target.checked })}
-                  />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={placesPhotosCfg?.enabled ?? false}
+                    onChange={(e) => merge({ enabled: e.target.checked })} />
                   Enable location photos
                 </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={placesPhotosCfg?.showOnCard !== false}
-                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, showOnCard: e.target.checked })}
-                  />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={placesPhotosCfg?.showOnCard !== false}
+                    onChange={(e) => merge({ showOnCard: e.target.checked })} />
                   Show on calendar grid cards
                 </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={placesPhotosCfg?.showOnPopout !== false}
-                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, showOnPopout: e.target.checked })}
-                  />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={placesPhotosCfg?.showOnPopout !== false}
+                    onChange={(e) => merge({ showOnPopout: e.target.checked })} />
                   Show on event popout
                 </label>
 
-                <h3 style={{ marginBottom: 8 }}>Google Places API Key</h3>
-                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
-                  Enable the <strong>Places API (New)</strong> in Google Cloud Console, then paste your API key below.
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 8 }}>
+                  Enable <strong>Places API (New)</strong> in Google Cloud Console.
                 </p>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    type="password"
-                    className="login-input"
-                    value={placesApiKey}
-                    placeholder="AIza..."
-                    onChange={(e) => setPlacesApiKey(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <button className="btn" onClick={savePlacesKey}>
-                    {placesSaved ? 'Saved!' : 'Save'}
-                  </button>
+                  <input type="password" className="login-input" value={placesApiKey} placeholder="AIza..."
+                    onChange={(e) => setPlacesApiKey(e.target.value)} style={{ flex: 1 }} />
+                  <button className="btn" onClick={savePlacesKey}>{placesSaved ? 'Saved!' : 'Save'}</button>
                 </div>
+
+                <SectionDivider label="Title Photos" />
+
+                {/* ── Title photos (Unsplash / Pexels) ── */}
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  For events without a location, fetch a contextual photo based on the event title (e.g. "pasta" for a dinner, "birthday" for a party). Falls back gracefully when no good match is found.
+                </p>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={titleCfg?.enabled ?? false}
+                    onChange={(e) => mergeTitle({ enabled: e.target.checked })} />
+                  Enable title photos
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={titleCfg?.showOnCard !== false}
+                    onChange={(e) => mergeTitle({ showOnCard: e.target.checked })} />
+                  Show on calendar grid cards
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={titleCfg?.showOnPopout !== false}
+                    onChange={(e) => mergeTitle({ showOnPopout: e.target.checked })} />
+                  Show on event popout
+                </label>
+
+                <h3 style={{ marginBottom: 8 }}>Provider</h3>
+                <OptionPicker
+                  options={[
+                    { id: 'unsplash', label: 'Unsplash', desc: '50 req/hr free' },
+                    { id: 'pexels',   label: 'Pexels',   desc: '20k req/mo free' },
+                  ]}
+                  value={titleCfg?.provider || 'unsplash'}
+                  onChange={(v) => mergeTitle({ provider: v })}
+                />
+
+                <h3 style={{ marginBottom: 8, marginTop: 16 }}>
+                  {titleCfg?.provider === 'pexels' ? 'Pexels' : 'Unsplash'} API Key
+                </h3>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 8 }}>
+                  {titleCfg?.provider === 'pexels'
+                    ? 'Get a free key at pexels.com/api'
+                    : 'Get a free key at unsplash.com/developers'}
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input type="password" className="login-input" value={titleApiKey} placeholder="API key..."
+                    onChange={(e) => setTitleApiKey(e.target.value)} style={{ flex: 1 }} />
+                  <button className="btn" onClick={saveTitleKey}>{titleSaved ? 'Saved!' : 'Save'}</button>
+                </div>
+
               </div>
             );
           })()}
