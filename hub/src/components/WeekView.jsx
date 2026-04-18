@@ -189,12 +189,18 @@ export default function WeekView() {
       {isMobile && (
         <div className="week-nav" style={navBg}>
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
-          <button className="btn-icon" onClick={() => setMobileDayIdx((i) => Math.max(0, i - 1))}>‹</button>
+          <button className="btn-icon" onClick={() => {
+            if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }
+            else setMobileDayIdx((i) => i - 1);
+          }}>‹</button>
           <span style={{ flex: 1, textAlign: 'center' }}>
             {DAY_NAMES[selectedDay.getDay()]} {selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </span>
           <button className="btn" onClick={goToday}>Today</button>
-          <button className="btn-icon" onClick={() => setMobileDayIdx((i) => Math.min(7, i + 1))}>›</button>
+          <button className="btn-icon" onClick={() => {
+            if (mobileDayIdx >= 6) { nextWeek(); setMobileDayIdx(0); }
+            else setMobileDayIdx((i) => i + 1);
+          }}>›</button>
           <button className="btn-icon" onClick={nextWeek} title="Next week">»</button>
         </div>
       )}
