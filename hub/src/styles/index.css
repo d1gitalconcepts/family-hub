@@ -759,6 +759,8 @@ html, body, #root {
 .event-card--has-photo.event-card--border  { border-left-color: rgba(255,255,255,0.35); }
 .event-card--has-photo.event-card--chip    { border: none; }
 .event-card--has-photo .event-title        { color: #fff; }
+/* Title photos (food/contextual): subject is framed at the bottom */
+.event-card--has-photo--title              { background-position: center bottom; }
 
 /* Popout photo banner */
 .event-popout-photo {
@@ -769,6 +771,7 @@ html, body, #root {
   border-radius: 16px 16px 0 0;
   flex-shrink: 0;
 }
+.event-popout-photo--title { background-position: center bottom; }
 @media (min-width: 769px) {
   .event-popout-photo { border-radius: 12px 12px 0 0; }
 }

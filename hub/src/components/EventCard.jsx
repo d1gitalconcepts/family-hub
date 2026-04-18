@@ -100,9 +100,14 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
 
   const [placesPhotosCfg] = useConfig('places_photos');
   const refreshDays    = placesPhotosCfg?.refreshDays ?? 7;
-  const isPast = event.start_at
-    ? new Date(event.start_at) < new Date()
-    : !!event.start_date && event.start_date < new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const isPast = event.end_at
+    ? new Date(event.end_at) < new Date()
+    : event.end_date
+      ? event.end_date < today
+      : event.start_at
+        ? new Date(event.start_at) < new Date()
+        : !!event.start_date && event.start_date < today;
 
   // Location photo (Google Places)
   const locEnabled     = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
@@ -115,6 +120,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const titlePhotoUrl  = useTitlePhoto(event.summary, titleEnabled, titleCfg?.provider, titleCfg?.api_key, isPast, refreshDays);
 
   const photoUrl          = locPhotoUrl || titlePhotoUrl;
+  const isTitlePhoto      = !locPhotoUrl && !!titlePhotoUrl;
   const activeCfg         = locPhotoUrl ? placesPhotosCfg : titleCfg;
   const showPhotoOnCard   = activeCfg?.showOnCard   !== false;
   const showPhotoOnPopout = activeCfg?.showOnPopout !== false;
@@ -235,7 +241,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     'event-card',
     event.is_all_day ? 'all-day' : '',
     chipStyle ? 'event-card--chip' : 'event-card--border',
-    photoUrl && showPhotoOnCard ? 'event-card--has-photo' : '',
+    photoUrl && showPhotoOnCard ? `event-card--has-photo${isTitlePhoto ? ' event-card--has-photo--title' : ''}` : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -286,7 +292,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
           >
             {photoUrl && showPhotoOnPopout && (
               <div
-                className="event-popout-photo"
+                className={`event-popout-photo${isTitlePhoto ? ' event-popout-photo--title' : ''}`}
                 style={{ backgroundImage: `url(${JSON.stringify(photoUrl)})` }}
               />
             )}
