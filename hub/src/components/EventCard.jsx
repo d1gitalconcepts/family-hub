@@ -4,12 +4,12 @@ import SportsPanel from './SportsPanel';
 import { useConfig } from '../hooks/useConfig';
 import { getPlacePhoto, getSportVenueQuery } from '../utils/placePhoto';
 
-function usePlacePhoto(location, enabled, apiKey) {
+function usePlacePhoto(location, enabled, apiKey, isPast) {
   const [photoUrl, setPhotoUrl] = useState(null);
   useEffect(() => {
     if (!enabled || !location || !apiKey) { setPhotoUrl(null); return; }
-    getPlacePhoto(location, apiKey).then(url => setPhotoUrl(url || null));
-  }, [location, enabled, apiKey]);
+    getPlacePhoto(location, apiKey, isPast).then(url => setPhotoUrl(url || null));
+  }, [location, enabled, apiKey, isPast]);
   return photoUrl;
 }
 
@@ -93,7 +93,8 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const showPhotoOnCard   = placesPhotosCfg?.showOnCard   !== false;
   const showPhotoOnPopout = placesPhotosCfg?.showOnPopout !== false;
   const venueQuery = event.location || getSportVenueQuery(enrichment);
-  const photoUrl = usePlacePhoto(venueQuery, placesEnabled, placesPhotosCfg?.api_key);
+  const isPast = event.start_at ? new Date(event.start_at) < new Date() : !!event.start_date && event.start_date < new Date().toISOString().slice(0, 10);
+  const photoUrl = usePlacePhoto(venueQuery, placesEnabled, placesPhotosCfg?.api_key, isPast);
 
   // Link preview — only for non-sport events where description is a URL
   const descUrl = !enrichment && event.description?.trim() && (() => {

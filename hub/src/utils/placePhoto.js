@@ -10,7 +10,7 @@ export function getSportVenueQuery(enrichment) {
   return null;
 }
 
-export async function getPlacePhoto(location, apiKey) {
+export async function getPlacePhoto(location, apiKey, isPast = false) {
   if (!location || !apiKey) return null;
 
   const cacheKey = `fh_place_photo_${location}`;
@@ -18,7 +18,8 @@ export async function getPlacePhoto(location, apiKey) {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const { url, expires } = JSON.parse(cached);
-      if (Date.now() < expires) return url || null;
+      // Past events: use any cached value forever — no point refreshing old venues
+      if (isPast || Date.now() < expires) return url || null;
     }
   } catch {}
 
