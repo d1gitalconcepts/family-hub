@@ -1912,13 +1912,31 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   Photos are cached locally for 24 hours.
                 </p>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={enabled}
                     onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, enabled: e.target.checked })}
                   />
                   Enable location photos
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={placesPhotosCfg?.showOnCard !== false}
+                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, showOnCard: e.target.checked })}
+                  />
+                  Show on calendar grid cards
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={placesPhotosCfg?.showOnPopout !== false}
+                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, showOnPopout: e.target.checked })}
+                  />
+                  Show on event popout
                 </label>
 
                 <h3 style={{ marginBottom: 8 }}>Google Places API Key</h3>

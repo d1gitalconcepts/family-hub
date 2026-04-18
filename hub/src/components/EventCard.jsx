@@ -89,7 +89,9 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const color = calColor || event.cal_color || '#4285f4';
 
   const [placesPhotosCfg] = useConfig('places_photos');
-  const placesEnabled = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
+  const placesEnabled     = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
+  const showPhotoOnCard   = placesPhotosCfg?.showOnCard   !== false;
+  const showPhotoOnPopout = placesPhotosCfg?.showOnPopout !== false;
   const venueQuery = event.location || getSportVenueQuery(enrichment);
   const photoUrl = usePlacePhoto(venueQuery, placesEnabled, placesPhotosCfg?.api_key);
 
@@ -209,7 +211,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     'event-card',
     event.is_all_day ? 'all-day' : '',
     chipStyle ? 'event-card--chip' : 'event-card--border',
-    photoUrl ? 'event-card--has-photo' : '',
+    photoUrl && showPhotoOnCard ? 'event-card--has-photo' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -218,7 +220,7 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         className={cardClass}
         style={{
           '--cal-color': color,
-          '--place-photo': photoUrl ? `url(${JSON.stringify(photoUrl)})` : undefined,
+          '--place-photo': photoUrl && showPhotoOnCard ? `url(${JSON.stringify(photoUrl)})` : undefined,
           cursor: 'pointer',
           justifyContent: vJustify[valign] || 'flex-start',
         }}
@@ -254,11 +256,11 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
       {open && createPortal(
         <div className="event-popout-overlay" onClick={() => setOpen(false)}>
           <div
-            className={`event-popout${photoUrl ? ' event-popout--has-photo' : ''}`}
+            className={`event-popout${photoUrl && showPhotoOnPopout ? ' event-popout--has-photo' : ''}`}
             style={{ '--cal-color': color }}
             onClick={(e) => e.stopPropagation()}
           >
-            {photoUrl && (
+            {photoUrl && showPhotoOnPopout && (
               <div
                 className="event-popout-photo"
                 style={{ backgroundImage: `url(${JSON.stringify(photoUrl)})` }}
