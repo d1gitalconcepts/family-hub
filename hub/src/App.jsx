@@ -11,8 +11,8 @@ import { APP_VERSION, CHANGELOG } from './version';
 import './styles/index.css';
 
 function makeMonogramDataUrl(text, bg = '#1a73e8') {
-  const letters = ((text || 'H').slice(0, 3)).toUpperCase();
-  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : 11;
+  const letters = ((text || 'H').slice(0, 4)).toUpperCase();
+  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : letters.length === 3 ? 11 : 9;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="22" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-weight="700" font-size="${fontSize}" fill="white">${letters}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

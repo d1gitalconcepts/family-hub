@@ -3,8 +3,8 @@ import { useConfig } from '../hooks/useConfig';
 import { useTaskLists } from '../hooks/useTaskLists';
 
 function makeMonogramDataUrl(text, bg = '#1a73e8') {
-  const letters = ((text || 'H').slice(0, 3)).toUpperCase();
-  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : 11;
+  const letters = ((text || 'H').slice(0, 4)).toUpperCase();
+  const fontSize = letters.length <= 1 ? 18 : letters.length === 2 ? 14 : letters.length === 3 ? 11 : 9;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="8" fill="${bg}"/><text x="16" y="22" text-anchor="middle" dominant-baseline="auto" font-family="system-ui,sans-serif" font-weight="700" font-size="${fontSize}" fill="white">${letters}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
@@ -1940,13 +1940,13 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               {/* Monogram text input */}
               {(faviconCfg || 'house') === 'mono' && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Monogram text (1–3 characters)</label>
+                  <label style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Monogram text (1–4 characters)</label>
                   <input
                     type="text"
                     className="login-input"
                     value={monogramText ?? ''}
                     placeholder="H"
-                    maxLength={3}
+                    maxLength={4}
                     onChange={(e) => setMonogramText(e.target.value || null)}
                     style={{ fontSize: 'var(--s-md)', width: 80 }}
                   />
