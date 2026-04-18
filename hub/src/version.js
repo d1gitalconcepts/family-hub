@@ -1,6 +1,16 @@
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.8.0',
+    date: 'April 2026',
+    notes: [
+      'Icon settings: favicon and header icon are now independently configurable',
+      'Monogram header icon renders as a native styled element (larger, crisp text) with support for up to 4 characters',
+      'Custom icon upload: provide your own image for favicon and/or header icon',
+      '"Apply to header" / "Apply to favicon" buttons to sync both in one click',
+    ],
+  },
   {
     version: '1.7.0',
     date: 'April 2026',
