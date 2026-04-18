@@ -35,6 +35,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [customIcon,       setCustomIcon]       = useConfig('custom_icon');
   const [weatherSource,    setWeatherSource]    = useConfig('weather_source');
   const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
+  const [placesPhotosCfg,  setPlacesPhotosCfg]  = useConfig('places_photos');
   const allTaskLists = useTaskLists();
 
   const [awApiKey,       setAwApiKey]       = useState('');
@@ -43,12 +44,18 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [zipInput,       setZipInput]       = useState('');
   const [locationStatus, setLocationStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
   const [locationMsg,    setLocationMsg]    = useState('');
+  const [placesApiKey,   setPlacesApiKey]   = useState('');
+  const [placesSaved,    setPlacesSaved]    = useState(false);
 
   // Sync inputs when weatherKeys loads from Supabase
   useEffect(() => {
     if (weatherKeys?.api_key) setAwApiKey(weatherKeys.api_key);
     if (weatherKeys?.app_key) setAwAppKey(weatherKeys.app_key);
   }, [weatherKeys]);
+
+  useEffect(() => {
+    if (placesPhotosCfg?.api_key) setPlacesApiKey(placesPhotosCfg.api_key);
+  }, [placesPhotosCfg]);
   const weatherEnabled = weatherConfig?.enabled !== false;
   const weatherFields  = weatherConfig?.fields  || ['temp','feelsLike','humidity','windspeed','rain'];
 
@@ -393,6 +400,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { id: 'keepnotes',    label: 'Keep Notes'  },
     { id: 'mealplan',     label: 'Meal Plan'   },
     { id: 'weather',      label: 'Weather'     },
+    { id: 'places',       label: 'Places'      },
     { id: 'display',      label: 'Display'     },
   ];
 
@@ -1882,6 +1890,54 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   onChange={(v) => setWeatherConfig({ ...weatherConfig, forecastLayout: v })}
                 />
 
+              </div>
+            );
+          })()}
+
+          {/* ── Places tab ────────────────────────────────────── */}
+          {activeTab === 'places' && (() => {
+            const enabled = placesPhotosCfg?.enabled ?? false;
+
+            function savePlacesKey() {
+              setPlacesPhotosCfg({ ...placesPhotosCfg, api_key: placesApiKey.trim() });
+              setPlacesSaved(true);
+              setTimeout(() => setPlacesSaved(false), 2500);
+            }
+
+            return (
+              <div className="settings-section">
+                <h3 style={{ marginBottom: 8 }}>Location Photos</h3>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 16 }}>
+                  When an event has a location, fetch a photo from Google Places and display it as the card and popout background.
+                  Photos are cached locally for 24 hours.
+                </p>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => setPlacesPhotosCfg({ ...placesPhotosCfg, enabled: e.target.checked })}
+                  />
+                  Enable location photos
+                </label>
+
+                <h3 style={{ marginBottom: 8 }}>Google Places API Key</h3>
+                <p style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', marginBottom: 10 }}>
+                  Enable the <strong>Places API (New)</strong> in Google Cloud Console, then paste your API key below.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="password"
+                    className="login-input"
+                    value={placesApiKey}
+                    placeholder="AIza..."
+                    onChange={(e) => setPlacesApiKey(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <button className="btn" onClick={savePlacesKey}>
+                    {placesSaved ? 'Saved!' : 'Save'}
+                  </button>
+                </div>
               </div>
             );
           })()}

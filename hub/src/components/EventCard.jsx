@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SportsPanel from './SportsPanel';
+import { useConfig } from '../hooks/useConfig';
+import { getPlacePhoto } from '../utils/placePhoto';
+
+function usePlacePhoto(location, enabled, apiKey) {
+  const [photoUrl, setPhotoUrl] = useState(null);
+  useEffect(() => {
+    if (!enabled || !location || !apiKey) { setPhotoUrl(null); return; }
+    getPlacePhoto(location, apiKey).then(url => setPhotoUrl(url || null));
+  }, [location, enabled, apiKey]);
+  return photoUrl;
+}
 
 function useLinkPreview(url) {
   const [image, setImage] = useState(null);
@@ -76,6 +87,10 @@ function resolvePopoutElements(style) {
 export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
+
+  const [placesPhotosCfg] = useConfig('places_photos');
+  const placesEnabled = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
+  const photoUrl = usePlacePhoto(event.location, placesEnabled, placesPhotosCfg?.api_key);
 
   // Link preview — only for non-sport events where description is a URL
   const descUrl = !enrichment && event.description?.trim() && (() => {
@@ -193,13 +208,19 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
     'event-card',
     event.is_all_day ? 'all-day' : '',
     chipStyle ? 'event-card--chip' : 'event-card--border',
+    photoUrl ? 'event-card--has-photo' : '',
   ].filter(Boolean).join(' ');
 
   return (
     <>
       <div
         className={cardClass}
-        style={{ '--cal-color': color, cursor: 'pointer', justifyContent: vJustify[valign] || 'flex-start' }}
+        style={{
+          '--cal-color': color,
+          '--place-photo': photoUrl ? `url(${JSON.stringify(photoUrl)})` : undefined,
+          cursor: 'pointer',
+          justifyContent: vJustify[valign] || 'flex-start',
+        }}
         onClick={() => setOpen(true)}
       >
         {renderCardContent()}
@@ -232,10 +253,16 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
       {open && createPortal(
         <div className="event-popout-overlay" onClick={() => setOpen(false)}>
           <div
-            className="event-popout"
+            className={`event-popout${photoUrl ? ' event-popout--has-photo' : ''}`}
             style={{ '--cal-color': color }}
             onClick={(e) => e.stopPropagation()}
           >
+            {photoUrl && (
+              <div
+                className="event-popout-photo"
+                style={{ backgroundImage: `url(${JSON.stringify(photoUrl)})` }}
+              />
+            )}
             <div className="event-popout-bar" />
 
             <div className="event-popout-header">

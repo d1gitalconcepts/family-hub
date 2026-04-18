@@ -745,6 +745,35 @@ html, body, #root {
   white-space: nowrap;
 }
 
+/* ── Event card with place photo ───────────────────────────── */
+
+.event-card--has-photo {
+  background-image: linear-gradient(rgba(0,0,0,0.48), rgba(0,0,0,0.58)), var(--place-photo);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+}
+.event-card--has-photo .event-time,
+.event-card--has-photo .event-cal,
+.event-card--has-photo .event-desc-snippet { color: rgba(255,255,255,0.78); }
+.event-card--has-photo.event-card--border  { border-left-color: rgba(255,255,255,0.35); }
+.event-card--has-photo.event-card--chip    { border: none; }
+.event-card--has-photo .event-title        { color: #fff; }
+
+/* Popout photo banner */
+.event-popout-photo {
+  width: 100%;
+  height: 140px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px 16px 0 0;
+  flex-shrink: 0;
+}
+@media (min-width: 769px) {
+  .event-popout-photo { border-radius: 12px 12px 0 0; }
+}
+.event-popout--has-photo { border-top-color: transparent; }
+
 /* ── Forecast card ─────────────────────────────────────────── */
 
 .forecast-card {
