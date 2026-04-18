@@ -30,6 +30,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [keepNotesCfg,     setKeepNotesCfg]     = useConfig('keep_notes');
   const [mealPlanCfg,      setMealPlanCfg]      = useConfig('meal_plan');
   const [faviconCfg,       setFaviconCfg]       = useConfig('favicon');
+  const [headerIconCfg,    setHeaderIconCfg]    = useConfig('header_icon');
   const [monogramText,     setMonogramText]     = useConfig('monogram_text');
   const [customIcon,       setCustomIcon]       = useConfig('custom_icon');
   const [weatherSource,    setWeatherSource]    = useConfig('weather_source');
@@ -1900,108 +1901,136 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 style={{ marginBottom: 20, fontSize: 'var(--s-md)' }}
               />
 
-              {/* Favicon */}
-              <h3 style={{ marginBottom: 10 }}>App Icon</h3>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                {(() => {
-                  const monoBg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
-                  const options = [
-                    { id: 'house',    label: 'House',    src: '/favicon-house.svg'    },
-                    { id: 'calendar', label: 'Calendar', src: '/favicon-calendar.svg' },
-                    { id: 'hub',      label: 'Hub',      src: '/favicon-hub.svg'      },
-                    { id: 'mono',     label: 'Monogram', src: makeMonogramDataUrl(monogramText, monoBg) },
-                    { id: 'bolt',     label: 'Bolt',     src: '/favicon.svg'          },
-                    { id: 'custom',   label: 'Custom',   src: customIcon || null      },
-                  ];
-                  return options.map(({ id, label, src }) => {
-                    const active = (faviconCfg || 'house') === id;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setFaviconCfg(id)}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                          padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                          border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                          background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
-                        }}
-                      >
-                        {src
-                          ? <img src={src} width="28" height="28" alt={label} style={{ display: 'block', borderRadius: 4 }} />
-                          : <span style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: 'var(--text-muted)', border: '1.5px dashed var(--border)', borderRadius: 4 }}>+</span>
-                        }
-                        <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
-                      </button>
-                    );
-                  });
-                })()}
-              </div>
+              {/* ── Icon pickers ── */}
+              {(() => {
+                const monoBg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
+                const activeFav  = faviconCfg    || 'house';
+                const activeHdr  = headerIconCfg ?? faviconCfg ?? 'house';
 
-              {/* Monogram text input */}
-              {(faviconCfg || 'house') === 'mono' && (
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Monogram text (1–4 characters)</label>
-                  <input
-                    type="text"
-                    className="login-input"
-                    value={monogramText ?? ''}
-                    placeholder="H"
-                    maxLength={4}
-                    onChange={(e) => setMonogramText(e.target.value || null)}
-                    style={{ fontSize: 'var(--s-md)', width: 80 }}
-                  />
-                </div>
-              )}
+                const ICON_OPTIONS = [
+                  { id: 'house',    label: 'House',    src: '/favicon-house.svg'    },
+                  { id: 'calendar', label: 'Calendar', src: '/favicon-calendar.svg' },
+                  { id: 'hub',      label: 'Hub',      src: '/favicon-hub.svg'      },
+                  { id: 'mono',     label: 'Monogram', src: makeMonogramDataUrl(monogramText, monoBg) },
+                  { id: 'bolt',     label: 'Bolt',     src: '/favicon.svg'          },
+                  { id: 'custom',   label: 'Custom',   src: customIcon || null      },
+                ];
 
-              {/* Custom icon upload */}
-              {(faviconCfg || 'house') === 'custom' && (
-                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {customIcon && (
-                    <img src={customIcon} width="40" height="40" alt="Custom icon" style={{ borderRadius: 6, flexShrink: 0 }} />
-                  )}
-                  <label style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                    padding: '7px 14px', borderRadius: 8, fontSize: 'var(--s-sm)',
-                    border: '1.5px solid var(--accent)', color: 'var(--accent)',
-                    background: 'color-mix(in srgb, var(--accent) 6%, var(--surface))',
-                  }}>
-                    {customIcon ? 'Change icon' : 'Upload icon'}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          const img = new Image();
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = 64;
-                            canvas.height = 64;
-                            canvas.getContext('2d').drawImage(img, 0, 0, 64, 64);
-                            setCustomIcon(canvas.toDataURL('image/png'));
-                          };
-                          img.src = ev.target.result;
-                        };
-                        reader.readAsDataURL(file);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  {customIcon && (
-                    <button
-                      onClick={() => { setCustomIcon(null); setFaviconCfg('house'); }}
-                      style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              )}
+                function IconPicker({ activeId, onSelect }) {
+                  return (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {ICON_OPTIONS.map(({ id, label, src }) => {
+                        const active = activeId === id;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => onSelect(id)}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                              padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                              border: `2px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                              background: active ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                            }}
+                          >
+                            {src
+                              ? <img src={src} width="26" height="26" alt={label} style={{ display: 'block', borderRadius: 4 }} />
+                              : <span style={{ width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: 'var(--text-muted)', border: '1.5px dashed var(--border)', borderRadius: 4 }}>+</span>
+                            }
+                            <span style={{ fontSize: 'var(--s-xs)', fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-muted)' }}>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                }
 
-              <div style={{ marginBottom: 12 }} />
+                function CustomUpload({ onSave, onRemove }) {
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                      {customIcon && <img src={customIcon} width="36" height="36" alt="Custom icon" style={{ borderRadius: 6, flexShrink: 0 }} />}
+                      <label style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                        padding: '6px 12px', borderRadius: 8, fontSize: 'var(--s-sm)',
+                        border: '1.5px solid var(--accent)', color: 'var(--accent)',
+                        background: 'color-mix(in srgb, var(--accent) 6%, var(--surface))',
+                      }}>
+                        {customIcon ? 'Change icon' : 'Upload icon'}
+                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const img = new Image();
+                              img.onload = () => {
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 64; canvas.height = 64;
+                                canvas.getContext('2d').drawImage(img, 0, 0, 64, 64);
+                                onSave(canvas.toDataURL('image/png'));
+                              };
+                              img.src = ev.target.result;
+                            };
+                            reader.readAsDataURL(file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {customIcon && (
+                        <button onClick={onRemove} style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                const applyBtnStyle = {
+                  fontSize: 'var(--s-xs)', color: 'var(--accent)', background: 'none',
+                  border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline',
+                };
+
+                return (
+                  <>
+                    {/* Favicon */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <h3 style={{ margin: 0 }}>Favicon</h3>
+                      <button style={applyBtnStyle} onClick={() => setHeaderIconCfg(activeFav)}>Apply to header →</button>
+                    </div>
+                    <IconPicker activeId={activeFav} onSelect={setFaviconCfg} />
+                    {activeFav === 'custom' && (
+                      <CustomUpload onSave={(url) => { setCustomIcon(url); }} onRemove={() => { setCustomIcon(null); setFaviconCfg('house'); }} />
+                    )}
+
+                    <div style={{ height: 20 }} />
+
+                    {/* Header Icon */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <h3 style={{ margin: 0 }}>Header Icon</h3>
+                      <button style={applyBtnStyle} onClick={() => setFaviconCfg(activeHdr)}>← Apply to favicon</button>
+                    </div>
+                    <IconPicker activeId={activeHdr} onSelect={setHeaderIconCfg} />
+                    {activeHdr === 'mono' && (
+                      <div style={{ marginTop: 10 }}>
+                        <label style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Monogram text (1–4 characters)</label>
+                        <input
+                          type="text"
+                          className="login-input"
+                          value={monogramText ?? ''}
+                          placeholder="H"
+                          maxLength={4}
+                          onChange={(e) => setMonogramText(e.target.value || null)}
+                          style={{ fontSize: 'var(--s-md)', width: 80 }}
+                        />
+                      </div>
+                    )}
+                    {activeHdr === 'custom' && (
+                      <CustomUpload onSave={(url) => { setCustomIcon(url); }} onRemove={() => { setCustomIcon(null); setHeaderIconCfg('house'); }} />
+                    )}
+                  </>
+                );
+              })()}
+
+              <div style={{ marginBottom: 20 }} />
 
               {/* Text Size */}
               <h3 style={{ marginBottom: 10 }}>Text Size</h3>
