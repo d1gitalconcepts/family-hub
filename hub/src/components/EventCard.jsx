@@ -132,8 +132,9 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
   const photoUrl          = locPhotoUrl || previewImage || titlePhotoUrl;
   const isTitlePhoto      = !locPhotoUrl && !!(previewImage || titlePhotoUrl);
   const activeCfg         = locPhotoUrl ? placesPhotosCfg : titleCfg;
-  const showPhotoOnCard   = activeCfg?.showOnCard   !== false;
-  const showPhotoOnPopout = activeCfg?.showOnPopout !== false;
+  // Guard: suppress photos until config has loaded — prevents flash when showOnCard is false
+  const showPhotoOnCard   = !!(placesPhotosCfg && activeCfg?.showOnCard   !== false);
+  const showPhotoOnPopout = !!(placesPhotosCfg && activeCfg?.showOnPopout !== false);
 
   const style = {
     popout: { ...DEFAULT_POPOUT },
