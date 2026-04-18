@@ -347,21 +347,41 @@ async function enrichGolf(event, config) {
     if (!Object.prototype.hasOwnProperty.call(scoreFirstOrder, s)) scoreFirstOrder[s] = c.order;
   }
 
-  // Regex to detect a pre-formatted time string like "1:40 PM" or "10:05 AM"
-  const TEE_TIME_RE = /^\d{1,2}:\d{2}\s*(AM|PM)/i;
+  // Derive tournament local UTC offset from the event's start date.
+  // ESPN sets ev.date to midnight local time (e.g. "2026-04-16T04:00Z" → UTC-4 = EDT).
+  const evUtcH = new Date(ev.date || comp?.startDate || dateStr + 'T00:00Z').getUTCHours();
+  const utcOffsetH = evUtcH <= 12 ? -evUtcH : 24 - evUtcH;
 
-  // Parse ESPN's raw tee-time datetime string: "Thu Apr 16 10:05:00 PDT 2026"
-  // and format as "10:05 AM". ESPN stores times in PDT and displays them as-is.
-  function formatTeeTime(raw) {
-    if (!raw) return null;
-    const m = raw.match(/(\d{1,2}):(\d{2}):\d{2}/);
-    if (!m) return null;
-    let h = parseInt(m[1], 10);
-    const min = m[2];
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    if (h > 12) h -= 12;
-    if (h === 0) h = 12;
-    return `${h}:${min} ${ampm}`;
+  // Convert a UTC ISO tee-time string ("2026-04-18T10:55Z") to local "6:55 AM"
+  function formatTeeTimeUtc(isoStr) {
+    if (!isoStr) return null;
+    const d = new Date(isoStr);
+    if (isNaN(d)) return null;
+    const localH = (d.getUTCHours() + 24 + utcOffsetH) % 24;
+    const localM = d.getUTCMinutes();
+    const ampm = localH >= 12 ? 'PM' : 'AM';
+    const h12 = localH === 0 ? 12 : localH > 12 ? localH - 12 : localH;
+    return `${h12}:${String(localM).padStart(2, '0')} ${ampm}`;
+  }
+
+  // Pre-fetch tee times for unstarted players in the top N via core API status endpoint.
+  // Tee times are NOT in the scoreboard API — they live at:
+  // sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/{id}/competitions/{id}/competitors/{id}/status
+  const eventId = ev.id;
+  const topCompetitors = competitors.slice(0, leaderboardSize);
+  const teeTimeMap = {};
+  if (eventId) {
+    const unstartedTop = topCompetitors.filter((c) => {
+      const roundLs = (c.linescores || []).find((ls) => ls.period === currentRound);
+      return !(roundLs?.linescores?.length > 0);
+    });
+    await Promise.all(unstartedTop.map(async (c) => {
+      try {
+        const statusUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${eventId}/competitions/${eventId}/competitors/${c.id}/status?lang=en&region=us`;
+        const st = await fetchJson(statusUrl);
+        if (st?.teeTime) teeTimeMap[c.id] = formatTeeTimeUtc(st.teeTime);
+      } catch (_) { /* silently skip */ }
+    }));
   }
 
   function mapCompetitor(c) {
@@ -371,19 +391,10 @@ async function enrichGolf(event, config) {
     // Current round entry
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
+    const isNotStarted = !todayDisplay || todayDisplay === '-';
 
-    const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
-    const isNotStarted = !todayDisplay || todayDisplay === '-' || displayIsTeeTime;
-
-    // Tee time: statistics.categories[0].stats[6].displayValue
-    // Raw value: "Thu Apr 17 10:05:00 PDT 2026" — format to "10:05 AM"
-    // NOTE: ESPN only populates statistics when a round hasn't started yet.
-    // On an active round day the field is [] and tee times aren't available.
-    const rawTeeTime =
-      c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
-    const statsTeeTime = formatTeeTime(rawTeeTime);
-    const statusTeeTime = c.status?.teeTime || null;
-    const teeTime = statsTeeTime || statusTeeTime || (displayIsTeeTime ? todayDisplay : null);
+    // Tee time from pre-fetched status map
+    const teeTime = teeTimeMap[c.id] || null;
 
     // Thru: count of per-hole entries in current round's inner linescores
     const innerHoles = currentRoundLs?.linescores?.length || 0;
@@ -393,7 +404,7 @@ async function enrichGolf(event, config) {
     else if (isNotStarted)   thru = teeTime || '-';
     else                     thru = 'F';
 
-    // Round scores: completed or in-progress rounds (exclude placeholders with no displayValue)
+    // Round scores: completed or in-progress rounds
     const rounds = roundLinescores
       .filter((ls) => ls.displayValue && ls.displayValue !== '-')
       .sort((a, b) => a.period - b.period)
@@ -405,20 +416,20 @@ async function enrichGolf(event, config) {
       ? (isTied ? `T${scoreFirstOrder[c.score]}` : String(c.order))
       : '—';
 
-    // Normalise score: API may return "0", "", null, or "E" for even par
+    // Normalise score: "0" or "" → "E"
     const rawScore = c.score;
     const normScore = (!rawScore || rawScore === '0' || rawScore === 'E') ? 'E' : rawScore;
 
-    // Normalise today: guard against tee-time strings leaking into Today column
+    // Today: null when not started
     const normToday = isNotStarted ? null
-                    : (!todayDisplay || todayDisplay === '-' || todayDisplay === '0') ? null
+                    : (!todayDisplay || todayDisplay === '0') ? null
                     : todayDisplay;
 
     return {
       positionText: posText,
       name: c.athlete?.displayName || '?',
       score: normScore,
-      today: isNotStarted ? null : normToday,
+      today: normToday,
       thru,
       rounds,
     };
