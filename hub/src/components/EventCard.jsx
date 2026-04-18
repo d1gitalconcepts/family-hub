@@ -109,31 +109,31 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         ? new Date(event.start_at) < new Date()
         : !!event.start_date && event.start_date < today;
 
+  // Recipe image — OG image from description URL (free, already fetched for popout)
+  const descUrl      = !enrichment && event.description?.trim() && (() => {
+    try { new URL(event.description.trim()); return event.description.trim(); } catch { return null; }
+  })();
+  const previewImage = useLinkPreview(descUrl || null);
+
   // Location photo (Google Places)
   const locEnabled     = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
   const venueQuery     = event.location || getSportVenueQuery(enrichment);
   const locPhotoUrl    = usePlacePhoto(venueQuery, locEnabled, placesPhotosCfg?.api_key, isPast, refreshDays);
 
-  // Title photo (Unsplash / Pexels) — fallback when no location photo
+  // Title photo (Unsplash / Pexels) — only when no location or recipe image
   const titleCfg        = placesPhotosCfg?.titlePhotos;
   const titleCalIds     = titleCfg?.calendarIds;
-  const titleEnabled    = !locPhotoUrl && !!(
+  const titleEnabled    = !locPhotoUrl && !previewImage && !!(
     titleCfg?.enabled && titleCfg?.provider && titleCfg?.api_key &&
     titleCalIds?.length > 0 && titleCalIds.includes(event.calendar_id)
   );
   const titlePhotoUrl  = useTitlePhoto(event.summary, titleEnabled, titleCfg?.provider, titleCfg?.api_key, isPast, refreshDays);
 
-  const photoUrl          = locPhotoUrl || titlePhotoUrl;
-  const isTitlePhoto      = !locPhotoUrl && !!titlePhotoUrl;
+  const photoUrl          = locPhotoUrl || previewImage || titlePhotoUrl;
+  const isTitlePhoto      = !locPhotoUrl && !!(previewImage || titlePhotoUrl);
   const activeCfg         = locPhotoUrl ? placesPhotosCfg : titleCfg;
   const showPhotoOnCard   = activeCfg?.showOnCard   !== false;
   const showPhotoOnPopout = activeCfg?.showOnPopout !== false;
-
-  // Link preview — only for non-sport events where description is a URL
-  const descUrl = !enrichment && event.description?.trim() && (() => {
-    try { new URL(event.description.trim()); return event.description.trim(); } catch { return null; }
-  })();
-  const previewImage = useLinkPreview(descUrl || null);
 
   const style = {
     popout: { ...DEFAULT_POPOUT },
