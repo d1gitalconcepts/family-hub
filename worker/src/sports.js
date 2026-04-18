@@ -612,9 +612,9 @@ export async function enrichSportsEvents(env) {
     calEvents = await sbSelect(env, 'calendar_events', {
       select: 'google_id,calendar_id,summary,start_date,start_at,end_date',
       or: (
-        `start_date.gte.${yesterdayStr},` +
+        `(start_date.gte.${yesterdayStr},` +
         `start_at.gte.${yesterdayIso},` +
-        `and(is_all_day.eq.true,start_date.lt.${yesterdayStr},end_date.gte.${todayStr})`
+        `and(is_all_day.eq.true,start_date.lt.${yesterdayStr},end_date.gte.${todayStr}))`
       ),
     });
   } catch (err) {
