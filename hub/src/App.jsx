@@ -33,6 +33,7 @@ export default function App() {
   const [accentColorCfg] = useConfig('accent_color');
   const [fontSizeCfg]    = useConfig('font_size');
   const [faviconCfg]     = useConfig('favicon');
+  const [headerIconCfg]  = useConfig('header_icon');
   const [monogramText]   = useConfig('monogram_text');
   const [customIcon]     = useConfig('custom_icon');
   const [role, setRole]               = useState(null);
@@ -226,20 +227,31 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <img
-            src={(() => {
-              if (faviconCfg === 'mono') {
-                const bg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
-                return makeMonogramDataUrl(monogramText, bg);
-              }
-              if (faviconCfg === 'custom' && customIcon) return customIcon;
-              if (faviconCfg === 'bolt') return '/favicon.svg';
-              return `/favicon-${faviconCfg || 'house'}.svg`;
-            })()}
-            width="22" height="22"
-            alt=""
-            style={{ display: 'block', flexShrink: 0 }}
-          />
+          {(() => {
+            const hIcon = headerIconCfg ?? faviconCfg ?? 'house';
+            const accentBg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
+            if (hIcon === 'mono') {
+              const letters = ((monogramText || 'H').slice(0, 4)).toUpperCase();
+              const fs = letters.length <= 1 ? 17 : letters.length === 2 ? 13 : letters.length === 3 ? 11 : 9;
+              return (
+                <div style={{
+                  width: 34, height: 34, borderRadius: 7, background: accentBg,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: fs, fontWeight: 800, color: 'white',
+                  flexShrink: 0, letterSpacing: '-0.3px',
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  userSelect: 'none', lineHeight: 1,
+                }}>
+                  {letters}
+                </div>
+              );
+            }
+            let src;
+            if (hIcon === 'custom' && customIcon) src = customIcon;
+            else if (hIcon === 'bolt') src = '/favicon.svg';
+            else src = `/favicon-${hIcon}.svg`;
+            return <img src={src} width="22" height="22" alt="" style={{ display: 'block', flexShrink: 0 }} />;
+          })()}
           {appName || 'Family Hub'}
         </h1>
         <WeatherWidget position="in-header" />
