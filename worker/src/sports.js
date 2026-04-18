@@ -372,9 +372,14 @@ async function enrichGolf(event, config) {
     const currentRoundLs = roundLinescores.find((ls) => ls.period === currentRound);
     const todayDisplay = currentRoundLs?.displayValue;
 
-    // Tee time: statistics.categories[0].stats[6].displayValue contains a raw
-    // datetime string like "Thu Apr 16 10:05:00 PDT 2026" — format to "10:05 AM".
-    const rawTeeTime = c.statistics?.categories?.[0]?.stats?.[6]?.displayValue || null;
+    // Tee time: statistics.categories[0].stats[6].displayValue (or [0].categories[0]
+    // if statistics is an array). Raw value is "Thu Apr 16 10:05:00 PDT 2026".
+    const rawTeeTime =
+      c.statistics?.categories?.[0]?.stats?.[6]?.displayValue ||
+      c.statistics?.[0]?.categories?.[0]?.stats?.[6]?.displayValue ||
+      null;
+    if (rawTeeTime) console.log('[Golf] tee time raw:', rawTeeTime);
+    else if (!rawTeeTime && c.statistics) console.log('[Golf] statistics present but no tee time at stats[6]:', JSON.stringify(c.statistics).slice(0, 200));
     const statsTeeTime = formatTeeTime(rawTeeTime);
     const statusTeeTime = c.status?.teeTime || null;
     const displayIsTeeTime = todayDisplay ? TEE_TIME_RE.test(todayDisplay) : false;
