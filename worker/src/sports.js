@@ -595,18 +595,27 @@ export async function enrichSportsEvents(env) {
     return;
   }
 
-  // 2. Fetch recent calendar events (3 days back + future)
-  const lookback = new Date();
-  lookback.setDate(lookback.getDate() - 3);
-  lookback.setHours(0, 0, 0, 0);
-  const lookbackIso = lookback.toISOString();
-  const yStr = lookbackIso.split('T')[0];
+  // 2. Fetch relevant calendar events:
+  //    • Timed events (start_at) from yesterday onward
+  //    • All-day events (start_date) from yesterday onward
+  //    • Ongoing multi-day all-day events that started before yesterday but haven't ended
+  //      (catches golf tournaments on day 3/4 even with a short lookback window)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  const yesterdayIso = yesterday.toISOString();
+  const yesterdayStr = yesterdayIso.split('T')[0];
+  const todayStr     = new Date().toISOString().split('T')[0];
 
   let calEvents;
   try {
     calEvents = await sbSelect(env, 'calendar_events', {
-      select: 'google_id,calendar_id,summary,start_date,start_at',
-      or: `(start_date.gte.${yStr},start_at.gte.${lookbackIso})`,
+      select: 'google_id,calendar_id,summary,start_date,start_at,end_date',
+      or: (
+        `start_date.gte.${yesterdayStr},` +
+        `start_at.gte.${yesterdayIso},` +
+        `and(is_all_day.eq.true,start_date.lt.${yesterdayStr},end_date.gte.${todayStr})`
+      ),
     });
   } catch (err) {
     console.warn('[Sports] Failed to fetch calendar events:', err.message);
@@ -646,6 +655,10 @@ export async function enrichSportsEvents(env) {
   }
 
   const enrichments = [];
+  // Cache: dedup key → enrichment data. Prevents multiple calendar events for the
+  // same game (e.g. 3 "Knicks" placeholders) from each making a separate API call.
+  const apiCache = {};
+  const now = new Date();
 
   for (const event of calEvents) {
     // Find matching sports config entry
@@ -660,33 +673,33 @@ export async function enrichSportsEvents(env) {
 
     if (!config) continue;
 
-    try {
-      let data = null;
+    // Skip timed events that start more than 3 hours in the future — no live data yet.
+    // Golf is exempt: it fetches today's live leaderboard and tomorrow's tee times.
+    if (config.sport !== 'golf' && event.start_at) {
+      const startsAt = new Date(event.start_at);
+      if (startsAt - now > 3 * 60 * 60 * 1000) continue;
+    }
 
-      switch (config.sport) {
-        case 'mlb':
-          data = await enrichMlb(event, config, mlbStandingsMap);
-          break;
-        case 'nfl':
-          data = await enrichNfl(event, config);
-          break;
-        case 'nba':
-          data = await enrichNba(event, config);
-          break;
-        case 'nhl':
-          data = await enrichNhl(event, config);
-          break;
-        case 'golf':
-          data = await enrichGolf(event, config);
-          break;
-        case 'f1':
-          data = await enrichF1(event, config);
-          break;
-        case 'nascar':
-          data = await enrichNascar(event, config);
-          break;
-        default:
-          console.warn(`[Sports] Unknown sport: ${config.sport}`);
+    // Dedup: same sport + same calendar + same date → one API call, result shared.
+    const eventDate = event.start_date || (event.start_at ? event.start_at.split('T')[0] : null);
+    const dedupKey  = `${config.sport}:${config.calendarId}:${eventDate}`;
+
+    try {
+      let data;
+      if (Object.prototype.hasOwnProperty.call(apiCache, dedupKey)) {
+        data = apiCache[dedupKey]; // reuse cached result — no extra API call
+      } else {
+        switch (config.sport) {
+          case 'mlb':    data = await enrichMlb(event, config, mlbStandingsMap); break;
+          case 'nfl':    data = await enrichNfl(event, config);                  break;
+          case 'nba':    data = await enrichNba(event, config);                  break;
+          case 'nhl':    data = await enrichNhl(event, config);                  break;
+          case 'golf':   data = await enrichGolf(event, config);                 break;
+          case 'f1':     data = await enrichF1(event, config);                   break;
+          case 'nascar': data = await enrichNascar(event, config);               break;
+          default:       console.warn(`[Sports] Unknown sport: ${config.sport}`); data = null;
+        }
+        apiCache[dedupKey] = data; // cache even if null (don't retry on same run)
       }
 
       if (data) {
