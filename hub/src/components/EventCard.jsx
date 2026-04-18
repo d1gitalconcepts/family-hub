@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SportsPanel from './SportsPanel';
 import { useConfig } from '../hooks/useConfig';
-import { getPlacePhoto } from '../utils/placePhoto';
+import { getPlacePhoto, getSportVenueQuery } from '../utils/placePhoto';
 
 function usePlacePhoto(location, enabled, apiKey) {
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -90,7 +90,8 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
 
   const [placesPhotosCfg] = useConfig('places_photos');
   const placesEnabled = !!(placesPhotosCfg?.enabled && placesPhotosCfg?.api_key);
-  const photoUrl = usePlacePhoto(event.location, placesEnabled, placesPhotosCfg?.api_key);
+  const venueQuery = event.location || getSportVenueQuery(enrichment);
+  const photoUrl = usePlacePhoto(venueQuery, placesEnabled, placesPhotosCfg?.api_key);
 
   // Link preview — only for non-sport events where description is a URL
   const descUrl = !enrichment && event.description?.trim() && (() => {

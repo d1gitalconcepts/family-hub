@@ -1,5 +1,15 @@
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 
+export function getSportVenueQuery(enrichment) {
+  if (!enrichment?.data) return null;
+  const { sport, data } = enrichment;
+  if (data.venue)                                return data.venue;
+  if (sport === 'golf'   && data.tournamentName) return `${data.tournamentName} golf`;
+  if (sport === 'f1'     && data.circuitName)    return [data.circuitName, data.countryName].filter(Boolean).join(' ');
+  if (sport === 'nascar' && data.raceName)       return data.raceName;
+  return null;
+}
+
 export async function getPlacePhoto(location, apiKey) {
   if (!location || !apiKey) return null;
 
