@@ -673,12 +673,8 @@ export async function enrichSportsEvents(env) {
 
     if (!config) continue;
 
-    // Skip timed events that start more than 3 hours in the future — no live data yet.
-    // Golf is exempt: it fetches today's live leaderboard and tomorrow's tee times.
-    if (config.sport !== 'golf' && event.start_at) {
-      const startsAt = new Date(event.start_at);
-      if (startsAt - now > 3 * 60 * 60 * 1000) continue;
-    }
+    // Golf is exempt from future-skip: fetches live leaderboard + tomorrow's tee times.
+    // All other sports: always enrich so future games show current standings/records.
 
     // Dedup: same sport + same calendar + same date → one API call, result shared.
     const eventDate = event.start_date || (event.start_at ? event.start_at.split('T')[0] : null);
