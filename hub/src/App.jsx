@@ -232,13 +232,15 @@ export default function App() {
             const accentBg = (accentColorCfg?.enabled && accentColorCfg?.color) ? accentColorCfg.color : '#1a73e8';
             if (hIcon === 'mono') {
               const letters = ((monogramText || 'H').slice(0, 4)).toUpperCase();
-              const fs = letters.length <= 1 ? 17 : letters.length === 2 ? 13 : letters.length === 3 ? 11 : 9;
+              const n = letters.length;
+              const fs = n <= 1 ? 22 : n === 2 ? 18 : n === 3 ? 15 : 13;
+              const w  = n <= 1 ? 36 : n === 2 ? 44 : n === 3 ? 50 : 56;
               return (
                 <div style={{
-                  width: 34, height: 34, borderRadius: 7, background: accentBg,
+                  width: w, height: 36, borderRadius: 8, background: accentBg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: fs, fontWeight: 800, color: 'white',
-                  flexShrink: 0, letterSpacing: '-0.3px',
+                  flexShrink: 0, letterSpacing: n >= 3 ? '-0.5px' : '0',
                   fontFamily: 'system-ui, -apple-system, sans-serif',
                   userSelect: 'none', lineHeight: 1,
                 }}>
