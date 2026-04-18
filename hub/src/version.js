@@ -1,6 +1,19 @@
-export const APP_VERSION = '1.6.1';
+export const APP_VERSION = '1.7.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.7.0',
+    date: 'April 2026',
+    notes: [
+      'Golf leaderboard: correct Pos (T-prefix ties), Score, Today, Thru columns using actual ESPN API field paths',
+      'Golf tee times: fetched from ESPN core API competitor status endpoint, converted from UTC using auto-detected tournament timezone',
+      'Golf: "Full leaderboard ↗" link to ESPN tournament page',
+      'Golf: even-par score normalised to "E", header columns right-aligned',
+      'NBA enrichment added (quarter linescore, records)',
+      'Multi-day calendar events now display across all days (SectionRow range check + useCalendarEvents cross-week fetch)',
+      'Sports worker: subrequest limit fixes — 1-day lookback, skip future events, dedup same-game calendar entries',
+    ],
+  },
   {
     version: '1.6.1',
     date: 'April 2026',
