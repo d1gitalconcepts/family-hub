@@ -73,14 +73,14 @@ function MlbPanel({ data, detail }) {
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
           <span>{awayTeam?.abbrev}</span>
-          {showBox && awayRecord && <span className="sports-score-record">{awayRecord.wins}-{awayRecord.losses}{awayRecord.rank && awayRecord.divisionName ? ` · ${ordinal(awayRecord.rank)} ${awayRecord.divisionName}` : ''}</span>}
+          {showBox && !isScheduled && awayRecord && <span className="sports-score-record">{awayRecord.wins}-{awayRecord.losses}{awayRecord.rank && awayRecord.divisionName ? ` · ${ordinal(awayRecord.rank)} ${awayRecord.divisionName}` : ''}</span>}
         </div>
         <div className="sports-score-num">{awayScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-divider">·</div>
         <div className="sports-score-num">{homeScore ?? (isScheduled ? '—' : '0')}</div>
         <div className="sports-score-team sports-score-team--home">
           <span>{homeTeam?.abbrev}</span>
-          {showBox && homeRecord && <span className="sports-score-record">{homeRecord.wins}-{homeRecord.losses}{homeRecord.rank && homeRecord.divisionName ? ` · ${ordinal(homeRecord.rank)} ${homeRecord.divisionName}` : ''}</span>}
+          {showBox && !isScheduled && homeRecord && <span className="sports-score-record">{homeRecord.wins}-{homeRecord.losses}{homeRecord.rank && homeRecord.divisionName ? ` · ${ordinal(homeRecord.rank)} ${homeRecord.divisionName}` : ''}</span>}
         </div>
       </div>
 
@@ -189,7 +189,7 @@ function NflPanel({ data, detail }) {
         </div>
       )}
 
-      {showBox && (homeRecord || awayRecord) && (
+      {showBox && homeScore != null && (homeRecord || awayRecord) && (
         <div className="sports-record">
           {awayRecord} · {homeRecord}
         </div>
@@ -217,14 +217,14 @@ function NbaPanel({ data, detail }) {
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
           <span>{awayTeam?.abbrev}</span>
-          {showBox && awayRecord && <span className="sports-score-record">{awayRecord}</span>}
+          {showBox && homeScore != null && awayRecord && <span className="sports-score-record">{awayRecord}</span>}
         </div>
         <div className="sports-score-num">{awayScore ?? '—'}</div>
         <div className="sports-score-divider">·</div>
         <div className="sports-score-num">{homeScore ?? '—'}</div>
         <div className="sports-score-team sports-score-team--home">
           <span>{homeTeam?.abbrev}</span>
-          {showBox && homeRecord && <span className="sports-score-record">{homeRecord}</span>}
+          {showBox && homeScore != null && homeRecord && <span className="sports-score-record">{homeRecord}</span>}
         </div>
       </div>
 
