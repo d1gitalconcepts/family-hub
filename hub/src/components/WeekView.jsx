@@ -125,10 +125,25 @@ export default function WeekView() {
     return () => clearInterval(id);
   }, [navStyleCfg?.preset]);
 
+  function ambientToCode(wc) {
+    if (!wc) return null;
+    const rain  = wc.rain     ?? 0;
+    const temp  = wc.temp     ?? 50;
+    const solar = wc.solar    ?? 999;
+    const hum   = wc.humidity ?? 0;
+    if (rain > 0.3) return temp < 32 ? 75 : 65;
+    if (rain > 0)   return temp < 32 ? 73 : 63;
+    if (hum > 95 && solar < 20) return 45;
+    if (solar < 80)             return 3;
+    if (solar < 350 || hum > 70) return 2;
+    return 1;
+  }
+
   // testCode overrides real conditions for preview; otherwise use weather_current with hourly fallback
   const currentWeatherCode = (() => {
     if (navStyleCfg?.testCode != null) return navStyleCfg.testCode;
     if (weatherCurrent?.code  != null) return weatherCurrent.code;
+    if (weatherCurrent?.source === 'ambient') return ambientToCode(weatherCurrent);
     const hourStr = String(new Date().getHours()).padStart(2, '0') + ':00';
     return (forecast?.[0]?.hourly || []).find((h) => h.time === hourStr)?.code ?? null;
   })();
