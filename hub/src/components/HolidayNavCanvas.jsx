@@ -39,10 +39,8 @@ export function getActiveHoliday(testHoliday) {
   if ((m === 12 && d >= 26) || (m === 1 && d <= 1)) return 'newyears';
   if (m === 2 && d >= 11 && d <= 14)                return 'valentines';
 
-  const easter    = easterDate(y);
-  const mardiGras = offset(easter, -47);
-  if (inRange(offset(mardiGras, -3), mardiGras))     return 'mardigras';
   if (m === 3 && d >= 14 && d <= 17)                 return 'stpatricks';
+  const easter = easterDate(y);
   if (inRange(offset(easter, -3), easter))            return 'easter';
 
   const motherDay    = nthWeekday(y, 4, 0, 2);
@@ -63,7 +61,6 @@ export function getActiveHoliday(testHoliday) {
 export const HOLIDAYS = [
   { key: 'newyears',     label: "🥂 New Year's" },
   { key: 'valentines',   label: "❤️ Valentine's Day" },
-  { key: 'mardigras',    label: '🎭 Mardi Gras' },
   { key: 'stpatricks',   label: "🍀 St. Patrick's Day" },
   { key: 'easter',       label: '🐣 Easter' },
   { key: 'mothersday',   label: "🌸 Mother's Day" },
@@ -436,14 +433,29 @@ function initChristmas(w, h) {
   };
 }
 
-function drawChristmas(ctx, w, h, t, s) {
+function getChristmasProgress(isTest, t) {
+  if (isTest) return (t % 900) / 900;
+  const now = new Date();
+  const m = now.getMonth() + 1, d = now.getDate();
+  if (m !== 12 || d < 18) return 0;
+  if (d >= 25) return 1;
+  return (d - 18) / 7;
+}
+
+function drawChristmas(ctx, w, h, t, s, isTest) {
   const th = h * 0.85;
   for (const { x, cols } of s.trees) {
     drawTree(ctx, x, h*0.92, th);
     const pos = [[x-th*0.28,h*0.92-th*0.1],[x+th*0.18,h*0.92-th*0.28],[x-th*0.1,h*0.92-th*0.48]];
     pos.forEach(([ox,oy],i) => { ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(ox,oy,th*0.07,0,Math.PI*2); ctx.fill(); });
   }
-  for (const p of s.presents) drawPresent(ctx, p.x, p.cy, p.w2, p.h2, p.boxCol, p.ribbonCol);
+  const xmasProgress = getChristmasProgress(isTest, t);
+  s.presents.forEach((p, i) => {
+    const threshold = i / s.presents.length;
+    if (xmasProgress <= threshold) return;
+    const scale = Math.min(1, (xmasProgress - threshold) / (1 / s.presents.length));
+    drawPresent(ctx, p.x, p.cy, p.w2 * scale, p.h2 * scale, p.boxCol, p.ribbonCol);
+  });
   for (const f of s.snow) {
     f.y += f.speed; f.x += f.drift + Math.sin(t*0.015 + f.phase)*0.2;
     if (f.y > h + f.r) { f.y = -f.r; f.x = rand(0,w); }
@@ -580,94 +592,6 @@ function drawValentines(ctx, w, h, t, s) {
   }
 }
 
-// ─── Mardi Gras ───────────────────────────────────────────────────────────────
-
-function initMardiGras(w, h) {
-  const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
-  return {
-    confetti: Array.from({length:40}, () => ({
-      x: rand(0,w), y: rand(-h,h), vx: rand(-0.3,0.3), vy: rand(0.4,1.1),
-      r: rand(2.5,6), col: cols[Math.floor(rand(0,3))], rot: rand(0,Math.PI*2), spin: rand(-0.05,0.05), alpha: rand(0.6,0.92),
-    })),
-    beadStrings: [
-      { y: h*0.28, offset: 0 },
-      { y: h*0.68, offset: w*0.3 },
-    ],
-    jesterHat: { x: w*0.88 },
-  };
-}
-
-function drawFleurDeLis(ctx, cx, cy, r) {
-  ctx.save(); ctx.translate(cx, cy);
-  // Center petal (tall)
-  ctx.beginPath(); ctx.ellipse(0, -r*0.5, r*0.22, r*0.65, 0, 0, Math.PI*2); ctx.fill();
-  // Left petal
-  ctx.beginPath(); ctx.ellipse(-r*0.38, -r*0.2, r*0.42, r*0.2, -0.6, 0, Math.PI*2); ctx.fill();
-  // Right petal
-  ctx.beginPath(); ctx.ellipse( r*0.38, -r*0.2, r*0.42, r*0.2,  0.6, 0, Math.PI*2); ctx.fill();
-  // Base band
-  ctx.beginPath(); ctx.rect(-r*0.22, r*0.1, r*0.44, r*0.2); ctx.fill();
-  // Lower split
-  ctx.beginPath(); ctx.ellipse(-r*0.22, r*0.38, r*0.2, r*0.18, -0.5, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( r*0.22, r*0.38, r*0.2, r*0.18,  0.5, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-}
-
-function drawJesterHat(ctx, cx, cy, r) {
-  const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
-  // Brim
-  ctx.fillStyle = cols[0];
-  ctx.beginPath(); ctx.ellipse(cx, cy, r*1.0, r*0.2, 0, 0, Math.PI*2); ctx.fill();
-  // Left lobe
-  ctx.fillStyle = cols[1];
-  ctx.beginPath(); ctx.ellipse(cx-r*0.5, cy-r*0.8, r*0.38, r*0.72, -0.35, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,215,20,0.9)';
-  ctx.beginPath(); ctx.arc(cx-r*0.72, cy-r*1.35, r*0.15, 0, Math.PI*2); ctx.fill();
-  // Right lobe
-  ctx.fillStyle = cols[2];
-  ctx.beginPath(); ctx.ellipse(cx+r*0.5, cy-r*0.8, r*0.38, r*0.72, 0.35, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = 'rgba(120,40,200,0.9)';
-  ctx.beginPath(); ctx.arc(cx+r*0.72, cy-r*1.35, r*0.15, 0, Math.PI*2); ctx.fill();
-  // Center top
-  ctx.fillStyle = cols[0];
-  ctx.beginPath(); ctx.ellipse(cx, cy-r*0.9, r*0.28, r*0.7, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = cols[2];
-  ctx.beginPath(); ctx.arc(cx, cy-r*1.48, r*0.15, 0, Math.PI*2); ctx.fill();
-}
-
-function drawMardiGras(ctx, w, h, t, s) {
-  // Slow bead strands (single arc each)
-  for (const bs of s.beadStrings) {
-    const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
-    const count = Math.ceil(w / 18);
-    for (let i=0; i<count; i++) {
-      const x = (i * 18 + bs.offset + t * 0.12) % (w + 18) - 9;
-      const y = bs.y + Math.sin(i * 0.6 + t * 0.015) * h * 0.07;
-      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
-      ctx.fillStyle = cols[i % 3]; ctx.fill();
-    }
-  }
-
-  // Fleur-de-lis (2 floating)
-  const fleurPositions = [[w*0.2, h*0.5], [w*0.55, h*0.45]];
-  for (const [fx, fy] of fleurPositions) {
-    ctx.fillStyle = 'rgba(240,190,20,0.72)';
-    drawFleurDeLis(ctx, fx, fy + Math.sin(t*0.018)*h*0.05, h*0.3);
-  }
-
-  // Jester hat on right
-  drawJesterHat(ctx, s.jesterHat.x, h*0.62, h*0.32);
-
-  // Confetti falling
-  for (const c of s.confetti) {
-    c.x+=c.vx; c.y+=c.vy; c.rot+=c.spin;
-    if (c.y>h+c.r) { c.y=-c.r; c.x=rand(0,w); }
-    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha;
-    ctx.fillStyle=c.col; ctx.fillRect(-c.r,-c.r*0.5,c.r*2,c.r); ctx.restore();
-  }
-  ctx.globalAlpha=1;
-}
-
 // ─── St. Patrick's Day ────────────────────────────────────────────────────────
 
 function initStPatricks(w, h) {
@@ -681,13 +605,16 @@ function drawStPatricks(ctx, w, h, t, s) {
   // Pot of gold anchor position
   const px = w*0.88, py = h*0.62, pr = h*0.32;
 
-  // Rainbow arching from left to pot of gold (6 stripes)
+  // Rainbow — proper circular arch, feet at bottom corners, peak above the nav
   const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#6020b0'];
-  const rx1 = 0, ry1 = py, rx2 = px, ry2 = py - pr*0.3;
-  const cpx = (rx1+rx2)*0.5, cpy = Math.min(ry1,ry2) - h*0.55;
+  const arcCx = w * 0.5, arcCy = h + w * 0.45;
+  const baseR = Math.hypot(w * 0.5, w * 0.45);
+  const startA = Math.atan2(h - arcCy, 0 - arcCx);
+  const endA   = Math.atan2(h - arcCy, w - arcCx);
   for (let i=0; i<arcCols.length; i++) {
-    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.065; ctx.globalAlpha=0.42;
-    ctx.beginPath(); ctx.moveTo(rx1, ry1-i*h*0.048); ctx.quadraticCurveTo(cpx, cpy-i*h*0.048, rx2, ry2-i*h*0.048); ctx.stroke();
+    const R = baseR + i * h * 0.07;
+    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.07; ctx.globalAlpha=0.44;
+    ctx.beginPath(); ctx.arc(arcCx, arcCy, R, startA, endA, true); ctx.stroke();
   }
   ctx.globalAlpha=1;
 
@@ -933,7 +860,6 @@ const DRAW_MAP = {
   christmas:    { init: initChristmas,    draw: drawChristmas },
   newyears:     { init: initNewYears,     draw: drawNewYears },
   valentines:   { init: initValentines,   draw: drawValentines },
-  mardigras:    { init: initMardiGras,    draw: drawMardiGras },
   stpatricks:   { init: initStPatricks,   draw: drawStPatricks },
   easter:       { init: initEaster,       draw: drawEaster },
   mothersday:   { init: initMothersDay,   draw: drawMothersDay },
