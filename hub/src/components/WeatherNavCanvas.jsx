@@ -27,34 +27,24 @@ function isNighttime(sunriseIso, sunsetIso) {
   return now < rise || now > set;
 }
 
-// Sun arcs left→right from sunrise to sunset, low at edges, high at noon
 function getSunPosition(sunriseIso, sunsetIso, w, h) {
   const now  = new Date().getHours() * 60 + new Date().getMinutes();
   const rise = isoToMin(sunriseIso) ?? 360;
   const set  = isoToMin(sunsetIso)  ?? 1200;
   const t    = Math.max(0, Math.min(1, (now - rise) / (set - rise)));
   const arc  = Math.sin(t * Math.PI);
-  return {
-    x:          w * (0.07 + t * 0.86),
-    y:          h * (0.88 - arc * 0.60),
-    brightness: 0.45 + 0.55 * arc,
-  };
+  return { x: w * (0.07 + t * 0.86), y: h * (0.88 - arc * 0.60), brightness: 0.45 + 0.55 * arc };
 }
 
-// Moon arcs left→right across the night (sunset→sunrise), same shape as sun
 function getMoonNightPosition(sunriseIso, sunsetIso, w, h) {
   const now  = new Date().getHours() * 60 + new Date().getMinutes();
   const rise = isoToMin(sunriseIso) ?? 360;
   const set  = isoToMin(sunsetIso)  ?? 1200;
-  const nightLen = (1440 - set) + rise;
-  const intoNight = now >= set ? now - set : (1440 - set) + now;
-  const t    = Math.max(0, Math.min(1, intoNight / nightLen));
-  const arc  = Math.sin(t * Math.PI);
-  return {
-    x:          w * (0.07 + t * 0.86),
-    y:          h * (0.88 - arc * 0.60),
-    brightness: 0.50 + 0.50 * arc,
-  };
+  const nightLen   = (1440 - set) + rise;
+  const intoNight  = now >= set ? now - set : (1440 - set) + now;
+  const t   = Math.max(0, Math.min(1, intoNight / nightLen));
+  const arc = Math.sin(t * Math.PI);
+  return { x: w * (0.07 + t * 0.86), y: h * (0.88 - arc * 0.60), brightness: 0.50 + 0.50 * arc };
 }
 
 function getMoonPhase() {
@@ -63,13 +53,22 @@ function getMoonPhase() {
   return ((Date.now() - KNOWN_NEW_MOON_MS) % LUNAR_CYCLE_MS) / LUNAR_CYCLE_MS;
 }
 
-function drawMoon(ctx, cx, cy, r, phase, brightness = 1) {
-  const LIT  = `rgba(238,230,185,${(0.90 * brightness).toFixed(2)})`;
-  const DARK = 'rgba(22,16,44,0.72)';
-  const waxing = phase <= 0.5;
-  const ex = -r * Math.cos(phase * 2 * Math.PI);
+function makeStars(w, h) {
+  return Array.from({ length: 48 }, () => ({
+    x:     Math.random() * w,
+    y:     Math.random() * h,
+    r:     0.4 + Math.random() * 1.0,
+    alpha: 0.18 + Math.random() * 0.42,
+    phase: Math.random() * Math.PI * 2,
+  }));
+}
 
-  // Soft glow halo
+function drawMoon(ctx, cx, cy, r, phase, brightness = 1) {
+  const LIT    = `rgba(238,230,185,${(0.90 * brightness).toFixed(2)})`;
+  const DARK   = 'rgba(22,16,44,0.72)';
+  const waxing = phase <= 0.5;
+  const ex     = -r * Math.cos(phase * 2 * Math.PI);
+
   const glow = ctx.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 5.5);
   glow.addColorStop(0,   `rgba(175,155,255,${(0.18 * brightness).toFixed(2)})`);
   glow.addColorStop(0.5, `rgba(130,100,220,${(0.07 * brightness).toFixed(2)})`);
@@ -79,7 +78,6 @@ function drawMoon(ctx, cx, cy, r, phase, brightness = 1) {
   ctx.fillStyle = glow;
   ctx.fill();
 
-  // Disk
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -105,8 +103,6 @@ function drawMoon(ctx, cx, cy, r, phase, brightness = 1) {
 
 function drawSun(ctx, cx, cy, r, t, brightness = 1) {
   const b = brightness;
-
-  // Outer glow — warmer at low brightness (dawn/dusk)
   const glowG = Math.round(180 + 40 * b);
   const glow  = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 7);
   glow.addColorStop(0,   `rgba(255,${glowG},80,${(0.22 * b).toFixed(2)})`);
@@ -117,7 +113,6 @@ function drawSun(ctx, cx, cy, r, t, brightness = 1) {
   ctx.fillStyle = glow;
   ctx.fill();
 
-  // Rays — fixed angles, each pulsates independently
   ctx.lineWidth = 1.5;
   for (let i = 0; i < 8; i++) {
     const a     = (i / 8) * Math.PI * 2;
@@ -131,9 +126,8 @@ function drawSun(ctx, cx, cy, r, t, brightness = 1) {
     ctx.stroke();
   }
 
-  // Core — more orange at low brightness (sunrise/sunset tones)
-  const coreG = Math.round(195 + 50 * b);
-  const coreB = Math.round(40  + 50 * b);
+  const coreG     = Math.round(195 + 50 * b);
+  const coreB     = Math.round(40  + 50 * b);
   const corePulse = 1 + Math.sin(t * 0.018) * 0.04;
   const core = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx, cy, r * corePulse);
   core.addColorStop(0,   `rgba(255,${Math.min(255,Math.round(coreG*1.2))},${Math.min(255,Math.round(coreB*2))},${Math.min(1,0.92*b+0.08).toFixed(2)})`);
@@ -145,7 +139,6 @@ function drawSun(ctx, cx, cy, r, t, brightness = 1) {
   ctx.fill();
 }
 
-// Large slow-drifting translucent blobs — living background for all conditions
 function makeFogLayers(w, h) {
   return Array.from({ length: 4 }, () => ({
     x:     Math.random() * w * 1.2 - w * 0.1,
@@ -227,9 +220,9 @@ function makeParticles(kind, w, h) {
 }
 
 export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
-  const canvasRef  = useRef(null);
-  const kind       = weatherKind(code);
-  const moonPhase  = getMoonPhase();
+  const canvasRef = useRef(null);
+  const kind      = weatherKind(code);
+  const moonPhase = getMoonPhase();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -237,7 +230,7 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
     const ctx = canvas.getContext('2d');
 
     let animId, flashAlpha = 0, t = 0;
-    let particles = [], fogLayers = [], cloudClusters = [];
+    let particles = [], fogLayers = [], cloudClusters = [], stars = [];
 
     function resize() {
       const w = canvas.parentElement?.clientWidth  || canvas.offsetWidth  || 300;
@@ -247,6 +240,7 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
       particles     = makeParticles(kind, w, h);
       fogLayers     = makeFogLayers(w, h);
       cloudClusters = kind === 'partly' ? makeCloudClusters(w, h) : [];
+      stars         = kind === 'clear'  ? makeStars(w, h)         : [];
     }
 
     resize();
@@ -274,11 +268,17 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
       }
 
       if (kind === 'clear') {
-        // testNight prop overrides; otherwise check real clock vs sunrise/sunset
         const night = testNight != null ? testNight : isNighttime(sunrise, sunset);
         const r = h * 0.28;
         if (night) {
-          // Moon arcs across the night sky — test mode parks it at midnight (t=0.5)
+          // Stars behind the moon
+          for (const s of stars) {
+            const a = s.alpha * (0.65 + 0.35 * Math.sin(t * 0.025 + s.phase));
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`;
+            ctx.fill();
+          }
           const pos = testNight != null
             ? { x: w * 0.07 + w * 0.86 * 0.5, y: h * (0.88 - 0.60), brightness: 1.0 }
             : getMoonNightPosition(sunrise, sunset, w, h);
