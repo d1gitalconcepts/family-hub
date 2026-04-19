@@ -425,10 +425,12 @@ function initChristmas(w, h) {
     })),
     trees: [{ x: w*0.07, cols: ['#e83030','#f8c030','#30a8e8'] }, { x: w*0.93, cols: ['#e83030','#30e860','#e830a8'] }],
     presents: [
-      { x: w*0.07 - h*0.22, cy: h*0.92, w2: h*0.14, h2: h*0.12, boxCol:'rgba(220,30,30,0.9)',   ribbonCol:'rgba(255,220,30,0.95)' },
-      { x: w*0.07 + h*0.22, cy: h*0.92, w2: h*0.1,  h2: h*0.14, boxCol:'rgba(30,100,200,0.9)',  ribbonCol:'rgba(200,30,30,0.95)' },
-      { x: w*0.93 - h*0.2,  cy: h*0.92, w2: h*0.12, h2: h*0.11, boxCol:'rgba(30,180,80,0.9)',   ribbonCol:'rgba(255,200,20,0.95)' },
-      { x: w*0.93 + h*0.18, cy: h*0.92, w2: h*0.09, h2: h*0.13, boxCol:'rgba(180,30,180,0.9)',  ribbonCol:'rgba(255,255,255,0.95)' },
+      { x: w*0.07 - h*0.38, cy: h*0.84, w2: h*0.28, h2: h*0.25, boxCol:'rgba(220,30,30,0.92)',   ribbonCol:'rgba(255,220,30,0.97)' },
+      { x: w*0.07,           cy: h*0.88, w2: h*0.24, h2: h*0.30, boxCol:'rgba(30,100,200,0.92)',  ribbonCol:'rgba(200,30,30,0.97)' },
+      { x: w*0.07 + h*0.38, cy: h*0.84, w2: h*0.26, h2: h*0.27, boxCol:'rgba(30,180,80,0.92)',   ribbonCol:'rgba(255,200,20,0.97)' },
+      { x: w*0.93 - h*0.38, cy: h*0.84, w2: h*0.26, h2: h*0.28, boxCol:'rgba(180,30,180,0.92)',  ribbonCol:'rgba(255,255,255,0.97)' },
+      { x: w*0.93,           cy: h*0.88, w2: h*0.24, h2: h*0.30, boxCol:'rgba(220,130,20,0.92)',  ribbonCol:'rgba(30,60,200,0.97)'  },
+      { x: w*0.93 + h*0.38, cy: h*0.84, w2: h*0.28, h2: h*0.25, boxCol:'rgba(200,30,100,0.92)',  ribbonCol:'rgba(30,200,80,0.97)'  },
     ],
   };
 }
@@ -605,16 +607,16 @@ function drawStPatricks(ctx, w, h, t, s) {
   // Pot of gold anchor position
   const px = w*0.88, py = h*0.62, pr = h*0.32;
 
-  // Rainbow — proper circular arch, feet at bottom corners, peak above the nav
-  const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#6020b0'];
+  // Rainbow — circular arch, center below nav, feet at bottom corners, peak above
+  const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#8030c0'];
   const arcCx = w * 0.5, arcCy = h + w * 0.45;
   const baseR = Math.hypot(w * 0.5, w * 0.45);
   const startA = Math.atan2(h - arcCy, 0 - arcCx);
   const endA   = Math.atan2(h - arcCy, w - arcCx);
   for (let i=0; i<arcCols.length; i++) {
-    const R = baseR + i * h * 0.07;
-    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.07; ctx.globalAlpha=0.44;
-    ctx.beginPath(); ctx.arc(arcCx, arcCy, R, startA, endA, true); ctx.stroke();
+    const R = baseR - i * h * 0.09;
+    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.11; ctx.globalAlpha=0.52;
+    ctx.beginPath(); ctx.arc(arcCx, arcCy, R, startA, endA, false); ctx.stroke();
   }
   ctx.globalAlpha=1;
 
