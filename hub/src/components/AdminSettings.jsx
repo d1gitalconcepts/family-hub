@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
+import { HOLIDAYS } from './HolidayNavCanvas';
 import { useTaskLists } from '../hooks/useTaskLists';
 
 function makeMonogramDataUrl(text, bg = '#1a73e8') {
@@ -2306,6 +2307,31 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         </select>
                       </div>
                     )}
+
+                    {/* ── Easter eggs ── */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>
+                        <input
+                          type="checkbox"
+                          checked={navStyleCfg?.easterEggs ?? false}
+                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), easterEggs: e.target.checked })}
+                        />
+                        Enable holiday easter eggs
+                      </label>
+                      {(navStyleCfg?.easterEggs) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: 22 }}>
+                          <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Test holiday:</span>
+                          <select
+                            value={navStyleCfg?.testHoliday ?? ''}
+                            onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), testHoliday: e.target.value || null })}
+                            style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                          >
+                            <option value="">— auto (by date) —</option>
+                            {HOLIDAYS.map(h => <option key={h.key} value={h.key}>{h.label}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
 
                     {isGradient && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 20px', background: 'var(--bg)', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}>

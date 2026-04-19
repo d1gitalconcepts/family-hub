@@ -5,6 +5,7 @@ import { useConfig } from '../hooks/useConfig';
 import { useSportsEnrichment } from '../hooks/useSportsEnrichment';
 import WeatherNavCanvas from './WeatherNavCanvas';
 import TwilightNavCanvas from './TwilightNavCanvas';
+import HolidayNavCanvas, { getActiveHoliday } from './HolidayNavCanvas';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -183,6 +184,15 @@ export default function WeekView() {
       : `${c1}, ${c2}`;
     return { background: `linear-gradient(90deg, ${stops})` };
   })();
+
+  const activeHoliday = navStyleCfg?.easterEggs
+    ? getActiveHoliday(navStyleCfg?.testHoliday ?? null)
+    : null;
+
+  const navDivStyle = activeHoliday
+    ? { ...navBg, position: 'relative', overflow: 'hidden' }
+    : navBg;
+
   const isMobile    = useIsMobile();
   const enrichments = useSportsEnrichment();
 
@@ -275,9 +285,10 @@ export default function WeekView() {
     <div className="main-area">
       {/* Desktop nav */}
       {!isMobile && (
-        <div className="week-nav" style={navBg}>
+        <div className="week-nav" style={navDivStyle}>
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
+          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} />}
           <button className="btn-icon" onClick={prevWeek}>‹</button>
           <span>{formatWeekLabel(days)}</span>
           <button className="btn" onClick={goToday}>Today</button>
@@ -287,9 +298,10 @@ export default function WeekView() {
 
       {/* Mobile nav */}
       {isMobile && (
-        <div className="week-nav" style={navBg}>
+        <div className="week-nav" style={navDivStyle}>
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
+          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} />}
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
           <button className="btn-icon" onClick={() => {
             if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }
