@@ -143,7 +143,7 @@ Log in as admin and open **Settings** via the hamburger menu (☰). Key tabs to 
 - **Sports** — configure which sports calendars get live enrichment (MLB, NHL, NFL, Golf, F1, NASCAR); set per-sport detail level (Score only / Box Score / Full Detail) and toggle the score chip on event cards
 - **Event Icons** — assign emoji to events by keyword (e.g. "soccer" → ⚽)
 - **Event Filters** — hide events whose title matches keywords (e.g. hide all "Busy" blocks)
-- **Display** — font size, accent color, nav bar theme, app name; favicon and header icon are independently configurable (predefined icons, custom monogram up to 4 characters, or upload your own image)
+- **Display** — font size, accent color, nav bar theme, app name; favicon and header icon are independently configurable (predefined icons, custom monogram up to 4 characters, or upload your own image); enable **holiday easter eggs** — animated canvas overlays for 11 holidays (New Year's, Valentine's, St. Patrick's, Easter, Mother's Day, Memorial Day, Father's Day, Fourth of July, Halloween, Thanksgiving, Christmas) with a per-holiday test mode for preview
 
 ---
 

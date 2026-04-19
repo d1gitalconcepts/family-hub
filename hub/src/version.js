@@ -1,6 +1,19 @@
-export const APP_VERSION = '1.9.0';
+export const APP_VERSION = '1.10.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.0',
+    date: 'April 2026',
+    notes: [
+      'Holiday easter eggs: animated canvas overlays for 11 holidays — New Year\'s, Valentine\'s Day, St. Patrick\'s Day, Easter, Mother\'s Day, Memorial Day, Father\'s Day, Fourth of July, Halloween, Thanksgiving, Christmas',
+      'New Year\'s: Times Square-style LED ball drops across the nav bar throughout Dec 31, reaches the right at midnight; confetti + fireworks at ball drop',
+      'St. Patrick\'s Day: geometric rainbow arch landing in the pot of gold, heart-shaped shamrock leaves with midribs, occasional 4-leaf clovers with gold sparkle',
+      'Christmas: present piles grow progressively Dec 18→25; test mode shows accelerated animation; 6 large presents across two tree clusters',
+      'All holiday animations rendered behind nav buttons via z-index fix (canvas was previously covering buttons on mobile)',
+      'Mobile nav decluttered: removed redundant «» week-skip buttons (‹/› already wrap weeks at boundaries)',
+      'Easter eggs admin controls: enable/disable toggle + per-holiday test mode in Display settings',
+    ],
+  },
   {
     version: '1.9.0',
     date: 'April 2026',
