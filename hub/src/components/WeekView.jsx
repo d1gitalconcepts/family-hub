@@ -288,7 +288,7 @@ export default function WeekView() {
         <div className="week-nav" style={navDivStyle}>
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
-          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} />}
+          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
           <button className="btn-icon" onClick={prevWeek}>‹</button>
           <span>{formatWeekLabel(days)}</span>
           <button className="btn" onClick={goToday}>Today</button>
@@ -301,7 +301,7 @@ export default function WeekView() {
         <div className="week-nav" style={navDivStyle}>
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
-          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} />}
+          {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
           <button className="btn-icon" onClick={() => {
             if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }

@@ -89,14 +89,21 @@ function heart(ctx, cx, cy, size) {
   ctx.restore();
 }
 
+function shamrockLeaf(ctx, cx, cy, r, rotation) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
+  ctx.beginPath(); ctx.arc(-r*0.38, 0, r*0.62, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( r*0.38, 0, r*0.62, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 function shamrock(ctx, cx, cy, r) {
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2 - Math.PI / 2;
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * r * 0.6, cy + Math.sin(a) * r * 0.6, r, 0, Math.PI * 2);
-    ctx.fill();
+  for (let i=0; i<3; i++) {
+    const a = (i/3)*Math.PI*2 - Math.PI/2;
+    shamrockLeaf(ctx, cx+Math.cos(a)*r*0.72, cy+Math.sin(a)*r*0.72, r*0.58, a+Math.PI/2);
   }
-  ctx.beginPath(); ctx.moveTo(cx, cy + r * 0.3); ctx.lineTo(cx, cy + r * 1.8); ctx.stroke();
+  ctx.lineWidth=r*0.14; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(cx, cy+r*0.2);
+  ctx.bezierCurveTo(cx+r*0.15,cy+r*0.65,cx-r*0.08,cy+r*1.1,cx,cy+r*1.7); ctx.stroke();
 }
 
 function pumpkin(ctx, cx, cy, r) {
@@ -233,15 +240,67 @@ function drawFlower(ctx, cx, cy, r, col) {
 }
 
 function drawButterfly(ctx, cx, cy, r, flapPhase, hue) {
-  const wa = Math.abs(Math.sin(flapPhase) * 0.6 + 0.1);
+  const wa = Math.abs(Math.sin(flapPhase)*0.65+0.1);
   ctx.save(); ctx.translate(cx, cy);
-  ctx.fillStyle = `hsla(${hue},80%,65%,0.82)`;
-  ctx.beginPath(); ctx.ellipse(-r*wa*0.55,-r*0.1,r*wa*0.6,r*0.42,-0.3,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(-r*wa*0.45, r*0.18,r*wa*0.45,r*0.28, 0.3,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( r*wa*0.55,-r*0.1,r*wa*0.6,r*0.42, 0.3,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse( r*wa*0.45, r*0.18,r*wa*0.45,r*0.28,-0.3,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = `hsla(${hue+40},60%,25%,0.9)`;
-  ctx.beginPath(); ctx.ellipse(0,0,r*0.1,r*0.42,0,0,Math.PI*2); ctx.fill();
+  // Upper wings
+  ctx.fillStyle=`hsla(${hue},82%,58%,0.87)`;
+  ctx.beginPath(); ctx.ellipse(-r*wa*0.62,-r*0.1,r*wa*0.68,r*0.46,-0.22,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( r*wa*0.62,-r*0.1,r*wa*0.68,r*0.46, 0.22,0,Math.PI*2); ctx.fill();
+  // Lower wings
+  ctx.fillStyle=`hsla(${hue+15},76%,54%,0.82)`;
+  ctx.beginPath(); ctx.ellipse(-r*wa*0.52,r*0.22,r*wa*0.52,r*0.34, 0.28,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( r*wa*0.52,r*0.22,r*wa*0.52,r*0.34,-0.28,0,Math.PI*2); ctx.fill();
+  // Wing spots
+  if (wa>0.18) {
+    ctx.fillStyle=`hsla(${hue-30},55%,22%,0.55)`;
+    for (const [dx,dy] of [[-wa*r*0.58,-r*0.04],[wa*r*0.58,-r*0.04],[-wa*r*0.38,r*0.14],[wa*r*0.38,r*0.14]]) {
+      ctx.beginPath(); ctx.arc(dx,dy,r*0.1,0,Math.PI*2); ctx.fill();
+    }
+  }
+  // Body
+  ctx.fillStyle=`hsla(${hue+40},60%,18%,0.92)`;
+  ctx.beginPath(); ctx.ellipse(0,0,r*0.1,r*0.5,0,0,Math.PI*2); ctx.fill();
+  // Antennae
+  ctx.strokeStyle=`hsla(${hue+40},50%,18%,0.7)`; ctx.lineWidth=r*0.04;
+  ctx.beginPath(); ctx.moveTo(-r*0.06,-r*0.42); ctx.bezierCurveTo(-r*0.18,-r*0.62,-r*0.28,-r*0.76,-r*0.14,-r*0.88); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( r*0.06,-r*0.42); ctx.bezierCurveTo( r*0.18,-r*0.62, r*0.28,-r*0.76, r*0.14,-r*0.88); ctx.stroke();
+  ctx.fillStyle=`hsla(${hue},72%,46%,0.82)`;
+  ctx.beginPath(); ctx.arc(-r*0.14,-r*0.90,r*0.07,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( r*0.14,-r*0.90,r*0.07,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawHummingbird(ctx, cx, cy, r, t) {
+  ctx.save(); ctx.translate(cx, cy);
+  // Blurry wings (3 overlapping semi-transparent ellipses per side)
+  for (let j=0; j<3; j++) {
+    const wAngle = Math.sin(t*0.45+j*0.4)*0.55;
+    ctx.fillStyle='rgba(80,190,100,0.18)';
+    ctx.save(); ctx.rotate(-wAngle);
+    ctx.beginPath(); ctx.ellipse(-r*0.58,-r*0.08,r*0.72,r*0.22,-0.3,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.save(); ctx.rotate(wAngle);
+    ctx.beginPath(); ctx.ellipse( r*0.58,-r*0.08,r*0.72,r*0.22, 0.3,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // Body (iridescent green)
+  ctx.fillStyle='rgba(35,175,75,0.92)';
+  ctx.beginPath(); ctx.ellipse(0,0,r*0.26,r*0.55,0.12,0,Math.PI*2); ctx.fill();
+  // Tail
+  ctx.fillStyle='rgba(25,130,55,0.85)';
+  ctx.beginPath(); ctx.moveTo(-r*0.14,r*0.5); ctx.lineTo(-r*0.24,r*0.88); ctx.lineTo(r*0.06,r*0.85); ctx.lineTo(r*0.1,r*0.5); ctx.closePath(); ctx.fill();
+  // Ruby throat
+  ctx.fillStyle='rgba(210,30,30,0.88)';
+  ctx.beginPath(); ctx.ellipse(0,r*0.18,r*0.17,r*0.24,0,0,Math.PI*2); ctx.fill();
+  // Head
+  ctx.fillStyle='rgba(30,140,60,0.94)';
+  ctx.beginPath(); ctx.arc(0,-r*0.42,r*0.22,0,Math.PI*2); ctx.fill();
+  // Eye
+  ctx.fillStyle='#111'; ctx.beginPath(); ctx.arc(r*0.1,-r*0.44,r*0.07,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(r*0.13,-r*0.46,r*0.03,0,Math.PI*2); ctx.fill();
+  // Bill
+  ctx.strokeStyle='rgba(35,45,18,0.88)'; ctx.lineWidth=r*0.07; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(r*0.07,-r*0.5); ctx.lineTo(r*0.38,-r*0.84); ctx.stroke();
   ctx.restore();
 }
 
@@ -346,6 +405,21 @@ function drawHalloween(ctx, w, h, t, s) {
 
 // ─── Christmas ────────────────────────────────────────────────────────────────
 
+function drawPresent(ctx, cx, cy, w2, h2, boxCol, ribbonCol) {
+  // Box body
+  ctx.fillStyle = boxCol;
+  ctx.beginPath(); ctx.roundRect(cx-w2,cy-h2,w2*2,h2*2,w2*0.12); ctx.fill();
+  // Ribbon vertical
+  ctx.fillStyle = ribbonCol;
+  ctx.fillRect(cx-w2*0.1,cy-h2,w2*0.2,h2*2);
+  // Ribbon horizontal
+  ctx.fillRect(cx-w2,cy-h2*0.14,w2*2,h2*0.28);
+  // Bow loops
+  ctx.beginPath(); ctx.ellipse(cx-w2*0.3,cy-h2-h2*0.35,w2*0.3,h2*0.35,-0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx+w2*0.3,cy-h2-h2*0.35,w2*0.3,h2*0.35, 0.4,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy-h2,h2*0.2,0,Math.PI*2); ctx.fill();
+}
+
 function initChristmas(w, h) {
   return {
     snow: Array.from({ length: 55 }, () => ({
@@ -353,6 +427,12 @@ function initChristmas(w, h) {
       speed: rand(0.25,0.7), drift: rand(-0.15,0.15), alpha: rand(0.55,0.95), phase: rand(0,Math.PI*2),
     })),
     trees: [{ x: w*0.07, cols: ['#e83030','#f8c030','#30a8e8'] }, { x: w*0.93, cols: ['#e83030','#30e860','#e830a8'] }],
+    presents: [
+      { x: w*0.07 - h*0.22, cy: h*0.92, w2: h*0.14, h2: h*0.12, boxCol:'rgba(220,30,30,0.9)',   ribbonCol:'rgba(255,220,30,0.95)' },
+      { x: w*0.07 + h*0.22, cy: h*0.92, w2: h*0.1,  h2: h*0.14, boxCol:'rgba(30,100,200,0.9)',  ribbonCol:'rgba(200,30,30,0.95)' },
+      { x: w*0.93 - h*0.2,  cy: h*0.92, w2: h*0.12, h2: h*0.11, boxCol:'rgba(30,180,80,0.9)',   ribbonCol:'rgba(255,200,20,0.95)' },
+      { x: w*0.93 + h*0.18, cy: h*0.92, w2: h*0.09, h2: h*0.13, boxCol:'rgba(180,30,180,0.9)',  ribbonCol:'rgba(255,255,255,0.95)' },
+    ],
   };
 }
 
@@ -363,6 +443,7 @@ function drawChristmas(ctx, w, h, t, s) {
     const pos = [[x-th*0.28,h*0.92-th*0.1],[x+th*0.18,h*0.92-th*0.28],[x-th*0.1,h*0.92-th*0.48]];
     pos.forEach(([ox,oy],i) => { ctx.fillStyle = cols[i]; ctx.beginPath(); ctx.arc(ox,oy,th*0.07,0,Math.PI*2); ctx.fill(); });
   }
+  for (const p of s.presents) drawPresent(ctx, p.x, p.cy, p.w2, p.h2, p.boxCol, p.ribbonCol);
   for (const f of s.snow) {
     f.y += f.speed; f.x += f.drift + Math.sin(t*0.015 + f.phase)*0.2;
     if (f.y > h + f.r) { f.y = -f.r; f.x = rand(0,w); }
@@ -395,32 +476,74 @@ function initNewYears(w, h) {
   };
 }
 
-function drawNewYears(ctx, w, h, t, s) {
-  const prog = getBallProgress();
-  const bx = w*(0.06 + prog*0.88), by = h*0.38;
-  const now = new Date();
-  const isMidnight = now.getMonth()===0 && now.getDate()===1 && now.getHours()===0 && now.getMinutes()<10;
+function drawTimesSquareBall(ctx, cx, cy, r, t) {
+  // Outer glow
+  const glow = ctx.createRadialGradient(cx, cy, r*0.4, cx, cy, r*2.8);
+  glow.addColorStop(0, 'rgba(180,180,255,0.30)');
+  glow.addColorStop(1, 'rgba(100,100,255,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, r*2.8, 0, Math.PI*2); ctx.fillStyle=glow; ctx.fill();
 
-  const glow = ctx.createRadialGradient(bx,by,2,bx,by,h*0.55);
-  glow.addColorStop(0,'rgba(255,220,60,0.28)'); glow.addColorStop(1,'rgba(255,180,20,0)');
-  ctx.beginPath(); ctx.arc(bx,by,h*0.55,0,Math.PI*2); ctx.fillStyle=glow; ctx.fill();
+  // Silver ball base
+  const ballGrad = ctx.createRadialGradient(cx-r*0.32, cy-r*0.32, r*0.04, cx, cy, r);
+  ballGrad.addColorStop(0, 'rgba(255,255,255,0.98)');
+  ballGrad.addColorStop(0.25, 'rgba(215,215,235,0.95)');
+  ballGrad.addColorStop(0.65, 'rgba(145,145,175,0.92)');
+  ballGrad.addColorStop(1, 'rgba(75,75,115,0.88)');
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fillStyle=ballGrad; ctx.fill();
 
-  ctx.strokeStyle='rgba(150,140,120,0.55)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(w*0.06,h*0.38); ctx.lineTo(bx,by); ctx.stroke();
-
-  const r = h*0.24;
-  const bg = ctx.createRadialGradient(bx-r*0.28,by-r*0.28,r*0.05,bx,by,r);
-  bg.addColorStop(0,'rgba(255,240,200,0.98)'); bg.addColorStop(0.5,'rgba(200,160,60,0.92)'); bg.addColorStop(1,'rgba(120,90,20,0.85)');
-  ctx.beginPath(); ctx.arc(bx,by,r,0,Math.PI*2); ctx.fillStyle=bg; ctx.fill();
-
-  for (let i=0; i<8; i++) {
-    const a=(i/8)*Math.PI*2 + t*0.008;
-    const pulse = 0.5 + 0.5*Math.sin(t*0.04+i*1.1);
-    ctx.fillStyle=`rgba(255,255,200,${(pulse*0.9).toFixed(2)})`;
-    ctx.beginPath(); ctx.arc(bx+Math.cos(a)*r*0.72,by+Math.sin(a)*r*0.72,r*0.06,0,Math.PI*2); ctx.fill();
+  // LED triangle panels
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r*0.97, 0, Math.PI*2); ctx.clip();
+  const ledCols = [
+    'rgba(255,40,40,0.75)', 'rgba(40,80,255,0.75)', 'rgba(255,210,20,0.75)',
+    'rgba(40,220,80,0.75)', 'rgba(255,80,200,0.75)', 'rgba(80,220,255,0.75)',
+  ];
+  const rows=6, cols=8;
+  for (let row=0; row<rows; row++) {
+    for (let col=0; col<cols; col++) {
+      const tw=r*2/cols, th=r*2/rows;
+      const x=cx-r+col*tw, y=cy-r+row*th;
+      const cIdx=Math.floor((col+row*2+Math.floor(t/20))%ledCols.length);
+      const pulse = 0.35 + 0.65*Math.sin(t*0.07 + col*0.9 + row*1.4);
+      ctx.globalAlpha = pulse * 0.72;
+      ctx.fillStyle = ledCols[cIdx];
+      ctx.beginPath();
+      if ((row+col)%2===0) { ctx.moveTo(x,y+th); ctx.lineTo(x+tw/2,y); ctx.lineTo(x+tw,y+th); }
+      else                 { ctx.moveTo(x,y); ctx.lineTo(x+tw/2,y+th); ctx.lineTo(x+tw,y); }
+      ctx.closePath(); ctx.fill();
+    }
   }
+  ctx.globalAlpha=1;
 
-  if (isMidnight) {
+  // Metallic grid seams
+  ctx.strokeStyle='rgba(160,160,200,0.28)'; ctx.lineWidth=0.5;
+  for (let row=0; row<=rows; row++) { const y=cy-r+row*(r*2/rows); ctx.beginPath(); ctx.moveTo(cx-r,y); ctx.lineTo(cx+r,y); ctx.stroke(); }
+  for (let col=0; col<=cols; col++) { const x=cx-r+col*(r*2/cols); ctx.beginPath(); ctx.moveTo(x,cy-r); ctx.lineTo(x,cy+r); ctx.stroke(); }
+  ctx.restore();
+
+  // Specular highlight
+  ctx.fillStyle='rgba(255,255,255,0.40)';
+  ctx.beginPath(); ctx.ellipse(cx-r*0.3,cy-r*0.3,r*0.22,r*0.15,-Math.PI/4,0,Math.PI*2); ctx.fill();
+}
+
+function drawNewYears(ctx, w, h, t, s, isTest) {
+  const prog = isTest ? (t % 1200) / 1200 : getBallProgress();
+  const bx = w*(0.05 + prog*0.90), by = h*0.5;
+  const now = new Date();
+  const isMidnight = !isTest && now.getMonth()===0 && now.getDate()===1 && now.getHours()===0 && now.getMinutes()<10;
+
+  // Cable from start to ball
+  ctx.strokeStyle='rgba(140,130,110,0.50)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(w*0.05,h*0.5); ctx.lineTo(bx,by); ctx.stroke();
+
+  // Starting pole
+  ctx.strokeStyle='rgba(130,120,100,0.65)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(w*0.05,h*0.15); ctx.lineTo(w*0.05,h*0.85); ctx.stroke();
+
+  const r = Math.min(h*0.32, 20);
+  drawTimesSquareBall(ctx, bx, by, r, t);
+
+  if (isMidnight || (isTest && prog > 0.92)) {
     if (!s.midnight) { s.midnight=true; for (const c of s.confetti) { c.active=true; c.y=rand(-h*0.5,0); } }
     if (t%80<2 && s.bursts.length<6) s.bursts.push({x:rand(w*0.2,w*0.8),y:rand(h*0.1,h*0.7),startT:t,hue:Math.floor(rand(0,360))});
   }
@@ -461,35 +584,88 @@ function drawValentines(ctx, w, h, t, s) {
 
 function initMardiGras(w, h) {
   const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
-  const beads = [];
-  for (let i=0; i<3; i++) {
-    const y = h*(0.28+i*0.22);
-    for (let j=0; j<Math.ceil(w/14); j++) beads.push({x:j*14,baseY:y,col:cols[(i+j)%3],phase:rand(0,Math.PI*2)});
-  }
-  return { beads, masks:[{x:w*0.2,side:1},{x:w*0.8,side:-1}] };
+  return {
+    confetti: Array.from({length:40}, () => ({
+      x: rand(0,w), y: rand(-h,h), vx: rand(-0.3,0.3), vy: rand(0.4,1.1),
+      r: rand(2.5,6), col: cols[Math.floor(rand(0,3))], rot: rand(0,Math.PI*2), spin: rand(-0.05,0.05), alpha: rand(0.6,0.92),
+    })),
+    beadStrings: [
+      { y: h*0.28, offset: 0 },
+      { y: h*0.68, offset: w*0.3 },
+    ],
+    jesterHat: { x: w*0.88 },
+  };
+}
+
+function drawFleurDeLis(ctx, cx, cy, r) {
+  ctx.save(); ctx.translate(cx, cy);
+  // Center petal (tall)
+  ctx.beginPath(); ctx.ellipse(0, -r*0.5, r*0.22, r*0.65, 0, 0, Math.PI*2); ctx.fill();
+  // Left petal
+  ctx.beginPath(); ctx.ellipse(-r*0.38, -r*0.2, r*0.42, r*0.2, -0.6, 0, Math.PI*2); ctx.fill();
+  // Right petal
+  ctx.beginPath(); ctx.ellipse( r*0.38, -r*0.2, r*0.42, r*0.2,  0.6, 0, Math.PI*2); ctx.fill();
+  // Base band
+  ctx.beginPath(); ctx.rect(-r*0.22, r*0.1, r*0.44, r*0.2); ctx.fill();
+  // Lower split
+  ctx.beginPath(); ctx.ellipse(-r*0.22, r*0.38, r*0.2, r*0.18, -0.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( r*0.22, r*0.38, r*0.2, r*0.18,  0.5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawJesterHat(ctx, cx, cy, r) {
+  const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
+  // Brim
+  ctx.fillStyle = cols[0];
+  ctx.beginPath(); ctx.ellipse(cx, cy, r*1.0, r*0.2, 0, 0, Math.PI*2); ctx.fill();
+  // Left lobe
+  ctx.fillStyle = cols[1];
+  ctx.beginPath(); ctx.ellipse(cx-r*0.5, cy-r*0.8, r*0.38, r*0.72, -0.35, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,215,20,0.9)';
+  ctx.beginPath(); ctx.arc(cx-r*0.72, cy-r*1.35, r*0.15, 0, Math.PI*2); ctx.fill();
+  // Right lobe
+  ctx.fillStyle = cols[2];
+  ctx.beginPath(); ctx.ellipse(cx+r*0.5, cy-r*0.8, r*0.38, r*0.72, 0.35, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(120,40,200,0.9)';
+  ctx.beginPath(); ctx.arc(cx+r*0.72, cy-r*1.35, r*0.15, 0, Math.PI*2); ctx.fill();
+  // Center top
+  ctx.fillStyle = cols[0];
+  ctx.beginPath(); ctx.ellipse(cx, cy-r*0.9, r*0.28, r*0.7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = cols[2];
+  ctx.beginPath(); ctx.arc(cx, cy-r*1.48, r*0.15, 0, Math.PI*2); ctx.fill();
 }
 
 function drawMardiGras(ctx, w, h, t, s) {
-  for (const b of s.beads) {
-    const y = b.baseY + Math.sin(t*0.02+b.phase)*h*0.08;
-    ctx.beginPath(); ctx.arc(b.x,y,5,0,Math.PI*2); ctx.fillStyle=b.col; ctx.fill();
-  }
-  for (const { x, side } of s.masks) {
-    ctx.save(); ctx.translate(x,h*0.5); ctx.scale(side,1);
-    ctx.fillStyle='rgba(180,130,30,0.88)';
-    ctx.beginPath(); ctx.ellipse(0,0,h*0.55,h*0.32,0,0,Math.PI*2); ctx.fill();
-    ctx.globalCompositeOperation='destination-out';
-    ctx.beginPath(); ctx.ellipse(-h*0.22,-h*0.04,h*0.14,h*0.1,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse( h*0.22,-h*0.04,h*0.14,h*0.1,0,0,Math.PI*2); ctx.fill();
-    ctx.globalCompositeOperation='source-over';
-    const fCols=['#7B2FBE','#2DAA4E','#F0C020','#7B2FBE','#e040a0'];
-    for (let i=0; i<5; i++) {
-      const a=-Math.PI*0.5+((i-2)/4)*Math.PI*0.8;
-      ctx.fillStyle=fCols[i]; ctx.save(); ctx.translate(0,-h*0.28); ctx.rotate(a);
-      ctx.beginPath(); ctx.ellipse(0,-h*0.22,h*0.06,h*0.25,0,0,Math.PI*2); ctx.fill(); ctx.restore();
+  // Slow bead strands (single arc each)
+  for (const bs of s.beadStrings) {
+    const cols = ['#7B2FBE','#2DAA4E','#F0C020'];
+    const count = Math.ceil(w / 18);
+    for (let i=0; i<count; i++) {
+      const x = (i * 18 + bs.offset + t * 0.12) % (w + 18) - 9;
+      const y = bs.y + Math.sin(i * 0.6 + t * 0.015) * h * 0.07;
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2);
+      ctx.fillStyle = cols[i % 3]; ctx.fill();
     }
-    ctx.restore();
   }
+
+  // Fleur-de-lis (2 floating)
+  const fleurPositions = [[w*0.2, h*0.5], [w*0.55, h*0.45]];
+  for (const [fx, fy] of fleurPositions) {
+    ctx.fillStyle = 'rgba(240,190,20,0.72)';
+    drawFleurDeLis(ctx, fx, fy + Math.sin(t*0.018)*h*0.05, h*0.3);
+  }
+
+  // Jester hat on right
+  drawJesterHat(ctx, s.jesterHat.x, h*0.62, h*0.32);
+
+  // Confetti falling
+  for (const c of s.confetti) {
+    c.x+=c.vx; c.y+=c.vy; c.rot+=c.spin;
+    if (c.y>h+c.r) { c.y=-c.r; c.x=rand(0,w); }
+    ctx.save(); ctx.translate(c.x,c.y); ctx.rotate(c.rot); ctx.globalAlpha=c.alpha;
+    ctx.fillStyle=c.col; ctx.fillRect(-c.r,-c.r*0.5,c.r*2,c.r); ctx.restore();
+  }
+  ctx.globalAlpha=1;
 }
 
 // ─── St. Patrick's Day ────────────────────────────────────────────────────────
@@ -502,27 +678,58 @@ function initStPatricks(w, h) {
 }
 
 function drawStPatricks(ctx, w, h, t, s) {
+  // Pot of gold anchor position
+  const px = w*0.88, py = h*0.62, pr = h*0.32;
+
+  // Rainbow arching from left to pot of gold (6 stripes)
   const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#6020b0'];
+  const rx1 = 0, ry1 = py, rx2 = px, ry2 = py - pr*0.3;
+  const cpx = (rx1+rx2)*0.5, cpy = Math.min(ry1,ry2) - h*0.55;
   for (let i=0; i<arcCols.length; i++) {
-    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.068; ctx.globalAlpha=0.35;
-    ctx.beginPath(); ctx.arc(w*0.5,-h*0.5,w*0.55-i*h*0.068,Math.PI*0.15,Math.PI*0.85); ctx.stroke();
+    ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.065; ctx.globalAlpha=0.42;
+    ctx.beginPath(); ctx.moveTo(rx1, ry1-i*h*0.048); ctx.quadraticCurveTo(cpx, cpy-i*h*0.048, rx2, ry2-i*h*0.048); ctx.stroke();
   }
   ctx.globalAlpha=1;
 
-  const px=w*0.92, py=h*0.75, pr=h*0.3;
-  ctx.fillStyle='rgba(20,15,10,0.85)';
-  ctx.beginPath(); ctx.ellipse(px,py,pr*0.7,pr,0,0,Math.PI*2); ctx.fill();
-  for (let i=-1; i<=1; i++) {
-    ctx.fillStyle='rgba(240,190,30,0.9)';
-    ctx.beginPath(); ctx.ellipse(px+i*pr*0.3,py-pr*0.15,pr*0.22,pr*0.14,0,0,Math.PI*2); ctx.fill();
+  // Cauldron/pot shape
+  const topW=pr*0.9, botW=pr*0.52, potH=pr*0.92;
+  ctx.fillStyle='rgba(22,18,18,0.93)';
+  ctx.beginPath();
+  ctx.moveTo(px-botW, py+potH);
+  ctx.lineTo(px+botW, py+potH);
+  ctx.lineTo(px+topW, py);
+  ctx.lineTo(px-topW, py);
+  ctx.closePath(); ctx.fill();
+  // Rim
+  ctx.fillStyle='rgba(42,36,36,0.96)';
+  ctx.beginPath(); ctx.ellipse(px,py,topW,topW*0.22,0,0,Math.PI*2); ctx.fill();
+  // Gold inside
+  ctx.fillStyle='rgba(245,196,36,0.94)';
+  ctx.beginPath(); ctx.ellipse(px,py,topW*0.84,topW*0.18,0,0,Math.PI*2); ctx.fill();
+  // Coin pile spilling up
+  const coinCols=['rgba(255,215,40,0.95)','rgba(240,190,30,0.90)','rgba(220,170,20,0.88)'];
+  for (let i=-2; i<=2; i++) {
+    ctx.fillStyle=coinCols[(i+2)%3];
+    ctx.beginPath(); ctx.ellipse(px+i*topW*0.3, py-topW*0.12, topW*0.2, topW*0.11, 0,0,Math.PI*2); ctx.fill();
+  }
+  // Loose coins on ground
+  for (let i=0; i<6; i++) {
+    ctx.fillStyle='rgba(255,210,35,0.88)';
+    ctx.beginPath(); ctx.ellipse(px-topW*0.6+i*topW*0.24, py+potH+pr*0.12, topW*0.13, topW*0.07, rand(-0.3,0.3),0,Math.PI*2); ctx.fill();
+  }
+  // Legs
+  ctx.fillStyle='rgba(22,18,18,0.9)';
+  for (const dx of [-botW*0.6, 0, botW*0.6]) {
+    ctx.beginPath(); ctx.ellipse(px+dx,py+potH+pr*0.04,pr*0.1,pr*0.07,0,0,Math.PI*2); ctx.fill();
   }
 
+  // Shamrocks
   for (const sh of s.shamrocks) {
     sh.x+=sh.vx; sh.y+=sh.vy;
     if (sh.x>w+sh.r*2) sh.x=-sh.r*2; if (sh.x<-sh.r*2) sh.x=w+sh.r*2;
     if (sh.y>h+sh.r*2) sh.y=-sh.r*2; if (sh.y<-sh.r*2) sh.y=h+sh.r*2;
     ctx.save(); ctx.globalAlpha=sh.alpha;
-    ctx.fillStyle='rgba(30,160,50,0.9)'; ctx.strokeStyle='rgba(20,120,35,0.8)'; ctx.lineWidth=1;
+    ctx.fillStyle='rgba(30,160,50,0.9)'; ctx.strokeStyle='rgba(20,120,35,0.8)'; ctx.lineWidth=sh.r*0.12;
     ctx.translate(sh.x,sh.y); ctx.rotate(Math.sin(t*0.012+sh.phase)*0.18);
     shamrock(ctx,0,0,sh.r); ctx.restore();
   }
@@ -556,6 +763,10 @@ function initMothersDay(w, h) {
   return {
     flowers: Array.from({length:10},(_,i)=>({x:rand(0,w),baseY:rand(h*0.3,h*0.75),r:rand(h*0.12,h*0.22),col:cols[i%cols.length],phase:rand(0,Math.PI*2),sway:rand(0.008,0.018)})),
     butterflies: Array.from({length:4},()=>({x:rand(0,w),y:rand(0,h),dx:rand(-0.35,0.35),dy:rand(-0.2,0.2),r:h*0.14,phase:rand(0,Math.PI*2),hue:rand(260,340)})),
+    hummingbirds: Array.from({length:2},()=>({
+      x:rand(0,w), baseY:rand(h*0.2,h*0.75), r:h*0.2,
+      dx:rand(-0.4,0.4), phase:rand(0,Math.PI*2), hue:rand(120,160),
+    })),
   };
 }
 
@@ -566,6 +777,12 @@ function drawMothersDay(ctx, w, h, t, s) {
     if (b.x>w+b.r) b.x=-b.r; if (b.x<-b.r) b.x=w+b.r;
     if (b.y>h+b.r) b.y=-b.r; if (b.y<-b.r) b.y=h+b.r;
     drawButterfly(ctx,b.x,b.y,b.r,t*0.18+b.phase,b.hue);
+  }
+  for (const hb of s.hummingbirds) {
+    hb.x += hb.dx + Math.sin(t*0.022+hb.phase)*0.4;
+    const hy = hb.baseY + Math.sin(t*0.035+hb.phase)*h*0.08;
+    if (hb.x>w+hb.r) hb.x=-hb.r; if (hb.x<-hb.r) hb.x=w+hb.r;
+    drawHummingbird(ctx, hb.x, hy, hb.r, t);
   }
 }
 
@@ -580,7 +797,7 @@ function initMemorialDay(w, h) {
 
 function drawMemorialDay(ctx, w, h, t, s) {
   for (const p of s.poppies) drawPoppy(ctx, p.x, p.baseY+Math.sin(t*0.015+p.phase)*h*0.04, p.r);
-  for (const f of s.flags) drawFlag(ctx, f.x, h*0.85, h*0.9, h*0.6, t*0.04+f.phase);
+  for (const f of s.flags) drawFlag(ctx, f.x, h*0.94, h*0.65, h*0.5, t*0.04+f.phase);
 }
 
 // ─── Father's Day ─────────────────────────────────────────────────────────────
@@ -640,6 +857,45 @@ function drawJuly4(ctx, w, h, t, s) {
 
 // ─── Thanksgiving ─────────────────────────────────────────────────────────────
 
+function drawCornucopia(ctx, cx, cy, r) {
+  // Horn body
+  ctx.fillStyle='rgba(155,95,28,0.88)';
+  ctx.beginPath();
+  ctx.moveTo(cx-r,    cy-r*0.38);
+  ctx.quadraticCurveTo(cx+r*0.15, cy-r*0.58, cx+r*0.88, cy-r*0.08);
+  ctx.quadraticCurveTo(cx+r,      cy+r*0.05,  cx+r*0.88, cy+r*0.18);
+  ctx.quadraticCurveTo(cx+r*0.5,  cy+r*0.28,  cx-r,      cy+r*0.22);
+  ctx.closePath(); ctx.fill();
+  // Horn shading
+  ctx.fillStyle='rgba(110,68,18,0.35)';
+  ctx.beginPath();
+  ctx.moveTo(cx-r*0.5,cy-r*0.18); ctx.quadraticCurveTo(cx+r*0.4,cy-r*0.3,cx+r*0.88,cy-r*0.04);
+  ctx.lineTo(cx+r*0.88,cy+r*0.04); ctx.quadraticCurveTo(cx+r*0.4,cy-r*0.1,cx-r*0.5,cy+r*0.04); ctx.closePath(); ctx.fill();
+  // Fruits/veggies spilling out
+  const items=[
+    {dx:-r*0.62,dy:-r*0.28,r:r*0.24,col:'rgba(215,55,30,0.92)'},
+    {dx:-r*0.32,dy:-r*0.42,r:r*0.2, col:'rgba(240,185,30,0.92)'},
+    {dx:-r*0.85,dy:-r*0.05,r:r*0.22,col:'rgba(220,95,20,0.90)'},
+    {dx:-r*0.52,dy: r*0.08,r:r*0.18,col:'rgba(70,155,40,0.88)'},
+    {dx:-r*1.05,dy:-r*0.18,r:r*0.16,col:'rgba(195,145,25,0.90)'},
+  ];
+  for (const it of items) { ctx.fillStyle=it.col; ctx.beginPath(); ctx.arc(cx+it.dx,cy+it.dy,it.r,0,Math.PI*2); ctx.fill(); }
+}
+
+function drawPilgrimHat(ctx, cx, cy, r) {
+  const brimW=r*1.3, brimH=r*0.22;
+  ctx.fillStyle='rgba(14,11,11,0.93)';
+  ctx.beginPath(); ctx.ellipse(cx,cy,brimW,brimH,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx-r*0.68,cy); ctx.lineTo(cx-r*0.60,cy-r*1.8); ctx.lineTo(cx+r*0.60,cy-r*1.8); ctx.lineTo(cx+r*0.68,cy); ctx.closePath(); ctx.fill();
+  // White band
+  ctx.fillStyle='rgba(232,225,210,0.92)';
+  ctx.fillRect(cx-r*0.66,cy-r*0.36,r*1.32,r*0.27);
+  // Buckle
+  ctx.fillStyle='rgba(195,165,38,0.90)'; ctx.fillRect(cx-r*0.2,cy-r*0.32,r*0.4,r*0.19);
+  ctx.fillStyle='rgba(28,22,22,0.92)';   ctx.fillRect(cx-r*0.11,cy-r*0.28,r*0.22,r*0.11);
+}
+
 function initThanksgiving(w, h) {
   const cols=['#c84000','#e06010','#d04000','#c07010','#a03000'];
   return {
@@ -649,10 +905,14 @@ function initThanksgiving(w, h) {
       rot:rand(0,Math.PI*2), spin:rand(-0.02,0.02), alpha:rand(0.6,0.9),
     })),
     turkeys:[{x:-h*0.8,dx:0.38},{x:w*0.55,dx:0.28}],
+    cornucopia: { x: w*0.15, y: h*0.6 },
+    pilgrimHat: { x: w*0.88, y: h*0.55 },
   };
 }
 
 function drawThanksgiving(ctx, w, h, t, s) {
+  drawCornucopia(ctx, s.cornucopia.x, s.cornucopia.y, h*0.38);
+  drawPilgrimHat(ctx, s.pilgrimHat.x, s.pilgrimHat.y, h*0.28);
   for (const l of s.leaves) {
     l.x+=l.vx+Math.sin(t*0.015+l.x)*0.25; l.y+=l.vy; l.rot+=l.spin;
     if (l.y>h+l.r) { l.y=-l.r; l.x=rand(0,w); }
@@ -683,7 +943,7 @@ const DRAW_MAP = {
   thanksgiving: { init: initThanksgiving, draw: drawThanksgiving },
 };
 
-export default function HolidayNavCanvas({ holiday }) {
+export default function HolidayNavCanvas({ holiday, isTest }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -710,7 +970,7 @@ export default function HolidayNavCanvas({ holiday }) {
       const w = canvas.width, h = canvas.height;
       t++;
       ctx.clearRect(0, 0, w, h);
-      if (state) draw(ctx, w, h, t, state);
+      if (state) draw(ctx, w, h, t, state, isTest);
       animId = requestAnimationFrame(loop);
     }
 
