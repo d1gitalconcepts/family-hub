@@ -361,6 +361,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               style={{ width: 32, textAlign: 'center', fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
             />
             <input
+              type="text"
+              value={cal.abbrev || ''}
+              onChange={(e) => updateCalendar(cal.id, 'abbrev', e.target.value.slice(0, 4).toUpperCase() || null)}
+              placeholder="ABC"
+              title="Abbreviation badge (fallback when no emoji)"
+              style={{ width: 38, textAlign: 'center', fontSize: 'var(--s-sm)', fontWeight: 600, letterSpacing: '0.03em', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
+            />
+            <input
               className="cal-name-input"
               value={cal.name || ''}
               onChange={(e) => updateCalendar(cal.id, 'name', e.target.value)}

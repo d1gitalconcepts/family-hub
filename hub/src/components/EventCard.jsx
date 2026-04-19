@@ -94,7 +94,7 @@ function resolvePopoutElements(style) {
   ];
 }
 
-export default function EventCard({ event, calColor, calEmoji, iconRules, cardStyle, enrichment, sportsDisplay }) {
+export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRules, cardStyle, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -226,14 +226,26 @@ export default function EventCard({ event, calColor, calEmoji, iconRules, cardSt
         {visible.map(renderTextElement)}
       </div>
     );
-    if (emojiAsBadge && emoji) {
+    if (emojiAsBadge && (emoji || calAbbrev)) {
+      const badge = emoji ? (
+        <svg className="event-logo-circle" viewBox="0 0 32 32" width="28" height="28">
+          <circle cx="16" cy="16" r="15" fill="var(--cal-color, #4285f4)" opacity="0.2" />
+          <circle cx="16" cy="16" r="15" fill="none" stroke="var(--cal-color, #4285f4)" strokeWidth="1.5" opacity="0.5" />
+          <text x="16" y="22" textAnchor="middle" fontSize="18" fill="var(--cal-color, #4285f4)">{emoji}</text>
+        </svg>
+      ) : (
+        <svg className="event-logo-circle" viewBox="0 0 32 32" width="28" height="28">
+          <circle cx="16" cy="16" r="15" fill="var(--cal-color, #4285f4)" opacity="0.2" />
+          <circle cx="16" cy="16" r="15" fill="none" stroke="var(--cal-color, #4285f4)" strokeWidth="1.5" opacity="0.5" />
+          <text x="16" y={calAbbrev.length > 2 ? 20 : 21} textAnchor="middle"
+            fontSize={calAbbrev.length > 3 ? 7 : calAbbrev.length > 2 ? 8.5 : 10}
+            fontFamily="system-ui, sans-serif" fontWeight="700"
+            fill="var(--cal-color, #4285f4)">{calAbbrev}</text>
+        </svg>
+      );
       return (
         <div className="event-card-body event-card-body--badged" style={{ justifyContent }}>
-          <svg className="event-logo-circle" viewBox="0 0 32 32" width="28" height="28">
-            <circle cx="16" cy="16" r="15" fill="var(--cal-color, #4285f4)" opacity="0.2" />
-            <circle cx="16" cy="16" r="15" fill="none" stroke="var(--cal-color, #4285f4)" strokeWidth="1.5" opacity="0.5" />
-            <text x="16" y="22" textAnchor="middle" fontSize="18" fill="var(--cal-color, #4285f4)">{emoji}</text>
-          </svg>
+          {badge}
           {textCol}
         </div>
       );

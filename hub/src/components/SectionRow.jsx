@@ -17,12 +17,14 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   const calIds = new Set(section.calendarIds || []);
   const showForecast = calIds.has(FORECAST_ID);
 
-  const colorMap = {};
-  const emojiMap = {};
+  const colorMap  = {};
+  const emojiMap  = {};
+  const abbrevMap = {};
   const visibleIds = new Set();
   (calendarConfig || []).forEach((c) => {
-    colorMap[c.id] = c.color;
-    emojiMap[c.id] = c.emoji || null;
+    colorMap[c.id]  = c.color;
+    emojiMap[c.id]  = c.emoji  || null;
+    abbrevMap[c.id] = c.abbrev || null;
     if (calIds.has(c.id) && c.visible !== false) visibleIds.add(c.id);
   });
 
@@ -77,7 +79,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
               {forecastDay && <ForecastCard day={forecastDay} cardStyle={cardStyle} />}
               {dayEvents.map((e) => (
-                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} iconRules={iconRules} cardStyle={cardStyle} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} />
+                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} calAbbrev={abbrevMap[e.calendar_id]} iconRules={iconRules} cardStyle={cardStyle} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} />
               ))}
               {isEmpty && <span className="day-cell-empty">—</span>}
             </div>

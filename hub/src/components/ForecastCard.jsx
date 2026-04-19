@@ -211,18 +211,39 @@ export default function ForecastCard({ day, cardStyle }) {
     return hr % 3 === 0;
   });
 
+  const emojiAsBadge = cardStyle?.emojiAsBadge || false;
+
   return (
     <>
       <div className={`forecast-card${cardStyle?.chipStyle ? ' forecast-card--chip' : ''}`} onClick={() => setOpen(true)} style={{ cursor: 'pointer' }}>
-        <span className="forecast-emoji">{emoji}</span>
-        <span className="forecast-label">{label}</span>
-        <span className="forecast-temps">
-          <span className="forecast-high">{day.high}°</span>
-          <span className="forecast-sep">/</span>
-          <span className="forecast-low">{day.low}°</span>
-        </span>
-        {day.precip > 0 && (
-          <span className="forecast-precip">💧{day.precip}%</span>
+        {emojiAsBadge ? (
+          <div className="event-card-body event-card-body--badged" style={{ width: '100%' }}>
+            <svg className="event-logo-circle" viewBox="0 0 32 32" width="28" height="28">
+              <circle cx="16" cy="16" r="15" fill="#4fc3f7" opacity="0.18" />
+              <circle cx="16" cy="16" r="15" fill="none" stroke="#4fc3f7" strokeWidth="1.5" opacity="0.55" />
+              <text x="16" y="22" textAnchor="middle" fontSize="18" fill="#4fc3f7">{emoji}</text>
+            </svg>
+            <div className="event-card-text-col">
+              <span className="forecast-label">{label}</span>
+              <span className="forecast-temps">
+                <span className="forecast-high">{day.high}°</span>
+                <span className="forecast-sep">/</span>
+                <span className="forecast-low">{day.low}°</span>
+              </span>
+              {day.precip > 0 && <span className="forecast-precip">💧{day.precip}%</span>}
+            </div>
+          </div>
+        ) : (
+          <>
+            <span className="forecast-emoji">{emoji}</span>
+            <span className="forecast-label">{label}</span>
+            <span className="forecast-temps">
+              <span className="forecast-high">{day.high}°</span>
+              <span className="forecast-sep">/</span>
+              <span className="forecast-low">{day.low}°</span>
+            </span>
+            {day.precip > 0 && <span className="forecast-precip">💧{day.precip}%</span>}
+          </>
         )}
       </div>
 
