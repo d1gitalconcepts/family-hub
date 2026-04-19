@@ -289,33 +289,36 @@ export default function WeekView() {
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
-          <button className="btn-icon" onClick={prevWeek}>‹</button>
-          <span>{formatWeekLabel(days)}</span>
-          <button className="btn" onClick={goToday}>Today</button>
-          <button className="btn-icon" onClick={nextWeek}>›</button>
+          {/* Wrapper ensures content stacks above the absolute-positioned canvas */}
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', flex: 1, gap: '6px' }}>
+            <button className="btn-icon" onClick={prevWeek}>‹</button>
+            <span>{formatWeekLabel(days)}</span>
+            <button className="btn" onClick={goToday}>Today</button>
+            <button className="btn-icon" onClick={nextWeek}>›</button>
+          </div>
         </div>
       )}
 
-      {/* Mobile nav */}
+      {/* Mobile nav — «» week-skip removed to reduce crowding; ‹/› already wrap weeks */}
       {isMobile && (
         <div className="week-nav" style={navDivStyle}>
           {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
-          <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
-          <button className="btn-icon" onClick={() => {
-            if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }
-            else setMobileDayIdx((i) => i - 1);
-          }}>‹</button>
-          <span style={{ flex: 1, textAlign: 'center' }}>
-            {DAY_NAMES[selectedDay.getDay()]} {selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </span>
-          <button className="btn" onClick={goToday}>Today</button>
-          <button className="btn-icon" onClick={() => {
-            if (mobileDayIdx >= 6) { nextWeek(); setMobileDayIdx(0); }
-            else setMobileDayIdx((i) => i + 1);
-          }}>›</button>
-          <button className="btn-icon" onClick={nextWeek} title="Next week">»</button>
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', flex: 1, gap: '8px' }}>
+            <button className="btn-icon" onClick={() => {
+              if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }
+              else setMobileDayIdx((i) => i - 1);
+            }}>‹</button>
+            <span style={{ flex: 1, textAlign: 'center' }}>
+              {DAY_NAMES[selectedDay.getDay()]} {selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+            </span>
+            <button className="btn" onClick={goToday}>Today</button>
+            <button className="btn-icon" onClick={() => {
+              if (mobileDayIdx >= 6) { nextWeek(); setMobileDayIdx(0); }
+              else setMobileDayIdx((i) => i + 1);
+            }}>›</button>
+          </div>
         </div>
       )}
 
