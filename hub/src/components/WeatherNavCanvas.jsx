@@ -13,7 +13,7 @@ function weatherKind(code) {
   return 'clear';
 }
 
-// Slowly drifting large translucent blobs — give every condition a living background
+// Large slow-drifting translucent blobs — give every condition a living background
 function makeFogLayers(w, h) {
   return Array.from({ length: 4 }, () => ({
     x:     Math.random() * w * 1.2 - w * 0.1,
@@ -27,11 +27,11 @@ function makeFogLayers(w, h) {
 
 function drawCloud(ctx, cx, cy, r) {
   const blobs = [
-    [0,          r * 0.12,  r * 1.00, r * 0.52],  // wide base
-    [-r * 0.42, -r * 0.05,  r * 0.65, r * 0.56],  // left bump
-    [ r * 0.42, -r * 0.05,  r * 0.65, r * 0.56],  // right bump
-    [-r * 0.20, -r * 0.30,  r * 0.52, r * 0.48],  // top-left
-    [ r * 0.22, -r * 0.28,  r * 0.48, r * 0.44],  // top-right
+    [0,          r * 0.12,  r * 1.00, r * 0.52],
+    [-r * 0.42, -r * 0.05,  r * 0.65, r * 0.56],
+    [ r * 0.42, -r * 0.05,  r * 0.65, r * 0.56],
+    [-r * 0.20, -r * 0.30,  r * 0.52, r * 0.48],
+    [ r * 0.22, -r * 0.28,  r * 0.48, r * 0.44],
   ];
   for (const [dx, dy, rx, ry] of blobs) {
     const x = cx + dx, y = cy + dy;
@@ -44,6 +44,57 @@ function drawCloud(ctx, cx, cy, r) {
     ctx.fillStyle = g;
     ctx.fill();
   }
+}
+
+// Clouds as drifting clusters — each cluster has a shared position + child offsets
+function makeCloudClusters(w, h) {
+  return Array.from({ length: 3 }, (_, i) => ({
+    x:      (w / 3) * i + (Math.random() - 0.3) * (w / 3),
+    y:      h * 0.5 + (Math.random() - 0.5) * h * 0.15,
+    speed:  0.06 + Math.random() * 0.10,
+    clouds: Array.from({ length: 3 + Math.floor(Math.random() * 3) }, () => ({
+      dx: (Math.random() - 0.5) * 90,
+      dy: (Math.random() - 0.5) * h * 0.35,
+      r:  16 + Math.random() * 22,
+    })),
+  }));
+}
+
+function drawSun(ctx, cx, cy, r, t) {
+  const pulse = 1 + Math.sin(t * 0.018) * 0.04;
+
+  // Outer glow
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 7);
+  glow.addColorStop(0,   'rgba(255,220,90,0.20)');
+  glow.addColorStop(0.4, 'rgba(255,195,70,0.09)');
+  glow.addColorStop(1,   'rgba(255,170,40,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 7, 0, Math.PI * 2);
+  ctx.fillStyle = glow;
+  ctx.fill();
+
+  // Rays (slowly rotating)
+  const rayAngleOffset = t * 0.004;
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + rayAngleOffset;
+    const inner = r * 1.45 * pulse, outer = r * 2.3 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+    ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+    ctx.strokeStyle = 'rgba(255,215,80,0.50)';
+    ctx.stroke();
+  }
+
+  // Core
+  const core = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx, cy, r * pulse);
+  core.addColorStop(0,   'rgba(255,245,190,0.92)');
+  core.addColorStop(0.6, 'rgba(255,210,80,0.78)');
+  core.addColorStop(1,   'rgba(255,175,40,0.50)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * pulse, 0, Math.PI * 2);
+  ctx.fillStyle = core;
+  ctx.fill();
 }
 
 const SIN_A = Math.sin(Math.PI / 10);
@@ -78,14 +129,6 @@ function makeParticles(kind, w, h) {
       phase: Math.random() * Math.PI * 2, alpha: 0.50 + Math.random() * 0.40,
     }));
   }
-  if (kind === 'partly') {
-    return Array.from({ length: 10 }, (_, i) => ({
-      x: (w / 10) * i + (Math.random() - 0.5) * (w / 10),
-      y: h * 0.5 + (Math.random() - 0.5) * h * 0.22,
-      r: 20 + Math.random() * 24,
-      speed: 0.07 + Math.random() * 0.12,
-    }));
-  }
   return [];
 }
 
@@ -103,14 +146,16 @@ export default function WeatherNavCanvas({ code }) {
     let t = 0;
     let particles = [];
     let fogLayers = [];
+    let cloudClusters = [];
 
     function resize() {
       const w = canvas.parentElement?.clientWidth  || canvas.offsetWidth  || 300;
       const h = canvas.parentElement?.clientHeight || canvas.offsetHeight || 48;
       canvas.width  = w;
       canvas.height = h;
-      particles  = makeParticles(kind, w, h);
-      fogLayers  = makeFogLayers(w, h);
+      particles      = makeParticles(kind, w, h);
+      fogLayers      = makeFogLayers(w, h);
+      cloudClusters  = kind === 'partly' ? makeCloudClusters(w, h) : [];
     }
 
     resize();
@@ -122,7 +167,7 @@ export default function WeatherNavCanvas({ code }) {
       t++;
       ctx.clearRect(0, 0, w, h);
 
-      // Fog background — slow drifting blobs for every condition
+      // Fog background — slow drifting blobs, all conditions
       for (const f of fogLayers) {
         f.x += f.dx;
         if (f.x > w + f.r) f.x = -f.r;
@@ -137,12 +182,16 @@ export default function WeatherNavCanvas({ code }) {
         ctx.fill();
       }
 
-      // Particles
-      if (kind === 'partly') {
-        for (const p of particles) {
-          p.x += p.speed;
-          if (p.x - p.r * 2 > w) p.x = -p.r * 2;
-          drawCloud(ctx, p.x, p.y, p.r);
+      if (kind === 'clear') {
+        drawSun(ctx, w * 0.84, h * 0.5, h * 0.28, t);
+
+      } else if (kind === 'partly') {
+        for (const cluster of cloudClusters) {
+          cluster.x += cluster.speed;
+          if (cluster.x - 120 > w) cluster.x = -120;
+          for (const c of cluster.clouds) {
+            drawCloud(ctx, cluster.x + c.dx, cluster.y + c.dy, c.r);
+          }
         }
 
       } else if (kind === 'snow') {
