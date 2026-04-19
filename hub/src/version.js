@@ -1,6 +1,21 @@
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.9.0',
+    date: 'April 2026',
+    notes: [
+      'Event card photo backgrounds: location events show a venue photo pulled from Google Places API',
+      'Sports venue photos: stadium/course/circuit images for sports events even when no explicit location is set',
+      'Title photos: opted-in calendars (e.g. Meal Plan) get contextual Unsplash or Pexels photo backgrounds',
+      'Recipe images: when a calendar event description is a recipe URL, the dish photo is used as the card background',
+      'Supabase photo cache: all fetched photos are stored in a shared place_photos table — no redundant API calls',
+      'Configurable refresh interval (7 or 30 days), show-on-card/show-on-popout toggles, and per-calendar title photo opt-in',
+      'isPast fix: multi-day events (e.g. golf tournaments) now use end date, not start date, to determine past status',
+      'Sports records: upcoming games now always show current win/loss records instead of stale pre-game values',
+      'Mobile calendar: day navigation arrows now wrap across week boundaries instead of stopping at Sunday',
+    ],
+  },
   {
     version: '1.8.0',
     date: 'April 2026',
