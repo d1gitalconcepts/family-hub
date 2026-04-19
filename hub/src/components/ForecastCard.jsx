@@ -225,12 +225,14 @@ export default function ForecastCard({ day, cardStyle }) {
             </svg>
             <div className="event-card-text-col">
               <span className="forecast-label">{label}</span>
-              <span className="forecast-temps">
-                <span className="forecast-high">{day.high}°</span>
-                <span className="forecast-sep">/</span>
-                <span className="forecast-low">{day.low}°</span>
-              </span>
-              {day.precip > 0 && <span className="forecast-precip">💧{day.precip}%</span>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="forecast-temps">
+                  <span className="forecast-high">{day.high}°</span>
+                  <span className="forecast-sep">/</span>
+                  <span className="forecast-low">{day.low}°</span>
+                </span>
+                {day.precip > 0 && <span className="forecast-precip">💧{day.precip}%</span>}
+              </div>
             </div>
           </div>
         ) : (
