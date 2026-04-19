@@ -131,7 +131,7 @@ export default function WeekView() {
     const temp  = wc.temp     ?? 50;
     const solar = wc.solar    ?? 999;
     const hum   = wc.humidity ?? 0;
-    if (rain > 0.3) return temp < 32 ? 75 : 65;
+    if (rain > 0.1) return temp < 32 ? 75 : 65;
     if (rain > 0)   return temp < 32 ? 73 : 63;
     if (hum > 95 && solar < 20) return 45;
     if (solar < 80)             return 3;
