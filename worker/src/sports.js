@@ -126,7 +126,10 @@ async function enrichNba(event, config) {
   const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${yyyymmdd}`;
   const json = await fetchJson(url);
 
-  const abbrev = (config.teamId || '').toLowerCase();
+  // ESPN uses shorter abbreviations for some teams than the standard 3-letter codes
+  const ESPN_ABBREV = { gsw: 'gs', nop: 'no', nyk: 'ny', sas: 'sa', uta: 'utah', was: 'wsh' };
+  const rawId = (config.teamId || '').toLowerCase();
+  const abbrev = ESPN_ABBREV[rawId] || rawId;
   const game = (json?.events || []).find((ev) => {
     const comps = ev?.competitions?.[0]?.competitors || [];
     return comps.some((c) => c.team?.abbreviation?.toLowerCase() === abbrev);
