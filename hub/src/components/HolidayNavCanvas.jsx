@@ -378,9 +378,10 @@ function getBallProgress() {
   const now = new Date();
   const y = now.getFullYear(), mo = now.getMonth(), d = now.getDate();
   if (mo === 0 && d === 1) return 1.0;
-  const dec26 = new Date(y, 11, 26).getTime();
+  // Ball sits at left Dec 26-30, starts moving Dec 31 morning, reaches right at midnight
+  const dec31 = new Date(y, 11, 31).getTime();
   const jan1  = new Date(y + 1, 0, 1).getTime();
-  return Math.min(1, Math.max(0, (Date.now() - dec26) / (jan1 - dec26)));
+  return Math.min(1, Math.max(0, (Date.now() - dec31) / (jan1 - dec31)));
 }
 
 function initNewYears(w, h) {
