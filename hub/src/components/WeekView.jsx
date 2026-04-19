@@ -132,7 +132,7 @@ export default function WeekView() {
     if (weatherCurrent === undefined) return undefined;
     if (weatherCurrent?.code  != null) return weatherCurrent.code;
     const hourStr = String(new Date().getHours()).padStart(2, '0') + ':00';
-    return (forecast?.[0]?.hourly || []).find((h) => h.time === hourStr)?.code ?? null;
+    return (forecast?.[0]?.hourly || []).find((h) => h.hour === hourStr)?.code ?? null;
   })();
 
   const navBg = (() => {
