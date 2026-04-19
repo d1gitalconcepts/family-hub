@@ -607,15 +607,17 @@ function drawStPatricks(ctx, w, h, t, s) {
   // Pot of gold anchor position
   const px = w*0.88, py = h*0.62, pr = h*0.32;
 
-  // Rainbow — left foot at w*0.12, right foot lands in pot at w*0.88; arch peaks above
+  // Rainbow — left foot at bottom of nav, right foot lands in pot of gold
+  // Circle center found via perpendicular bisector of the two-foot chord
   const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#8030c0'];
-  const rx1 = w*0.12, rx2 = px, ry = py;
-  const arcCx = (rx1 + rx2) * 0.5;
-  const hw    = (rx2 - rx1) * 0.5;
-  const arcCy = ry + hw * 0.9;
-  const baseR = Math.hypot(hw, hw * 0.9);
-  const startA = Math.atan2(ry - arcCy, rx1 - arcCx);
-  const endA   = Math.atan2(ry - arcCy, rx2 - arcCx);
+  const ax = w*0.12, ay = h;   // left foot: bottom of nav
+  const bx = px,      by = py; // right foot: pot opening
+  const mx = (ax+bx)*0.5, my = (ay+by)*0.5;
+  const pdx = ay-by, pdy = bx-ax; // perpendicular to chord AB
+  const arcCx = mx + 0.45*pdx, arcCy = my + 0.45*pdy;
+  const baseR  = Math.hypot(ax - arcCx, ay - arcCy);
+  const startA = Math.atan2(ay - arcCy, ax - arcCx);
+  const endA   = Math.atan2(by - arcCy, bx - arcCx);
   for (let i=0; i<arcCols.length; i++) {
     const R = baseR - i * h * 0.09;
     ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.11; ctx.globalAlpha=0.52;
