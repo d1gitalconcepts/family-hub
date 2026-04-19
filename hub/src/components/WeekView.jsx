@@ -33,6 +33,51 @@ function useIsMobile() {
   return isMobile;
 }
 
+function sunriseNavBg(sunriseIso, sunsetIso) {
+  const now    = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  function isoToMin(iso) {
+    if (!iso) return null;
+    const t = (iso.includes('T') ? iso.split('T')[1] : iso).split(':');
+    return parseInt(t[0], 10) * 60 + (parseInt(t[1], 10) || 0);
+  }
+
+  const rise = isoToMin(sunriseIso) ?? 360;
+  const set  = isoToMin(sunsetIso)  ?? 1200;
+
+  // [minutes-from-midnight, [r,g,b,a] left-stop, [r,g,b,a] right-stop]
+  const pts = [
+    [0,              [15,  20,  80,  0.42], [25,  15,  90,  0.42]],
+    [rise - 90,      [30,  20,  90,  0.42], [70,  30, 130,  0.40]],
+    [rise - 15,      [190, 65,  20,  0.42], [240, 130, 40,  0.40]],
+    [rise,           [255, 100, 30,  0.40], [255, 185, 65,  0.38]],
+    [rise + 60,      [255, 165, 50,  0.36], [255, 210, 90,  0.30]],
+    [(rise+set)/2,   [255, 210, 80,  0.26], [255, 235, 115, 0.22]],
+    [set - 60,       [255, 165, 50,  0.36], [255, 210, 90,  0.30]],
+    [set - 15,       [255, 85,  20,  0.42], [230, 55,  85,  0.40]],
+    [set,            [235, 60,  25,  0.44], [195, 40, 105,  0.42]],
+    [set + 45,       [100, 25, 120,  0.44], [55,  15, 105,  0.44]],
+    [set + 120,      [15,  20,  80,  0.42], [25,  15,  90,  0.42]],
+    [1440,           [15,  20,  80,  0.42], [25,  15,  90,  0.42]],
+  ];
+
+  let lo = pts[0], hi = pts[pts.length - 1];
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (nowMin >= pts[i][0] && nowMin < pts[i + 1][0]) {
+      lo = pts[i]; hi = pts[i + 1]; break;
+    }
+  }
+
+  const t = hi[0] > lo[0] ? (nowMin - lo[0]) / (hi[0] - lo[0]) : 0;
+  function lerp(a, b) { return a + (b - a) * t; }
+  function rgba(ca, cb) {
+    return `rgba(${Math.round(lerp(ca[0],cb[0]))},${Math.round(lerp(ca[1],cb[1]))},${Math.round(lerp(ca[2],cb[2]))},${lerp(ca[3],cb[3]).toFixed(2)})`;
+  }
+
+  return { background: `linear-gradient(90deg, ${rgba(lo[1], hi[1])}, ${rgba(lo[2], hi[2])})` };
+}
+
 export default function WeekView() {
   const [anchor, setAnchor] = useState(new Date());
   const [calConfig] = useConfig('visible_calendars');
@@ -44,14 +89,21 @@ export default function WeekView() {
   const [navStyleCfg]      = useConfig('nav_style');
   const [sportsDisplayCfg] = useConfig('sports_display');
 
+  const [, setMinuteTick] = useState(0);
+  useEffect(() => {
+    if (navStyleCfg?.preset !== 'sunrise') return;
+    const id = setInterval(() => setMinuteTick((n) => n + 1), 60_000);
+    return () => clearInterval(id);
+  }, [navStyleCfg?.preset]);
+
   const navBg = (() => {
     const preset = navStyleCfg?.preset;
     if (!preset || preset === 'none') return {};
     if (preset === 'accent') return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
+    if (preset === 'sunrise') return sunriseNavBg(forecast?.[0]?.sunrise, forecast?.[0]?.sunset);
 
     // Preset colors use rgba so they tint rather than override — works in both light and dark mode
     const PRESET_COLORS = {
-      sunrise:  ['rgba(255,110,40,0.32)',  'rgba(255,195,80,0.32)'],
       ocean:    ['rgba(30,130,255,0.32)',  'rgba(0,205,225,0.32)'],
       forest:   ['rgba(35,170,70,0.32)',   'rgba(120,205,55,0.32)'],
       twilight: ['rgba(148,60,215,0.32)',  'rgba(228,75,165,0.32)'],
