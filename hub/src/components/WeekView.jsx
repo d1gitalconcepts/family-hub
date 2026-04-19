@@ -123,9 +123,10 @@ export default function WeekView() {
     return () => clearInterval(id);
   }, [navStyleCfg?.preset]);
 
-  // Prefer real-time weather_current.code; fall back to current hour in today's hourly forecast
+  // testCode overrides real conditions for preview; otherwise use weather_current with hourly fallback
   const currentWeatherCode = (() => {
-    if (weatherCurrent?.code != null) return weatherCurrent.code;
+    if (navStyleCfg?.testCode != null) return navStyleCfg.testCode;
+    if (weatherCurrent?.code  != null) return weatherCurrent.code;
     const hourStr = String(new Date().getHours()).padStart(2, '0') + ':00';
     return (forecast?.[0]?.hourly || []).find((h) => h.time === hourStr)?.code ?? null;
   })();
@@ -137,8 +138,8 @@ export default function WeekView() {
     if (preset === 'sunrise') return sunriseNavBg(forecast?.[0]?.sunrise, forecast?.[0]?.sunset);
     if (preset === 'weather') return {
       background: WEATHER_BG[weatherKind(currentWeatherCode)] || WEATHER_BG.clear,
-      position:   'relative',
-      overflow:   'hidden',
+      position: 'relative',
+      overflow: 'hidden',
     };
 
     // Preset colors use rgba so they tint rather than override — works in both light and dark mode

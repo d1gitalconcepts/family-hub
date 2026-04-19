@@ -2275,6 +2275,28 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                       ))}
                     </div>
 
+                    {active === 'weather' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8 }}>
+                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Test condition:</span>
+                        <select
+                          value={navStyleCfg?.testCode ?? ''}
+                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), testCode: e.target.value === '' ? null : Number(e.target.value) })}
+                          style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                        >
+                          <option value="">— real conditions —</option>
+                          <option value="0">☀️ Clear</option>
+                          <option value="2">⛅ Partly cloudy</option>
+                          <option value="3">☁️ Overcast</option>
+                          <option value="45">🌫️ Fog</option>
+                          <option value="51">🌦️ Drizzle</option>
+                          <option value="61">🌧️ Rain</option>
+                          <option value="65">🌧️ Heavy rain</option>
+                          <option value="71">🌨️ Snow</option>
+                          <option value="95">⛈️ Thunderstorm</option>
+                        </select>
+                      </div>
+                    )}
+
                     {isGradient && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '14px 20px', background: 'var(--bg)', borderRadius: 8, width: '100%', boxSizing: 'border-box' }}>
                         {/* Custom: start + end color pickers */}
