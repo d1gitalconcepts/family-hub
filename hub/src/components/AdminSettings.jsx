@@ -2245,6 +2245,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                   { id: 'none',     label: '— None',      preview: 'var(--bg-secondary)',                                      isGradient: false },
                   { id: 'accent',   label: '🎨 Accent',   preview: 'color-mix(in srgb, var(--accent) 40%, var(--bg-secondary))', isGradient: false },
                   { id: 'sunrise',  label: '🌅 Sunrise',  preview: 'linear-gradient(90deg,rgba(255,110,40,0.65),rgba(255,195,80,0.65))',  isGradient: true },
+                  { id: 'weather',  label: '🌦️ Weather',  preview: 'linear-gradient(90deg,rgba(48,68,110,0.65),rgba(32,52,95,0.62))',    isGradient: false },
                   { id: 'ocean',    label: '🌊 Ocean',    preview: 'linear-gradient(90deg,rgba(30,130,255,0.65),rgba(0,205,225,0.65))',   isGradient: true },
                   { id: 'forest',   label: '🌿 Forest',   preview: 'linear-gradient(90deg,rgba(35,170,70,0.65),rgba(120,205,55,0.65))',   isGradient: true },
                   { id: 'twilight', label: '🌆 Twilight', preview: 'linear-gradient(90deg,rgba(148,60,215,0.65),rgba(228,75,165,0.65))',  isGradient: true },

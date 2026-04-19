@@ -3,6 +3,7 @@ import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
 import { useSportsEnrichment } from '../hooks/useSportsEnrichment';
+import WeatherNavCanvas from './WeatherNavCanvas';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -78,13 +79,39 @@ function sunriseNavBg(sunriseIso, sunsetIso) {
   return { background: `linear-gradient(90deg, ${rgba(lo[1], hi[1])}, ${rgba(lo[2], hi[2])})` };
 }
 
+const WEATHER_BG = {
+  clear:        'linear-gradient(90deg, rgba(100,160,220,0.28), rgba(70,130,200,0.22))',
+  partly:       'linear-gradient(90deg, rgba(120,150,195,0.30), rgba(95,130,180,0.25))',
+  overcast:     'linear-gradient(90deg, rgba(110,115,135,0.36), rgba(90,95,118,0.34))',
+  fog:          'linear-gradient(90deg, rgba(165,165,178,0.36), rgba(148,148,165,0.33))',
+  drizzle:      'linear-gradient(90deg, rgba(65,90,130,0.38),   rgba(50,75,118,0.35))',
+  rain:         'linear-gradient(90deg, rgba(48,68,110,0.44),   rgba(32,52,95,0.42))',
+  'heavy-rain': 'linear-gradient(90deg, rgba(32,48,90,0.50),    rgba(18,36,75,0.48))',
+  snow:         'linear-gradient(90deg, rgba(185,205,225,0.32), rgba(200,218,235,0.27))',
+  storm:        'linear-gradient(90deg, rgba(20,24,48,0.56),    rgba(12,15,38,0.54))',
+};
+
+function weatherKind(code) {
+  if (code == null || code <= 1)                                                              return 'clear';
+  if (code === 2)                                                                             return 'partly';
+  if (code === 3)                                                                             return 'overcast';
+  if (code === 45 || code === 48)                                                             return 'fog';
+  if (code === 51 || code === 53 || code === 55)                                              return 'drizzle';
+  if (code === 65 || code === 82)                                                             return 'heavy-rain';
+  if (code === 61 || code === 63 || code === 80 || code === 81)                               return 'rain';
+  if (code === 71 || code === 73 || code === 75 || code === 77 || code === 85 || code === 86) return 'snow';
+  if (code === 95 || code === 96 || code === 99)                                              return 'storm';
+  return 'clear';
+}
+
 export default function WeekView() {
   const [anchor, setAnchor] = useState(new Date());
-  const [calConfig] = useConfig('visible_calendars');
-  const [sections]  = useConfig('calendar_sections');
-  const [forecast]  = useConfig('weather_forecast');
-  const [eventIconsCfg]   = useConfig('event_icons');
-  const [cardStyleCfg]    = useConfig('card_style');
+  const [calConfig]        = useConfig('visible_calendars');
+  const [sections]         = useConfig('calendar_sections');
+  const [forecast]         = useConfig('weather_forecast');
+  const [weatherCurrent]   = useConfig('weather_current');
+  const [eventIconsCfg]    = useConfig('event_icons');
+  const [cardStyleCfg]     = useConfig('card_style');
   const [eventFiltersCfg]  = useConfig('event_filters');
   const [navStyleCfg]      = useConfig('nav_style');
   const [sportsDisplayCfg] = useConfig('sports_display');
@@ -96,11 +123,23 @@ export default function WeekView() {
     return () => clearInterval(id);
   }, [navStyleCfg?.preset]);
 
+  // Prefer real-time weather_current.code; fall back to current hour in today's hourly forecast
+  const currentWeatherCode = (() => {
+    if (weatherCurrent?.code != null) return weatherCurrent.code;
+    const hourStr = String(new Date().getHours()).padStart(2, '0') + ':00';
+    return (forecast?.[0]?.hourly || []).find((h) => h.time === hourStr)?.code ?? null;
+  })();
+
   const navBg = (() => {
     const preset = navStyleCfg?.preset;
     if (!preset || preset === 'none') return {};
-    if (preset === 'accent') return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
+    if (preset === 'accent')  return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
     if (preset === 'sunrise') return sunriseNavBg(forecast?.[0]?.sunrise, forecast?.[0]?.sunset);
+    if (preset === 'weather') return {
+      background: WEATHER_BG[weatherKind(currentWeatherCode)] || WEATHER_BG.clear,
+      position:   'relative',
+      overflow:   'hidden',
+    };
 
     // Preset colors use rgba so they tint rather than override — works in both light and dark mode
     const PRESET_COLORS = {
@@ -230,6 +269,7 @@ export default function WeekView() {
       {/* Desktop nav */}
       {!isMobile && (
         <div className="week-nav" style={navBg}>
+          {navStyleCfg?.preset === 'weather' && <WeatherNavCanvas code={currentWeatherCode} />}
           <button className="btn-icon" onClick={prevWeek}>‹</button>
           <span>{formatWeekLabel(days)}</span>
           <button className="btn" onClick={goToday}>Today</button>
@@ -240,6 +280,7 @@ export default function WeekView() {
       {/* Mobile nav */}
       {isMobile && (
         <div className="week-nav" style={navBg}>
+          {navStyleCfg?.preset === 'weather' && <WeatherNavCanvas code={currentWeatherCode} />}
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
           <button className="btn-icon" onClick={() => {
             if (mobileDayIdx <= 0) { prevWeek(); setMobileDayIdx(6); }
