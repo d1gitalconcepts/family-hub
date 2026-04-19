@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 export function useConfig(key) {
-  const [value, setValue] = useState(null);
+  const [value, setValue] = useState(undefined);
 
   useEffect(() => {
     async function fetch() {

@@ -140,8 +140,10 @@ export default function WeekView() {
   }
 
   // testCode overrides real conditions for preview; otherwise use weather_current with hourly fallback
+  // Returns undefined while weatherCurrent hasn't loaded yet (suppresses canvas flash)
   const currentWeatherCode = (() => {
     if (navStyleCfg?.testCode != null) return navStyleCfg.testCode;
+    if (weatherCurrent === undefined) return undefined;
     if (weatherCurrent?.code  != null) return weatherCurrent.code;
     if (weatherCurrent?.source === 'ambient') return ambientToCode(weatherCurrent);
     const hourStr = String(new Date().getHours()).padStart(2, '0') + ':00';
@@ -153,7 +155,7 @@ export default function WeekView() {
     if (!preset || preset === 'none') return {};
     if (preset === 'accent')  return { background: 'color-mix(in srgb, var(--accent) 18%, var(--bg-secondary))' };
     if (preset === 'sunrise') return sunriseNavBg(forecast?.[0]?.sunrise, forecast?.[0]?.sunset);
-    if (preset === 'weather') return {
+    if (preset === 'weather') return currentWeatherCode === undefined ? { position: 'relative', overflow: 'hidden' } : {
       background: WEATHER_BG[weatherKind(currentWeatherCode)] || WEATHER_BG.clear,
       position: 'relative',
       overflow: 'hidden',
@@ -301,7 +303,7 @@ export default function WeekView() {
       {/* Desktop nav */}
       {!isMobile && (
         <div className="week-nav" style={navDivStyle}>
-          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
+          {navStyleCfg?.preset === 'weather' && currentWeatherCode !== undefined && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
           {/* Wrapper ensures content stacks above the absolute-positioned canvas */}
@@ -317,7 +319,7 @@ export default function WeekView() {
       {/* Mobile nav — «» week-skip removed to reduce crowding; ‹/› already wrap weeks */}
       {isMobile && (
         <div className="week-nav" style={navDivStyle}>
-          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
+          {navStyleCfg?.preset === 'weather' && currentWeatherCode !== undefined && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} testNight={navStyleCfg?.testNight ?? null} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           {activeHoliday && <HolidayNavCanvas holiday={activeHoliday} isTest={!!navStyleCfg?.testHoliday} />}
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', flex: 1, gap: '8px' }}>
