@@ -2276,7 +2276,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     </div>
 
                     {active === 'weather' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Test condition:</span>
                         <select
                           value={navStyleCfg?.testCode ?? ''}
@@ -2293,6 +2293,16 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           <option value="65">🌧️ Heavy rain</option>
                           <option value="71">🌨️ Snow</option>
                           <option value="95">⛈️ Thunderstorm</option>
+                        </select>
+                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Time of day:</span>
+                        <select
+                          value={navStyleCfg?.testNight == null ? '' : navStyleCfg.testNight ? 'night' : 'day'}
+                          onChange={(e) => setNavStyleCfg({ ...(navStyleCfg || {}), testNight: e.target.value === '' ? null : e.target.value === 'night' })}
+                          style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                        >
+                          <option value="">— real time —</option>
+                          <option value="day">☀️ Day</option>
+                          <option value="night">🌙 Night</option>
                         </select>
                       </div>
                     )}
