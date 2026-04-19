@@ -483,6 +483,9 @@ async function enrichF1(event) {
   const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
   if (!dateStr) throw new Error('No date for F1 event');
 
+  // Skip future sessions — OpenF1 has no data yet and the calls waste subrequest budget
+  if (dateStr > new Date().toISOString().split('T')[0]) return null;
+
   const year = dateStr.split('-')[0];
   const sessionType = detectF1SessionType(event.summary);
 
@@ -662,6 +665,12 @@ export async function enrichSportsEvents(env) {
   // same game (e.g. 3 "Knicks" placeholders) from each making a separate API call.
   const apiCache = {};
   const now = new Date();
+
+  // Process F1 and golf last — they make the most subrequests and should not
+  // crowd out simpler sports (NASCAR, NBA, etc.) when the budget is tight.
+  const SPORT_PRIORITY = { f1: 10, golf: 9 };
+  const getSport = (ev) => (sportsConfig.find((sc) => sc.calendarId === ev.calendar_id)?.sport) || '';
+  calEvents.sort((a, b) => (SPORT_PRIORITY[getSport(a)] || 0) - (SPORT_PRIORITY[getSport(b)] || 0));
 
   for (const event of calEvents) {
     // Find matching sports config entry
