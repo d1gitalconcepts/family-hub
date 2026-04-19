@@ -607,12 +607,15 @@ function drawStPatricks(ctx, w, h, t, s) {
   // Pot of gold anchor position
   const px = w*0.88, py = h*0.62, pr = h*0.32;
 
-  // Rainbow — circular arch, center below nav, feet at bottom corners, peak above
+  // Rainbow — left foot at w*0.12, right foot lands in pot at w*0.88; arch peaks above
   const arcCols=['#e83030','#f07030','#f0e030','#40d040','#3070e8','#8030c0'];
-  const arcCx = w * 0.5, arcCy = h + w * 0.45;
-  const baseR = Math.hypot(w * 0.5, w * 0.45);
-  const startA = Math.atan2(h - arcCy, 0 - arcCx);
-  const endA   = Math.atan2(h - arcCy, w - arcCx);
+  const rx1 = w*0.12, rx2 = px, ry = py;
+  const arcCx = (rx1 + rx2) * 0.5;
+  const hw    = (rx2 - rx1) * 0.5;
+  const arcCy = ry + hw * 0.9;
+  const baseR = Math.hypot(hw, hw * 0.9);
+  const startA = Math.atan2(ry - arcCy, rx1 - arcCx);
+  const endA   = Math.atan2(ry - arcCy, rx2 - arcCx);
   for (let i=0; i<arcCols.length; i++) {
     const R = baseR - i * h * 0.09;
     ctx.strokeStyle=arcCols[i]; ctx.lineWidth=h*0.11; ctx.globalAlpha=0.52;
