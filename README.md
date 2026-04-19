@@ -1,6 +1,6 @@
 # Family Hub
 
-A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, live weather, a 14-day forecast, and a sidebar with Google Keep checklists that sync bidirectionally. Sports calendars are automatically enriched with live scores, box scores, and game detail from public APIs — MLB, NHL, NFL, Golf, F1, and NASCAR.
+A self-hosted family dashboard built on React, Supabase, and Cloudflare. It shows a weekly calendar pulled from Google Calendar, live weather, a 14-day forecast, and a sidebar with Google Keep checklists that sync bidirectionally. Sports calendars are automatically enriched with live scores, box scores, and game detail from public APIs — MLB, NHL, NFL, Golf, F1, and NASCAR. Event cards can display venue photos from Google Places, contextual title photos from Unsplash or Pexels, and recipe dish images — all cached in Supabase to avoid redundant API calls.
 
 ![Family Hub screenshot](docs/screenshot.png)
 
@@ -139,6 +139,7 @@ Log in as admin and open **Settings** via the hamburger menu (☰). Key tabs to 
   - *Ambient Weather* (optional, for a personal weather station): enter your API Key and Application Key from [ambientweather.net → Account → API Keys](https://ambientweather.net/account)
 - **Keep Notes** — add the Google Keep note titles you want to scrape and display in the sidebar
 - **Event Cards** — customize card layout: choose which elements to show (time, title, calendar, description), drag to reorder them, pick border or solid background, set alignment
+- **Places** — enable venue photo backgrounds on event cards; configure Google Places API key, Unsplash/Pexels title photos for specific calendars, refresh interval, and show-on-card vs show-on-popout toggles
 - **Sports** — configure which sports calendars get live enrichment (MLB, NHL, NFL, Golf, F1, NASCAR); set per-sport detail level (Score only / Box Score / Full Detail) and toggle the score chip on event cards
 - **Event Icons** — assign emoji to events by keyword (e.g. "soccer" → ⚽)
 - **Event Filters** — hide events whose title matches keywords (e.g. hide all "Busy" blocks)
