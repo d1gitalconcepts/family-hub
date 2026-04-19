@@ -323,6 +323,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     if (!cal) return null;
     return (
       <div
+        key={cal.id}
         className={`cal-row${isDropTarget ? ' cal-row-drop-target' : ''}`}
         draggable
         onDragStart={(e) => onCalDragStart(e, cal.id, fromSectionId, idx)}
@@ -498,15 +499,12 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         onDrop={(e) => onCalDropToSection(e, section.id)}
                         onDragLeave={() => setDropTarget(null)}
                       >
-                        {calIds.map((calId, i) => (
-                          <CalRow
-                            key={calId}
-                            cal={calById(calId)}
-                            fromSectionId={section.id}
-                            idx={i}
-                            isDropTarget={dropTarget?.sectionId === section.id && dropTarget?.beforeIdx === i}
-                          />
-                        ))}
+                        {calIds.map((calId, i) => CalRow({
+                            cal: calById(calId),
+                            fromSectionId: section.id,
+                            idx: i,
+                            isDropTarget: dropTarget?.sectionId === section.id && dropTarget?.beforeIdx === i,
+                          }))}
                         {calIds.length === 0 && <div className="drop-hint">Drop calendars here</div>}
                       </div>
                     </div>
@@ -523,9 +521,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     onDrop={onCalDropToUnassigned}
                     onDragLeave={() => setDropTarget(null)}
                   >
-                    {unassigned.map((cal, i) => (
-                      <CalRow key={cal.id} cal={cal} fromSectionId={null} idx={i} isDropTarget={false} />
-                    ))}
+                    {unassigned.map((cal, i) => CalRow({ cal, fromSectionId: null, idx: i, isDropTarget: false }))}
                     {unassigned.length === 0 && <div className="drop-hint">All calendars are assigned</div>}
                   </div>
                 </div>
