@@ -86,21 +86,49 @@ function heart(ctx, cx, cy, size) {
   ctx.restore();
 }
 
-function shamrockLeaf(ctx, cx, cy, r, rotation) {
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rotation);
-  ctx.beginPath(); ctx.arc(-r*0.38, 0, r*0.62, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc( r*0.38, 0, r*0.62, 0, Math.PI*2); ctx.fill();
+function cloverLeaf(ctx, lx, ly, r, angle) {
+  // Heart-shaped leaf — notch at (lx,ly), tip points outward at `angle`
+  ctx.save(); ctx.translate(lx, ly); ctx.rotate(angle);
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-r*0.88, -r*0.04, -r*0.82, -r*0.88, 0, -r*0.95);
+  ctx.bezierCurveTo( r*0.82, -r*0.88,  r*0.88, -r*0.04, 0,       0);
+  ctx.closePath(); ctx.fill();
+  // Midrib
+  const prevStroke = ctx.strokeStyle, prevLW = ctx.lineWidth;
+  ctx.strokeStyle = 'rgba(14,92,26,0.40)'; ctx.lineWidth = r*0.07; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -r*0.03); ctx.quadraticCurveTo(r*0.04, -r*0.48, 0, -r*0.90); ctx.stroke();
+  ctx.strokeStyle = prevStroke; ctx.lineWidth = prevLW;
   ctx.restore();
 }
 
-function shamrock(ctx, cx, cy, r) {
-  for (let i=0; i<3; i++) {
-    const a = (i/3)*Math.PI*2 - Math.PI/2;
-    shamrockLeaf(ctx, cx+Math.cos(a)*r*0.72, cy+Math.sin(a)*r*0.72, r*0.58, a+Math.PI/2);
+function drawClover(ctx, cx, cy, r, leaves) {
+  const isFour = leaves === 4;
+  const offset = r * 0.30;
+  const cols = isFour
+    ? ['rgba(46,175,62,0.93)', 'rgba(34,155,50,0.91)']
+    : ['rgba(30,152,50,0.91)', 'rgba(20,128,38,0.89)'];
+  for (let i = 0; i < leaves; i++) {
+    const a = (i / leaves) * Math.PI * 2 - Math.PI / 2;
+    ctx.fillStyle = cols[i % 2];
+    cloverLeaf(ctx, cx + Math.cos(a)*offset, cy + Math.sin(a)*offset, r*0.76, a + Math.PI*0.5);
   }
-  ctx.lineWidth=r*0.14; ctx.lineCap='round';
-  ctx.beginPath(); ctx.moveTo(cx, cy+r*0.2);
-  ctx.bezierCurveTo(cx+r*0.15,cy+r*0.65,cx-r*0.08,cy+r*1.1,cx,cy+r*1.7); ctx.stroke();
+  // Stem
+  ctx.strokeStyle = 'rgba(14,96,26,0.90)'; ctx.lineWidth = r*0.13; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, cy + r*0.18);
+  ctx.bezierCurveTo(cx+r*0.18, cy+r*0.72, cx-r*0.10, cy+r*1.20, cx, cy+r*1.78); ctx.stroke();
+  // Gold sparkle on 4-leaf clovers
+  if (isFour) {
+    ctx.fillStyle = 'rgba(255,210,30,0.90)';
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i/8)*Math.PI*2 - Math.PI/4;
+      const len = i%2===0 ? r*0.22 : r*0.10;
+      i===0 ? ctx.moveTo(cx+Math.cos(a)*len, cy+Math.sin(a)*len)
+             : ctx.lineTo(cx+Math.cos(a)*len, cy+Math.sin(a)*len);
+    }
+    ctx.closePath(); ctx.fill();
+  }
 }
 
 function pumpkin(ctx, cx, cy, r) {
@@ -597,9 +625,10 @@ function drawValentines(ctx, w, h, t, s) {
 // ─── St. Patrick's Day ────────────────────────────────────────────────────────
 
 function initStPatricks(w, h) {
-  return { shamrocks: Array.from({ length: 10 }, () => ({
-    x: rand(0,w), y: rand(0,h), r: rand(h*0.07,h*0.18),
-    vx: rand(-0.2,0.2), vy: rand(-0.1,0.1), phase: rand(0,Math.PI*2), alpha: rand(0.55,0.85),
+  return { shamrocks: Array.from({ length: 11 }, (_, i) => ({
+    x: rand(0,w), y: rand(0,h), r: rand(h*0.10, h*0.24),
+    vx: rand(-0.2,0.2), vy: rand(-0.1,0.1), phase: rand(0,Math.PI*2), alpha: rand(0.68,0.94),
+    isFour: i === 3 || i === 8,  // exactly 2 four-leaf clovers in the batch
   }))};
 }
 
@@ -657,15 +686,15 @@ function drawStPatricks(ctx, w, h, t, s) {
     ctx.beginPath(); ctx.ellipse(px+dx,py+potH+pr*0.04,pr*0.1,pr*0.07,0,0,Math.PI*2); ctx.fill();
   }
 
-  // Shamrocks
+  // Shamrocks + 4-leaf clovers
   for (const sh of s.shamrocks) {
     sh.x+=sh.vx; sh.y+=sh.vy;
     if (sh.x>w+sh.r*2) sh.x=-sh.r*2; if (sh.x<-sh.r*2) sh.x=w+sh.r*2;
     if (sh.y>h+sh.r*2) sh.y=-sh.r*2; if (sh.y<-sh.r*2) sh.y=h+sh.r*2;
     ctx.save(); ctx.globalAlpha=sh.alpha;
-    ctx.fillStyle='rgba(30,160,50,0.9)'; ctx.strokeStyle='rgba(20,120,35,0.8)'; ctx.lineWidth=sh.r*0.12;
-    ctx.translate(sh.x,sh.y); ctx.rotate(Math.sin(t*0.012+sh.phase)*0.18);
-    shamrock(ctx,0,0,sh.r); ctx.restore();
+    ctx.translate(sh.x, sh.y); ctx.rotate(Math.sin(t*0.012+sh.phase)*0.18);
+    drawClover(ctx, 0, 0, sh.r, sh.isFour ? 4 : 3);
+    ctx.restore();
   }
 }
 
