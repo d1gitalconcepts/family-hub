@@ -1088,19 +1088,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             const entries = sportsConfig || [];
 
             function updateEntry(i, patch) {
-              const next = entries.map((e, ei) => ei === i ? { ...e, ...patch } : e);
-              setSportsConfig(next);
+              setSportsConfig(entries.map((e, ei) => ei === i ? { ...e, ...patch } : e));
             }
             function removeEntry(i) {
               setSportsConfig(entries.filter((_, ei) => ei !== i));
             }
-            function addEntry() {
-              setSportsConfig([...entries, { calendarId: '', sport: 'mlb', teamId: '', teamName: '', keyword: null, display: {} }]);
+            function addEntryForSport(sport) {
+              setSportsConfig([...entries, { calendarId: '', sport, teamId: '', teamName: '', keyword: null, display: {} }]);
             }
-
-            const hasGolf   = entries.some((e) => e.sport === 'golf');
-            const hasF1     = entries.some((e) => e.sport === 'f1');
-            const configuredSports = [...new Set(entries.map((e) => e.sport).filter(Boolean))];
 
             const SPORT_DETAIL_LABEL = {
               mlb:    '⚾ MLB',
@@ -1120,120 +1115,15 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             const sd = sportsDisplay || {};
             function setSd(patch) { setSportsDisplay({ ...sd, ...patch }); }
 
+            const ALL_SPORTS_ORDERED = ['mlb', 'nfl', 'nhl', 'nba', 'golf', 'f1', 'nascar'];
+            const configuredSports   = ALL_SPORTS_ORDERED.filter(s => entries.some(e => e.sport === s));
+            const unconfiguredSports = ALL_SPORTS_ORDERED.filter(s => !entries.some(e => e.sport === s));
+
             return (
               <div className="settings-section">
-                {/* ── Team Mappings ── */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <h3 style={{ margin: 0 }}>Team Mappings</h3>
-                  <button
-                    className="btn"
-                    style={{ fontSize: 'var(--s-sm)', padding: '3px 10px', fontSize: 'inherit' }}
-                    onClick={addEntry}
-                  >
-                    + Add Sport
-                  </button>
-                </div>
 
-                {entries.length === 0 && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-base)' }}>
-                    No sport mappings yet. Click "+ Add Sport" to get started.
-                  </p>
-                )}
-
-                {entries.map((entry, i) => {
-                  const teamList = TEAM_LISTS[entry.sport] || [];
-                  const showTeam = SPORTS_WITH_TEAMS.includes(entry.sport);
-                  return (
-                    <div key={i} style={{
-                      display: 'flex', flexDirection: 'column', gap: 6,
-                      padding: '10px 0', borderBottom: '1px solid var(--border)',
-                    }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {/* Calendar dropdown */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px' }}>
-                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Calendar</span>
-                          <select
-                            value={entry.calendarId || ''}
-                            onChange={(e) => updateEntry(i, { calendarId: e.target.value })}
-                            style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
-                          >
-                            <option value="">— select calendar —</option>
-                            {(calConfig || []).filter((c) => !c.virtual).map((c) => (
-                              <option key={c.id} value={c.id}>{c.name || c.id}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Sport dropdown */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '0 0 120px' }}>
-                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Sport</span>
-                          <select
-                            value={entry.sport || 'mlb'}
-                            onChange={(e) => updateEntry(i, { sport: e.target.value, teamId: '', teamName: '' })}
-                            style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
-                          >
-                            <option value="mlb">MLB</option>
-                            <option value="nfl">NFL</option>
-                            <option value="nhl">NHL</option>
-                            <option value="nba">NBA</option>
-                            <option value="golf">Golf</option>
-                            <option value="f1">F1</option>
-                            <option value="nascar">NASCAR</option>
-                          </select>
-                        </div>
-
-                        {/* Team dropdown (conditional) */}
-                        {showTeam && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px' }}>
-                            <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Team</span>
-                            <select
-                              value={entry.teamId || ''}
-                              onChange={(e) => {
-                                const team = teamList.find((t) => t.id === e.target.value);
-                                updateEntry(i, { teamId: e.target.value, teamName: team?.name || '' });
-                              }}
-                              style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
-                            >
-                              <option value="">— select team —</option>
-                              {teamList.map((t) => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {/* Delete */}
-                        <button
-                          className="btn-icon"
-                          style={{ fontSize: 'var(--s-base)', color: 'var(--danger)', alignSelf: 'flex-end', marginBottom: 2, fontSize: 'inherit' }}
-                          onClick={() => removeEntry(i)}
-                          title="Remove"
-                        >✕</button>
-                      </div>
-
-                      {/* Keyword filter */}
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', paddingLeft: 2 }}>
-                        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Keyword filter (optional):</span>
-                        <input
-                          type="text"
-                          value={entry.keyword || ''}
-                          onChange={(e) => updateEntry(i, { keyword: e.target.value || null })}
-                          placeholder="e.g. Yankees"
-                          style={{ flex: 1, fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <p style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 12, padding: '8px 10px', background: 'var(--bg-secondary)', borderRadius: 6 }}>
-                  💡 Tips: Calendar IDs come from your Calendars tab above. Team IDs are pre-filled when you select a team from the dropdown — you don't need to find them manually. For F1 and Golf, no team selection is needed.
-                </p>
-
-                {/* ── Display Options ── */}
-                <h3 style={{ marginTop: 24, marginBottom: 10 }}>Display Options</h3>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                {/* Global chip toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={sd.showChip !== false}
@@ -1241,99 +1131,169 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                     style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
                   />
                   <span style={{ fontSize: 'var(--s-base)' }}>Show score chip on event cards</span>
-                </div>
+                </label>
 
-                {/* Per-sport detail level */}
-                {configuredSports.length > 0 && (
-                  <div style={{ marginTop: 16 }}>
-                    <h4 style={{ margin: '0 0 10px', fontSize: 'var(--s-sm)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detail level</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {configuredSports.map((sport) => (
-                        <div key={sport} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 'var(--s-base)', flex: 1 }}>{SPORT_DETAIL_LABEL[sport] || sport}</span>
-                          <div style={{ display: 'flex', gap: 2 }}>
-                            {DETAIL_OPTIONS.map((opt) => {
-                              const current = (sd.detail || {})[sport] || 'all';
-                              const active = current === opt.value;
-                              return (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => setSd({ detail: { ...(sd.detail || {}), [sport]: opt.value } })}
-                                  style={{
-                                    fontSize: 'var(--s-xs)',
-                                    padding: '3px 8px',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 4,
-                                    background: active ? 'var(--accent)' : 'var(--bg)',
-                                    color: active ? '#fff' : 'var(--text)',
-                                    cursor: 'pointer',
-                                    fontWeight: active ? 600 : 400,
-                                  }}
-                                >
-                                  {opt.label}
-                                </button>
-                              );
-                            })}
+                {/* One card per configured sport */}
+                {configuredSports.map((sport) => {
+                  const sportEntries = entries.map((e, i) => ({ ...e, _i: i })).filter(e => e.sport === sport);
+                  const showTeam     = SPORTS_WITH_TEAMS.includes(sport);
+                  const teamList     = TEAM_LISTS[sport] || [];
+                  const currentDetail = (sd.detail || {})[sport] || 'all';
+
+                  return (
+                    <div key={sport} style={{ border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12, overflow: 'hidden' }}>
+
+                      {/* Card header — sport name + detail level */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', gap: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: 'var(--s-base)' }}>{SPORT_DETAIL_LABEL[sport] || sport}</span>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          {DETAIL_OPTIONS.map((opt) => {
+                            const active = currentDetail === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => setSd({ detail: { ...(sd.detail || {}), [sport]: opt.value } })}
+                                style={{
+                                  fontSize: 'var(--s-xs)', padding: '3px 8px',
+                                  border: '1px solid var(--border)', borderRadius: 4,
+                                  background: active ? 'var(--accent)' : 'var(--bg)',
+                                  color: active ? '#fff' : 'var(--text)',
+                                  cursor: 'pointer', fontWeight: active ? 600 : 400,
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Team/calendar rows */}
+                      <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {sportEntries.map(({ _i, calendarId, teamId, keyword }) => (
+                          <div key={_i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <select
+                              value={calendarId || ''}
+                              onChange={(e) => updateEntry(_i, { calendarId: e.target.value })}
+                              style={{ flex: '1 1 160px', fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
+                            >
+                              <option value="">— calendar —</option>
+                              {(calConfig || []).filter((c) => !c.virtual).map((c) => (
+                                <option key={c.id} value={c.id}>{c.name || c.id}</option>
+                              ))}
+                            </select>
+
+                            {showTeam ? (
+                              <select
+                                value={teamId || ''}
+                                onChange={(e) => {
+                                  const team = teamList.find((t) => t.id === e.target.value);
+                                  updateEntry(_i, { teamId: e.target.value, teamName: team?.name || '' });
+                                }}
+                                style={{ flex: '1 1 160px', fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px' }}
+                              >
+                                <option value="">— team —</option>
+                                {teamList.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type="text"
+                                value={keyword || ''}
+                                onChange={(e) => updateEntry(_i, { keyword: e.target.value || null })}
+                                placeholder="keyword filter (optional)"
+                                style={{ flex: '1 1 160px', fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                              />
+                            )}
+
+                            <button
+                              className="btn-icon"
+                              onClick={() => removeEntry(_i)}
+                              title="Remove"
+                              style={{ color: 'var(--danger)', fontSize: 'inherit', flexShrink: 0 }}
+                            >✕</button>
+                          </div>
+                        ))}
+
+                        <button
+                          className="btn"
+                          onClick={() => addEntryForSport(sport)}
+                          style={{ alignSelf: 'flex-start', fontSize: 'var(--s-xs)', padding: '3px 10px', marginTop: 2 }}
+                        >
+                          + Add {showTeam ? 'team' : 'entry'}
+                        </button>
+                      </div>
+
+                      {/* Golf-specific options */}
+                      {sport === 'golf' && (
+                        <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 'var(--s-sm)', flex: 1 }}>Leaderboard size</span>
+                            <select
+                              value={sd.leaderboardSize || 10}
+                              onChange={(e) => setSd({ leaderboardSize: Number(e.target.value) })}
+                              style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Tracked golfers (comma-separated)</span>
+                            <input
+                              type="text"
+                              value={(sd.trackedGolfers || []).join(', ')}
+                              onChange={(e) => setSd({ trackedGolfers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                              placeholder="Scottie Scheffler, Rory McIlroy"
+                              style={{ fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      )}
 
-                {hasGolf && (
-                  <div style={{ marginTop: 16 }}>
-                    <h4 style={{ margin: '0 0 8px' }}>Golf</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 'var(--s-base)', flex: 1 }}>Leaderboard size</span>
-                        <select
-                          value={sd.leaderboardSize || 10}
-                          onChange={(e) => setSd({ leaderboardSize: Number(e.target.value) })}
-                          style={{ fontSize: 'inherit', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '4px 8px' }}
-                        >
-                          <option value={5}>5</option>
-                          <option value={10}>10</option>
-                          <option value={25}>25</option>
-                        </select>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>Tracked golfers (comma-separated)</span>
-                        <input
-                          type="text"
-                          value={(sd.trackedGolfers || []).join(', ')}
-                          onChange={(e) => setSd({ trackedGolfers: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                          placeholder="Scottie Scheffler, Rory McIlroy"
-                          style={{ fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                      {/* F1-specific options */}
+                      {sport === 'f1' && (
+                        <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={sd.f1EnrichQualifying !== false}
+                              onChange={(e) => setSd({ f1EnrichQualifying: e.target.checked })}
+                              style={{ accentColor: 'var(--accent)' }}
+                            />
+                            Enrich qualifying sessions
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={sd.f1EnrichPractice === true}
+                              onChange={(e) => setSd({ f1EnrichPractice: e.target.checked })}
+                              style={{ accentColor: 'var(--accent)' }}
+                            />
+                            Enrich practice sessions
+                          </label>
+                        </div>
+                      )}
 
-                {hasF1 && (
-                  <div style={{ marginTop: 16 }}>
-                    <h4 style={{ margin: '0 0 8px' }}>F1</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={sd.f1EnrichQualifying !== false}
-                          onChange={(e) => setSd({ f1EnrichQualifying: e.target.checked })}
-                          style={{ accentColor: 'var(--accent)' }}
-                        />
-                        Enrich qualifying sessions
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--s-base)', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={sd.f1EnrichPractice === true}
-                          onChange={(e) => setSd({ f1EnrichPractice: e.target.checked })}
-                          style={{ accentColor: 'var(--accent)' }}
-                        />
-                        Enrich practice sessions
-                      </label>
                     </div>
+                  );
+                })}
+
+                {/* Add sport buttons for unconfigured sports */}
+                {unconfiguredSports.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: configuredSports.length > 0 ? 4 : 0 }}>
+                    {unconfiguredSports.map((sport) => (
+                      <button
+                        key={sport}
+                        className="btn"
+                        onClick={() => addEntryForSport(sport)}
+                        style={{ fontSize: 'var(--s-xs)', padding: '4px 12px' }}
+                      >
+                        + {SPORT_DETAIL_LABEL[sport] || sport}
+                      </button>
+                    ))}
                   </div>
                 )}
 
