@@ -2293,11 +2293,17 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           <option value="2">⛅ Partly cloudy</option>
                           <option value="3">☁️ Overcast</option>
                           <option value="45">🌫️ Fog</option>
-                          <option value="51">🌦️ Drizzle</option>
-                          <option value="61">🌧️ Rain</option>
-                          <option value="65">🌧️ Heavy rain</option>
-                          <option value="71">🌨️ Snow</option>
+                          <option value="51">🌦️ Drizzle (light)</option>
+                          <option value="53">🌦️ Drizzle (moderate)</option>
+                          <option value="55">🌦️ Drizzle (heavy)</option>
+                          <option value="61">🌧️ Rain (light)</option>
+                          <option value="63">🌧️ Rain (moderate)</option>
+                          <option value="65">🌧️ Rain (heavy)</option>
+                          <option value="71">🌨️ Snow (light)</option>
+                          <option value="73">🌨️ Snow (moderate)</option>
+                          <option value="75">🌨️ Snow (heavy)</option>
                           <option value="95">⛈️ Thunderstorm</option>
+                          <option value="99">⛈️ Thunderstorm (heavy)</option>
                         </select>
                         <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Time of day:</span>
                         <select
