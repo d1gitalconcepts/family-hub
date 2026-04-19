@@ -60,39 +60,68 @@ function makeCloudClusters(w, h) {
   }));
 }
 
-function drawSun(ctx, cx, cy, r, t) {
-  const pulse = 1 + Math.sin(t * 0.018) * 0.04;
+// Returns {x, y, brightness} for the sun based on time of day
+function getSunPosition(sunriseIso, sunsetIso, w, h) {
+  function isoToMin(iso) {
+    if (!iso) return null;
+    const time = iso.includes('T') ? iso.split('T')[1] : iso;
+    const [hh, mm] = time.split(':');
+    return parseInt(hh, 10) * 60 + (parseInt(mm, 10) || 0);
+  }
+  const now     = new Date().getHours() * 60 + new Date().getMinutes();
+  const riseMin = isoToMin(sunriseIso) ?? 360;
+  const setMin  = isoToMin(sunsetIso)  ?? 1200;
 
-  // Outer glow
+  // t: 0 at sunrise, 1 at sunset — clamped so sun is always visible
+  const t = Math.max(0, Math.min(1, (now - riseMin) / (setMin - riseMin)));
+
+  const x = w * (0.07 + t * 0.86);              // left → right
+  const arc = Math.sin(t * Math.PI);             // 0 at edges, 1 at noon
+  const y = h * (0.88 - arc * 0.60);            // low at dawn/dusk, higher at noon
+  const brightness = 0.45 + 0.55 * arc;         // dimmer at edges
+  return { x, y, brightness };
+}
+
+function drawSun(ctx, cx, cy, r, t, brightness = 1) {
+  const b = brightness;
+
+  // Outer glow — warmer/redder at low brightness (dawn/dusk), yellower at noon
+  const glowR = Math.round(255);
+  const glowG = Math.round(180 + 40 * b);
   const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 7);
-  glow.addColorStop(0,   'rgba(255,220,90,0.20)');
-  glow.addColorStop(0.4, 'rgba(255,195,70,0.09)');
-  glow.addColorStop(1,   'rgba(255,170,40,0)');
+  glow.addColorStop(0,   `rgba(${glowR},${glowG},80,${(0.22 * b).toFixed(2)})`);
+  glow.addColorStop(0.4, `rgba(${glowR},${glowG},60,${(0.09 * b).toFixed(2)})`);
+  glow.addColorStop(1,    'rgba(255,170,40,0)');
   ctx.beginPath();
   ctx.arc(cx, cy, r * 7, 0, Math.PI * 2);
   ctx.fillStyle = glow;
   ctx.fill();
 
-  // Rays (slowly rotating)
-  const rayAngleOffset = t * 0.004;
+  // Rays — fixed angles, each pulsates independently (no rotation)
   ctx.lineWidth = 1.5;
   for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + rayAngleOffset;
-    const inner = r * 1.45 * pulse, outer = r * 2.3 * pulse;
+    const a     = (i / 8) * Math.PI * 2;
+    const pulse = 0.75 + 0.25 * Math.sin(t * 0.032 + i * 0.72);
+    const inner = r * 1.45;
+    const outer = r * (2.0 + 0.5 * pulse);
+    const alpha = b * (0.30 + 0.22 * pulse);
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
     ctx.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
-    ctx.strokeStyle = 'rgba(255,215,80,0.50)';
+    ctx.strokeStyle = `rgba(255,215,80,${alpha.toFixed(2)})`;
     ctx.stroke();
   }
 
-  // Core
-  const core = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx, cy, r * pulse);
-  core.addColorStop(0,   'rgba(255,245,190,0.92)');
-  core.addColorStop(0.6, 'rgba(255,210,80,0.78)');
-  core.addColorStop(1,   'rgba(255,175,40,0.50)');
+  // Core — more orange at low brightness (sunrise/set tones)
+  const coreG = Math.round(195 + 50 * b);
+  const coreB = Math.round(40  + 50 * b);
+  const corePulse = 1 + Math.sin(t * 0.018) * 0.04;
+  const core = ctx.createRadialGradient(cx - r * 0.2, cy - r * 0.2, 0, cx, cy, r * corePulse);
+  core.addColorStop(0,   `rgba(255,${Math.round(coreG * 1.2)},${Math.round(coreB * 2)},${(0.92 * b + 0.08).toFixed(2)})`);
+  core.addColorStop(0.6, `rgba(255,${coreG},${coreB},${(0.78 * b + 0.10).toFixed(2)})`);
+  core.addColorStop(1,   `rgba(255,${Math.round(coreG * 0.7)},30,${(0.50 * b + 0.12).toFixed(2)})`);
   ctx.beginPath();
-  ctx.arc(cx, cy, r * pulse, 0, Math.PI * 2);
+  ctx.arc(cx, cy, r * corePulse, 0, Math.PI * 2);
   ctx.fillStyle = core;
   ctx.fill();
 }
@@ -132,7 +161,7 @@ function makeParticles(kind, w, h) {
   return [];
 }
 
-export default function WeatherNavCanvas({ code }) {
+export default function WeatherNavCanvas({ code, sunrise, sunset }) {
   const canvasRef = useRef(null);
   const kind = weatherKind(code);
 
@@ -183,7 +212,8 @@ export default function WeatherNavCanvas({ code }) {
       }
 
       if (kind === 'clear') {
-        drawSun(ctx, w * 0.84, h * 0.5, h * 0.28, t);
+        const { x: sx, y: sy, brightness } = getSunPosition(sunrise, sunset, w, h);
+        drawSun(ctx, sx, sy, h * 0.28, t, brightness);
 
       } else if (kind === 'partly') {
         for (const cluster of cloudClusters) {

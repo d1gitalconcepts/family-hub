@@ -276,7 +276,7 @@ export default function WeekView() {
       {/* Desktop nav */}
       {!isMobile && (
         <div className="week-nav" style={navBg}>
-          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} />}
+          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           <button className="btn-icon" onClick={prevWeek}>‹</button>
           <span>{formatWeekLabel(days)}</span>
@@ -288,7 +288,7 @@ export default function WeekView() {
       {/* Mobile nav */}
       {isMobile && (
         <div className="week-nav" style={navBg}>
-          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} />}
+          {navStyleCfg?.preset === 'weather'  && <WeatherNavCanvas code={currentWeatherCode} sunrise={forecast?.[0]?.sunrise} sunset={forecast?.[0]?.sunset} />}
           {navStyleCfg?.preset === 'twilight' && <TwilightNavCanvas />}
           <button className="btn-icon" onClick={prevWeek} title="Prev week">«</button>
           <button className="btn-icon" onClick={() => {
