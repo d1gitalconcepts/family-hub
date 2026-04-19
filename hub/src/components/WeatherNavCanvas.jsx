@@ -13,6 +13,16 @@ function weatherKind(code) {
   return 'clear';
 }
 
+// Returns 1 (light), 2 (moderate), or 3 (heavy) for precipitation kinds
+function weatherIntensity(code) {
+  if (code === 51 || code === 61 || code === 71 || code === 80 || code === 85 || code === 77) return 1;
+  if (code === 53 || code === 63 || code === 73 || code === 81)                               return 2;
+  if (code === 55 || code === 65 || code === 67 || code === 75 || code === 82 || code === 86) return 3;
+  if (code === 95)                                                                            return 2;
+  if (code === 96 || code === 99)                                                             return 3;
+  return 2;
+}
+
 function isoToMin(iso) {
   if (!iso) return null;
   const time = iso.includes('T') ? iso.split('T')[1] : iso;
@@ -187,19 +197,23 @@ function makeCloudClusters(w, h) {
 const SIN_A = Math.sin(Math.PI / 10);
 const COS_A = Math.cos(Math.PI / 10);
 
-function makeParticles(kind, w, h) {
+function makeParticles(kind, intensity, w, h) {
   if (kind === 'drizzle') {
-    return Array.from({ length: 22 }, () => ({
+    const count = [14, 22, 32][intensity - 1];
+    return Array.from({ length: count }, () => ({
       x: Math.random() * w, y: Math.random() * h,
-      len: 6 + Math.random() * 6, speed: 3 + Math.random() * 2,
-      alpha: 0.30 + Math.random() * 0.30,
+      len: 5 + Math.random() * (4 + intensity * 2),
+      speed: 2 + Math.random() * (1 + intensity),
+      alpha: 0.25 + Math.random() * 0.25,
     }));
   }
   if (kind === 'rain') {
-    return Array.from({ length: 38 }, () => ({
+    const count = [24, 38, 50][intensity - 1];
+    return Array.from({ length: count }, () => ({
       x: Math.random() * w, y: Math.random() * h,
-      len: 10 + Math.random() * 10, speed: 6 + Math.random() * 4,
-      alpha: 0.35 + Math.random() * 0.35,
+      len: 8 + Math.random() * (6 + intensity * 3),
+      speed: 4 + Math.random() * (2 + intensity * 2),
+      alpha: 0.30 + Math.random() * 0.30,
     }));
   }
   if (kind === 'heavy-rain' || kind === 'storm') {
@@ -210,10 +224,15 @@ function makeParticles(kind, w, h) {
     }));
   }
   if (kind === 'snow') {
-    return Array.from({ length: 28 }, () => ({
+    const count = [16, 28, 46][intensity - 1];
+    const spd   = [0.35, 0.65, 1.10][intensity - 1];
+    const rMax  = [1.8,  2.5,  3.2][intensity - 1];
+    return Array.from({ length: count }, () => ({
       x: Math.random() * w, y: Math.random() * h,
-      r: 1.5 + Math.random() * 2.5, speed: 0.6 + Math.random() * 0.8,
-      phase: Math.random() * Math.PI * 2, alpha: 0.50 + Math.random() * 0.40,
+      r: 0.8 + Math.random() * rMax,
+      speed: spd * (0.7 + Math.random() * 0.7),
+      phase: Math.random() * Math.PI * 2,
+      alpha: 0.45 + Math.random() * 0.45,
     }));
   }
   return [];
@@ -222,6 +241,7 @@ function makeParticles(kind, w, h) {
 export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
   const canvasRef = useRef(null);
   const kind      = weatherKind(code);
+  const intensity = weatherIntensity(code);
   const moonPhase = getMoonPhase();
 
   useEffect(() => {
@@ -237,7 +257,7 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
       const h = canvas.parentElement?.clientHeight || canvas.offsetHeight || 48;
       canvas.width  = w;
       canvas.height = h;
-      particles     = makeParticles(kind, w, h);
+      particles     = makeParticles(kind, intensity, w, h);
       fogLayers     = makeFogLayers(w, h);
       cloudClusters = kind === 'partly' ? makeCloudClusters(w, h) : [];
       stars         = kind === 'clear'  ? makeStars(w, h)         : [];
@@ -298,9 +318,10 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
         }
 
       } else if (kind === 'snow') {
+        const sway = [0.35, 0.55, 0.85][intensity - 1];
         for (const p of particles) {
           p.y += p.speed;
-          p.x += Math.sin(p.y / 35 + p.phase) * 0.55;
+          p.x += Math.sin(p.y / 35 + p.phase) * sway;
           if (p.y > h + p.r) { p.y = -p.r; p.x = Math.random() * w; }
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -336,7 +357,7 @@ export default function WeatherNavCanvas({ code, sunrise, sunset, testNight }) {
 
     draw();
     return () => { cancelAnimationFrame(animId); ro.disconnect(); };
-  }, [kind, moonPhase, testNight]);
+  }, [kind, intensity, moonPhase, testNight]);
 
   return (
     <canvas
