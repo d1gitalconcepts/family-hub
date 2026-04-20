@@ -1,3 +1,4 @@
+import { useRef, useLayoutEffect } from 'react';
 import EventCard from './EventCard';
 import ForecastCard from './ForecastCard';
 
@@ -14,6 +15,19 @@ function isEventHidden(event, filterRules) {
 }
 
 export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, cardStyle, filterRules, enrichments, sportsDisplay }) {
+  const cellsRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!cellsRef.current) return;
+    cellsRef.current.querySelectorAll('.day-cell').forEach(cell => {
+      const cards = cell.querySelectorAll('.event-card');
+      if (cards.length <= 1) return;
+      cards.forEach(c => (c.style.minHeight = ''));
+      const maxH = Math.max(...Array.from(cards).map(c => c.getBoundingClientRect().height));
+      cards.forEach(c => (c.style.minHeight = `${maxH}px`));
+    });
+  });
+
   const calIds = new Set(section.calendarIds || []);
   const showForecast = calIds.has(FORECAST_ID);
 
@@ -70,7 +84,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
       <div className="section-row-label">
         {section.name && <span>{section.name}</span>}
       </div>
-      <div className="section-cells" style={gridStyle}>
+      <div className="section-cells" style={gridStyle} ref={cellsRef}>
         {days.map((day, i) => {
           const dayEvents   = eventsForDay(day);
           const forecastDay = forecastForDay(day);
