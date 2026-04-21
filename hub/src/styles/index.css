@@ -1716,12 +1716,9 @@ html, body, #root {
 /* ── Print ─────────────────────────────────────────────────── */
 
 @media print {
-  @page { size: landscape; margin: 0.6cm; }
+  @page { size: landscape; margin: 0.8cm 1cm; }
 
-  html, body { margin: 0 !important; padding: 0 !important; }
-  #root { zoom: 72%; }
-
-  /* Force light theme regardless of user preference */
+  /* Force light theme */
   :root, [data-theme='dark'] {
     --bg:           #ffffff !important;
     --bg-secondary: #f5f5f5 !important;
@@ -1732,28 +1729,21 @@ html, body, #root {
     --accent:       #1a73e8 !important;
   }
 
+  html, body { margin: 0 !important; padding: 0 !important; }
   html, body, #root { height: auto !important; overflow: visible !important; }
+  #root { zoom: 75%; }
   .app-shell { height: auto !important; }
   .app-body  { overflow: visible !important; height: auto !important; }
 
   /* Hide everything that isn't the calendar */
-  .app-header,
-  .header-actions,
-  .header-desktop-actions,
-  .weather-bar,
-  .weather-widget,
-  .week-nav .btn-icon,
-  .week-nav .btn,
-  .week-nav canvas,
+  .app-header, .header-actions, .header-desktop-actions,
+  .weather-bar, .weather-widget,
+  .week-nav .btn-icon, .week-nav .btn, .week-nav canvas,
   .sidebar, .sidebar-wrap, .sidebar-rail,
-  .status-bar,
-  .mobile-list-fab,
-  .mobile-drawer-overlay,
-  .settings-overlay,
-  .event-popout-overlay,
+  .status-bar, .mobile-list-fab, .mobile-drawer-overlay,
+  .settings-overlay, .event-popout-overlay,
   .scrape-alert { display: none !important; }
 
-  /* Keep the week-nav strip for the date label — strip animated background */
   .week-nav {
     justify-content: center;
     border-bottom: 1px solid var(--border);
@@ -1761,66 +1751,58 @@ html, body, #root {
     background-image: none !important;
   }
 
-  /* Hide section label column — reclaim that space for the calendar grid */
+  /* Hide section label — grid-template-columns are overridden by JS in beforeprint */
   .section-row-label { display: none !important; }
 
-  /* Remove scroll constraints so full grid prints */
+  /* Remove scroll constraints */
   .week-container, .sections-body, .day-headers { overflow: visible !important; }
 
-  /* Collapse first Sunday column — 0px tracks + zero-height cells so Sunday
-     content doesn't push section rows taller than they need to be */
-  .day-headers   { grid-template-columns: 0px 0px repeat(7, 1fr) !important; }
+  /* Collapse the Sunday column cells — grid template is set by JS in beforeprint */
   .day-headers > *:nth-child(2) {
     overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important;
+    height: 0 !important; min-height: 0 !important; width: 0 !important;
   }
-  .section-cells { grid-template-columns: 0px repeat(7, 1fr) !important; }
   .section-cells > *:first-child {
     overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important;
+    height: 0 !important; min-height: 0 !important; width: 0 !important;
   }
 
-  /* Tighter cells for print */
-  .day-header   { padding: 4px 4px 2px !important; font-size: 11px !important; }
-  .day-date     { font-size: 16px !important; }
-  .day-cell     { padding: 3px !important; gap: 2px !important; min-height: 24px !important; }
+  /* Tighter cells */
+  .day-header { padding: 3px 4px 2px !important; font-size: 10px !important; }
+  .day-date   { font-size: 14px !important; }
+  .day-cell   { padding: 2px !important; gap: 2px !important; min-height: 20px !important; }
 
-  /* Smaller event cards — force dark text regardless of theme or card color */
+  /* Compact event cards — dark text, no calendar pill */
   .event-card,
-  .forecast-card { font-size: 10px !important; padding: 3px 5px !important; color: #111111 !important; }
+  .forecast-card { font-size: 10px !important; padding: 2px 4px !important; color: #111111 !important; }
   .event-title   { font-size: 10px !important; color: #111111 !important; }
   .event-time    { font-size: 9px !important;  color: #444444 !important; }
   .event-cal     { display: none !important; }
 
-  /* No today highlight or yesterday dimming when printing */
-  .day-header.today {
-    color: var(--text-muted) !important;
-  }
-  .day-header.today .day-date {
-    background: none !important;
-    color: var(--text) !important;
-    border-radius: 0 !important;
-    width: auto !important;
-    height: auto !important;
-    line-height: 1.2 !important;
-    margin: 0 !important;
-  }
-  .day-cell.today     { background: none !important; }
-  .day-cell.past,
-  .day-header.past { opacity: 1 !important; }
-
-  /* Hide the forecast section and live score chips (not useful on paper) */
-  .section-row--forecast  { display: none !important; }
-  .event-card-score-chip  { display: none !important; }
-
-  /* Print always uses compact: single-line, sports use abbreviated name */
-  .event-card .event-card-body { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 4px !important; overflow: hidden !important; }
+  /* Single-line cards with ellipsis */
+  .event-card .event-card-body { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 3px !important; overflow: hidden !important; }
   .event-card .event-title     { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; flex: 1 !important; min-width: 0 !important; }
   .event-card .event-time      { white-space: nowrap !important; flex-shrink: 0 !important; }
-  .sports-name-full            { display: none !important; }
-  .sports-name-abbrev          { display: inline !important; }
 
-  /* Keep calendar colors but ensure they print */
+  /* Use abbreviated sports team names in print */
+  .sports-name-full   { display: none !important; }
+  .sports-name-abbrev { display: inline !important; }
+
+  /* No today highlight or past dimming */
+  .day-header.today { color: var(--text-muted) !important; }
+  .day-header.today .day-date {
+    background: none !important; color: var(--text) !important;
+    border-radius: 0 !important; width: auto !important; height: auto !important;
+    line-height: 1.2 !important; margin: 0 !important;
+  }
+  .day-cell.today              { background: none !important; }
+  .day-cell.past, .day-header.past { opacity: 1 !important; }
+
+  /* Hide forecast row and live score chips */
+  .section-row--forecast { display: none !important; }
+  .event-card-score-chip { display: none !important; }
+
+  /* Preserve calendar colors in print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   .section-row { break-inside: avoid; }
