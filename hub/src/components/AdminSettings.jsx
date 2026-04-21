@@ -534,6 +534,14 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
             <div className="settings-section">
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                 <h3 style={{ flex: 1, margin: 0 }}>Event Icons</h3>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer', marginRight: 14 }}>
+                  <input
+                    type="checkbox"
+                    checked={eventIconsCfg?.overrideCalEmoji ?? true}
+                    onChange={(e) => setEventIconsCfg({ ...(eventIconsCfg || { rules: DEFAULT_ICON_RULES }), overrideCalEmoji: e.target.checked })}
+                  />
+                  Rules override calendar icon
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-base)', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   <input
                     type="checkbox"

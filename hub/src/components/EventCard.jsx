@@ -94,7 +94,7 @@ function resolvePopoutElements(style) {
   ];
 }
 
-export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRules, cardStyle, enrichment, sportsDisplay }) {
+export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRules, iconRulesOverride, cardStyle, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -192,7 +192,9 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
     return null;
   }
 
-  const emoji = getKeywordIcon(cleanSummary) || calEmoji;
+  const emoji = (iconRulesOverride ?? true)
+    ? getKeywordIcon(cleanSummary) || calEmoji
+    : calEmoji || getKeywordIcon(cleanSummary);
 
   function renderTextElement(el) {
     if (el.key === 'time') {

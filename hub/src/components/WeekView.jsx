@@ -285,9 +285,10 @@ export default function WeekView() {
     { keyword: 'hair',      icon: '✂️' },
     { keyword: 'holiday',   icon: '🏖️' },
   ];
-  const iconRules = (eventIconsCfg?.enabled ?? true)
+  const iconRules          = (eventIconsCfg?.enabled ?? true)
     ? (eventIconsCfg?.rules ?? DEFAULT_ICON_RULES)
     : [];
+  const iconRulesOverride  = eventIconsCfg?.overrideCalEmoji ?? true;
 
   const deduped = sectionList.map((s) => ({
     ...s,
@@ -377,6 +378,7 @@ export default function WeekView() {
               gridStyle={isMobile ? undefined : cellsGridStyle}
               dayClasses={isMobile ? undefined : dayClasses}
               iconRules={iconRules}
+              iconRulesOverride={iconRulesOverride}
               cardStyle={cardStyleCfg}
               filterRules={eventFiltersCfg?.rules || []}
               enrichments={enrichments}
