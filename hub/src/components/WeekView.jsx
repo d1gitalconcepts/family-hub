@@ -125,39 +125,6 @@ export default function WeekView() {
     return () => clearInterval(id);
   }, [navStyleCfg?.preset]);
 
-  useEffect(() => {
-    const before = () => {
-      const headers = document.querySelector('.day-headers');
-      if (headers) {
-        headers.dataset.savedGtc = headers.style.gridTemplateColumns;
-        headers.style.gridTemplateColumns = '0px 0px repeat(7, 1fr)';
-      }
-      document.querySelectorAll('.section-cells').forEach(el => {
-        el.dataset.savedGtc = el.style.gridTemplateColumns;
-        el.style.gridTemplateColumns = '0px repeat(7, 1fr)';
-      });
-    };
-    const after = () => {
-      const headers = document.querySelector('.day-headers');
-      if (headers && 'savedGtc' in headers.dataset) {
-        headers.style.gridTemplateColumns = headers.dataset.savedGtc;
-        delete headers.dataset.savedGtc;
-      }
-      document.querySelectorAll('.section-cells').forEach(el => {
-        if ('savedGtc' in el.dataset) {
-          el.style.gridTemplateColumns = el.dataset.savedGtc;
-          delete el.dataset.savedGtc;
-        }
-      });
-    };
-    window.addEventListener('beforeprint', before);
-    window.addEventListener('afterprint', after);
-    return () => {
-      window.removeEventListener('beforeprint', before);
-      window.removeEventListener('afterprint', after);
-    };
-  }, []);
-
   // testCode overrides real conditions for preview; otherwise use weather_current code (Open-Meteo)
   // with hourly forecast fallback. Returns undefined while config hasn't loaded yet (suppresses flash).
   const currentWeatherCode = (() => {

@@ -1718,7 +1718,6 @@ html, body, #root {
 @media print {
   @page { size: landscape; margin: 0.8cm 1cm; }
 
-  /* Force light theme */
   :root, [data-theme='dark'] {
     --bg:           #ffffff !important;
     --bg-secondary: #f5f5f5 !important;
@@ -1735,7 +1734,6 @@ html, body, #root {
   .app-shell { height: auto !important; }
   .app-body  { overflow: visible !important; height: auto !important; }
 
-  /* Hide everything that isn't the calendar */
   .app-header, .header-actions, .header-desktop-actions,
   .weather-bar, .weather-widget,
   .week-nav .btn-icon, .week-nav .btn, .week-nav canvas,
@@ -1746,60 +1744,55 @@ html, body, #root {
 
   .week-nav {
     justify-content: center;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 2px solid var(--border);
     background: none !important;
     background-image: none !important;
   }
 
-  /* Collapse section label — fully remove from layout + strip border so it can't bleed */
-  .section-row-label {
-    display: none !important;
-    width: 0 !important; min-width: 0 !important;
-    padding: 0 !important; border: none !important;
+  /* ── Single CSS grid — the only reliable way to align headers with cells ──
+     All intermediate containers become display:contents (transparent to layout).
+     Every day-header and day-cell ends up as a direct child of one grid, so
+     column tracks are shared and alignment is mathematically guaranteed.       */
+  .main-area      { display: flex !important; flex-direction: column; height: 100vh; }
+  .week-container {
+    flex: 1 !important;
+    display: grid !important;
+    grid-template-columns: 0px 0px repeat(7, 1fr) !important;
+    grid-auto-rows: auto !important;
+    align-content: stretch !important;
+    overflow: visible !important;
   }
+  .day-headers,
+  .sections-body,
+  .section-row,
+  .section-cells  { display: contents !important; }
 
-  /* Remove scroll constraints */
-  .week-container, .sections-body, .day-headers { overflow: visible !important; }
-
-  /* Fill the page height — distribute rows equally */
-  .main-area    { display: flex !important; flex-direction: column; height: 100vh; }
-  .week-container { flex: 1 !important; display: flex; flex-direction: column; min-height: 0; }
-  .sections-body  { flex: 1 !important; display: flex !important; flex-direction: column !important; height: 0 !important; }
-  .section-row    { flex: 1 !important; min-height: 0; align-items: stretch; }
-
-  /* Collapsed Sunday column — strip borders too so they don't bleed as phantom lines */
-  .day-header-spacer { border-right: none !important; }
-  .day-headers > *:nth-child(2) {
-    overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important; border: none !important;
-  }
+  /* Items that live in the two 0px columns — keep them as grid placeholders
+     but make them invisible and zero-height so they don't inflate row heights */
+  .day-header-spacer,
+  .day-headers > *:nth-child(2),
+  .section-row-label,
   .section-cells > *:first-child {
-    overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important; border: none !important;
+    visibility: hidden !important;
+    overflow:   hidden !important;
+    height:     0      !important;
+    max-height: 0      !important;
+    padding:    0      !important;
+    border:     none   !important;
   }
 
-  /* Tighter cells */
-  .day-header { padding: 3px 4px 2px !important; font-size: 10px !important; }
-  .day-date   { font-size: 14px !important; }
-  .day-cell   { padding: 2px !important; gap: 2px !important; min-height: 0 !important; }
+  /* Day-header row */
+  .day-header {
+    padding:       3px 4px 2px !important;
+    font-size:     10px        !important;
+    background:    var(--bg-secondary) !important;
+    border-right:  1px solid var(--border) !important;
+    border-bottom: 2px solid var(--border) !important;
+  }
+  .day-header:last-child { border-right: none !important; }
+  .day-date { font-size: 14px !important; }
 
-  /* Compact event cards — dark text, no calendar pill */
-  .event-card,
-  .forecast-card { font-size: 10px !important; padding: 2px 4px !important; color: #111111 !important; }
-  .event-title   { font-size: 10px !important; color: #111111 !important; }
-  .event-time    { font-size: 9px !important;  color: #444444 !important; }
-  .event-cal     { display: none !important; }
-
-  /* Single-line cards with ellipsis */
-  .event-card .event-card-body { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 3px !important; overflow: hidden !important; }
-  .event-card .event-title     { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; flex: 1 !important; min-width: 0 !important; }
-  .event-card .event-time      { white-space: nowrap !important; flex-shrink: 0 !important; }
-
-  /* Use abbreviated sports team names in print */
-  .sports-name-full   { display: none !important; }
-  .sports-name-abbrev { display: inline !important; }
-
-  /* No today highlight or past dimming */
+  /* Today / past */
   .day-header.today { color: var(--text-muted) !important; }
   .day-header.today .day-date {
     background: none !important; color: var(--text) !important;
@@ -1809,10 +1802,36 @@ html, body, #root {
   .day-cell.today              { background: none !important; }
   .day-cell.past, .day-header.past { opacity: 1 !important; }
 
-  /* Hide live score chips only — forecast section prints normally */
+  /* Day cells */
+  .day-cell {
+    padding:       2px !important;
+    gap:           2px !important;
+    min-height:    0   !important;
+    overflow:      hidden !important;
+    border-right:  1px solid var(--border) !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  .day-cell:last-child { border-right: none !important; }
+
+  /* Event cards */
+  .event-card,
+  .forecast-card { font-size: 10px !important; padding: 2px 4px !important; color: #111111 !important; }
+  .event-title   { font-size: 10px !important; color: #111111 !important; }
+  .event-time    { font-size: 9px  !important; color: #444444 !important; }
+  .event-cal     { display: none !important; }
+
+  /* Single-line compact cards with ellipsis */
+  .event-card .event-card-body { flex-direction: row !important; align-items: center !important; flex-wrap: nowrap !important; gap: 3px !important; overflow: hidden !important; }
+  .event-card .event-title     { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; flex: 1 !important; min-width: 0 !important; }
+  .event-card .event-time      { white-space: nowrap !important; flex-shrink: 0 !important; }
+
+  /* Sports: use abbreviated team names */
+  .sports-name-full   { display: none   !important; }
+  .sports-name-abbrev { display: inline !important; }
+
+  /* Hide live score chips */
   .event-card-score-chip { display: none !important; }
 
-  /* Preserve calendar colors in print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
