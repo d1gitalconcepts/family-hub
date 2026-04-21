@@ -1751,26 +1751,37 @@ html, body, #root {
     background-image: none !important;
   }
 
-  /* Hide section label — grid-template-columns are overridden by JS in beforeprint */
-  .section-row-label { display: none !important; }
+  /* Collapse section label — fully remove from layout + strip border so it can't bleed */
+  .section-row-label {
+    display: none !important;
+    width: 0 !important; min-width: 0 !important;
+    padding: 0 !important; border: none !important;
+  }
 
   /* Remove scroll constraints */
   .week-container, .sections-body, .day-headers { overflow: visible !important; }
 
-  /* Collapse the Sunday column cells — grid template is set by JS in beforeprint */
+  /* Fill the page height — distribute rows equally */
+  .main-area    { display: flex !important; flex-direction: column; height: 100vh; }
+  .week-container { flex: 1 !important; display: flex; flex-direction: column; min-height: 0; }
+  .sections-body  { flex: 1 !important; display: flex !important; flex-direction: column !important; height: 0 !important; }
+  .section-row    { flex: 1 !important; min-height: 0; align-items: stretch; }
+
+  /* Collapsed Sunday column — strip borders too so they don't bleed as phantom lines */
+  .day-header-spacer { border-right: none !important; }
   .day-headers > *:nth-child(2) {
     overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important; width: 0 !important;
+    height: 0 !important; min-height: 0 !important; border: none !important;
   }
   .section-cells > *:first-child {
     overflow: hidden !important; padding: 0 !important;
-    height: 0 !important; min-height: 0 !important; width: 0 !important;
+    height: 0 !important; min-height: 0 !important; border: none !important;
   }
 
   /* Tighter cells */
   .day-header { padding: 3px 4px 2px !important; font-size: 10px !important; }
   .day-date   { font-size: 14px !important; }
-  .day-cell   { padding: 2px !important; gap: 2px !important; min-height: 20px !important; }
+  .day-cell   { padding: 2px !important; gap: 2px !important; min-height: 0 !important; }
 
   /* Compact event cards — dark text, no calendar pill */
   .event-card,
@@ -1798,14 +1809,11 @@ html, body, #root {
   .day-cell.today              { background: none !important; }
   .day-cell.past, .day-header.past { opacity: 1 !important; }
 
-  /* Hide forecast row and live score chips */
-  .section-row--forecast { display: none !important; }
+  /* Hide live score chips only — forecast section prints normally */
   .event-card-score-chip { display: none !important; }
 
   /* Preserve calendar colors in print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-
-  .section-row { break-inside: avoid; }
 }
 
 /* ── Sports Panel ── */
