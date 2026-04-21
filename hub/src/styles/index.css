@@ -1716,7 +1716,7 @@ html, body, #root {
 /* ── Print ─────────────────────────────────────────────────── */
 
 @media print {
-  @page { size: landscape; margin: 0.4cm; }
+  @page { size: landscape; margin: 0.6cm; }
 
   /* Body fills the full page and centers its content */
   html, body {
