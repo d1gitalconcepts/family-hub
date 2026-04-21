@@ -260,11 +260,14 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
   }
 
   // Card CSS class
+  const isSportsTeamEvent = !!(enrichment?.data?.awayTeam?.abbrev && enrichment?.data?.homeTeam?.abbrev);
+
   const cardClass = [
     'event-card',
     event.is_all_day ? 'all-day' : '',
     chipStyle ? 'event-card--chip' : 'event-card--border',
     photoUrl && showPhotoOnCard ? `event-card--has-photo${isTitlePhoto ? ' event-card--has-photo--title' : ''}` : '',
+    isSportsTeamEvent ? 'event-card--sports' : '',
   ].filter(Boolean).join(' ');
 
   return (

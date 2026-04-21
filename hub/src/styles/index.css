@@ -1812,8 +1812,9 @@ html, body, #root {
   .day-cell.past,
   .day-header.past { opacity: 1 !important; }
 
-  /* Hide the forecast section */
+  /* Hide the forecast section and live score chips (not useful on paper) */
   .section-row--forecast { display: none !important; }
+  .event-card-score-chip { display: none !important; }
 
   /* Keep calendar colors but ensure they print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -2032,6 +2033,23 @@ html, body, #root {
   padding: 2px;
   border-bottom: none;
 }
+
+/* Sports team cards — force single line so they don't wrap to multiple rows */
+.event-card--sports .event-card-body {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+}
+.event-card--sports .event-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.event-card--sports .event-time { white-space: nowrap; flex-shrink: 0; }
 
 /* Event card score chip */
 .event-card-score-chip {
