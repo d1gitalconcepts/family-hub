@@ -1768,16 +1768,19 @@ html, body, #root {
     background-image: none !important;
   }
 
+  /* Hide section label column — reclaim that space for the calendar grid */
+  .section-row-label { display: none !important; }
+
   /* Distribute section rows to fill available height */
   .sections-body { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
-  .section-row   { flex: 1 1 0 !important; min-height: 0 !important; }
+  .section-row   { flex: 1 1 0 !important; min-height: 0 !important; overflow: visible !important; }
 
   /* Remove scroll constraints */
   .week-container { overflow: hidden !important; }
   .day-headers    { overflow: visible !important; }
 
-  /* Equal-width columns — override the inline gridTemplateColumns */
-  .day-headers  { grid-template-columns: var(--label-w) repeat(8, 1fr) !important; }
+  /* Full-width columns — no label column since it's hidden */
+  .day-headers   { grid-template-columns: 0 repeat(8, 1fr) !important; }
   .section-cells { grid-template-columns: repeat(8, 1fr) !important; }
 
   /* Tighter cells for print */
