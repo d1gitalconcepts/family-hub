@@ -180,10 +180,20 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
   }
 
   const cleanSummary = stripLeadingEmoji(event.summary || '');
+
+  // Normalize verbose sports titles for display (keep cleanSummary for keyword/icon matching)
+  const displayTitle = (() => {
+    let t = cleanSummary;
+    t = t.replace(/\bFORMULA\s+(?:1|ONE)\b/gi, 'F1');
+    t = t.replace(/\bGRAND\s+PRIX\b/gi, 'GP');
+    t = t.replace(/\b20\d{2}\b/g, '');
+    return t.replace(/\s{2,}/g, ' ').trim();
+  })();
+
   // For team sports use "NYK @ BOS" — saves card width vs full city+team names
   const cardSummary  = (enrichment?.data?.awayTeam?.abbrev && enrichment?.data?.homeTeam?.abbrev)
     ? `${enrichment.data.awayTeam.abbrev} @ ${enrichment.data.homeTeam.abbrev}`
-    : cleanSummary;
+    : displayTitle;
 
   function getKeywordIcon(title) {
     if (!iconRules?.length) return null;
@@ -210,8 +220,8 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
         <span key="title" className="event-title">
           {!emojiAsBadge && emoji && <span className="event-emoji">{emoji}</span>}
           {isSportsTeamEvent
-            ? <><span className="sports-name-full">{cleanSummary}</span><span className="sports-name-abbrev">{cardSummary}</span></>
-            : cleanSummary}
+            ? <><span className="sports-name-full">{displayTitle}</span><span className="sports-name-abbrev">{cardSummary}</span></>
+            : displayTitle}
         </span>
       );
     }
@@ -330,7 +340,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
             <div className="event-popout-header">
               <div className="event-popout-title">
                 {emoji && <span style={{ marginRight: 6 }}>{emoji}</span>}
-                {cleanSummary}
+                {displayTitle}
               </div>
               <button className="btn-icon" onClick={() => setOpen(false)}>✕</button>
             </div>
