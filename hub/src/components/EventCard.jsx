@@ -192,7 +192,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
     return null;
   }
 
-  const emoji = calEmoji || getKeywordIcon(cleanSummary);
+  const emoji = getKeywordIcon(cleanSummary) || calEmoji;
 
   function renderTextElement(el) {
     if (el.key === 'time') {
