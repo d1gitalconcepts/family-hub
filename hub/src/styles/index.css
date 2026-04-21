@@ -1812,7 +1812,11 @@ html, body, #root {
     border-bottom:   1px solid var(--border) !important;
     justify-content: center !important;
   }
-  .day-cell:last-child { border-right: none !important; }
+  .day-cell:last-child  { border-right: 1px solid var(--border) !important; }
+  .day-header:last-child { border-right: 1px solid var(--border) !important; }
+  /* Left edge of table — second child is first visible column (Monday) */
+  .section-cells > *:nth-child(2) { border-left: 1px solid var(--border) !important; }
+  .day-headers   > *:nth-child(3) { border-left: 1px solid var(--border) !important; }
 
   /* Event cards */
   .event-card,
