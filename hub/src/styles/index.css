@@ -1831,9 +1831,9 @@ html, body, #root {
   .event-card .event-title     { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; flex: 1 !important; min-width: 0 !important; }
   .event-card .event-time      { white-space: nowrap !important; flex-shrink: 0 !important; }
 
-  /* Meal plan: full title must be readable on the fridge — allow wrapping */
-  .section-row--meal-plan .event-card .event-card-body { flex-direction: column !important; flex-wrap: wrap !important; overflow: visible !important; }
-  .section-row--meal-plan .event-card .event-title     { white-space: normal !important; overflow: visible !important; text-overflow: unset !important; }
+  /* Sections with "Wrap print" enabled — allow full title to wrap instead of truncate */
+  .section-row--print-wrap .event-card .event-card-body { flex-direction: column !important; flex-wrap: wrap !important; overflow: visible !important; }
+  .section-row--print-wrap .event-card .event-title     { white-space: normal !important; overflow: visible !important; text-overflow: unset !important; }
 
   /* Sports: use abbreviated team names */
   .sports-name-full   { display: none   !important; }
