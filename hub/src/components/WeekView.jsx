@@ -201,12 +201,11 @@ export default function WeekView() {
 
   const [isPrinting, setIsPrinting] = useState(false);
   useEffect(() => {
-    // flushSync forces React to re-render synchronously before the browser
-    // captures the print layout — without it, React 18 batching defers the
-    // state update until after the print snapshot is already taken.
+    // flushSync forces the re-render before the browser captures the print
+    // layout — React 18 batching would otherwise defer it until too late.
     const before = () => flushSync(() => setIsPrinting(true));
     const after  = () => {
-      flushSync(() => setIsPrinting(false));
+      setIsPrinting(false);   // no flushSync needed on cleanup
       const root = document.getElementById('root');
       if (root) root.style.zoom = '';
     };
@@ -253,9 +252,8 @@ export default function WeekView() {
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
   function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const printDays    = isPrinting ? days.slice(1) : days;
-  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : printDays;
-  const dayClasses   = printDays.map((d) =>
+  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : days;
+  const dayClasses   = days.map((d) =>
     sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );
 
@@ -360,7 +358,7 @@ export default function WeekView() {
         {!isMobile && (
           <div className="day-headers" style={headerGridStyle}>
             <div className="day-header-spacer" />
-            {visibleDays.map((day, i) => (
+            {days.map((day, i) => (
               <div key={i} className={`day-header${dayClasses[i] ? ' ' + dayClasses[i] : ''}`}>
                 {DAY_NAMES[day.getDay()]}
                 <span className="day-date">{day.getDate()}</span>
