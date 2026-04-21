@@ -1804,12 +1804,13 @@ html, body, #root {
 
   /* Day cells */
   .day-cell {
-    padding:       2px !important;
-    gap:           2px !important;
-    min-height:    0   !important;
-    overflow:      hidden !important;
-    border-right:  1px solid var(--border) !important;
-    border-bottom: 1px solid var(--border) !important;
+    padding:         2px !important;
+    gap:             2px !important;
+    min-height:      0   !important;
+    overflow:        hidden !important;
+    border-right:    1px solid var(--border) !important;
+    border-bottom:   1px solid var(--border) !important;
+    justify-content: center !important;
   }
   .day-cell:last-child { border-right: none !important; }
 
