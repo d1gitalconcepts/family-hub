@@ -1779,12 +1779,18 @@ html, body, #root {
   .week-container { overflow: hidden !important; }
   .day-headers    { overflow: visible !important; }
 
-  /* Collapse first Sunday column via CSS — 0px spacer + 0px Sun + 7×Mon-Sun */
+  /* Collapse first Sunday column — 0px tracks + zero-height cells so Sunday
+     content doesn't push section rows taller than they need to be */
   .day-headers   { grid-template-columns: 0px 0px repeat(7, 1fr) !important; }
-  .day-headers > *:nth-child(2) { overflow: hidden !important; padding: 0 !important; }
-  /* section-cells has no spacer: 0px Sun + 7×Mon-Sun */
+  .day-headers > *:nth-child(2) {
+    overflow: hidden !important; padding: 0 !important;
+    height: 0 !important; min-height: 0 !important;
+  }
   .section-cells { grid-template-columns: 0px repeat(7, 1fr) !important; }
-  .section-cells > *:first-child { overflow: hidden !important; padding: 0 !important; }
+  .section-cells > *:first-child {
+    overflow: hidden !important; padding: 0 !important;
+    height: 0 !important; min-height: 0 !important;
+  }
 
   /* Tighter cells for print */
   .day-header   { padding: 4px 4px 2px !important; font-size: 11px !important; }
