@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
+import { flushSync } from 'react-dom';
 import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
@@ -200,9 +201,12 @@ export default function WeekView() {
 
   const [isPrinting, setIsPrinting] = useState(false);
   useEffect(() => {
-    const before = () => setIsPrinting(true);
+    // flushSync forces React to re-render synchronously before the browser
+    // captures the print layout — without it, React 18 batching defers the
+    // state update until after the print snapshot is already taken.
+    const before = () => flushSync(() => setIsPrinting(true));
     const after  = () => {
-      setIsPrinting(false);
+      flushSync(() => setIsPrinting(false));
       const root = document.getElementById('root');
       if (root) root.style.zoom = '';
     };
