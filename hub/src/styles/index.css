@@ -1753,9 +1753,8 @@ html, body, #root {
      All intermediate containers become display:contents (transparent to layout).
      Every day-header and day-cell ends up as a direct child of one grid, so
      column tracks are shared and alignment is mathematically guaranteed.       */
-  .main-area      { display: flex !important; flex-direction: column; height: 100vh; }
+  .main-area      { display: block !important; }
   .week-container {
-    flex: 1 !important;
     display: grid !important;
     grid-template-columns: 0px 0px repeat(7, 1fr) !important;
     grid-auto-rows: auto !important;
