@@ -1716,7 +1716,10 @@ html, body, #root {
 /* ── Print ─────────────────────────────────────────────────── */
 
 @media print {
-  @page { size: landscape; margin: 0.6cm; }
+  @page { size: landscape; margin: 0.4cm; }
+
+  /* Scale everything down so the full week fits on one landscape page */
+  html { zoom: 62%; }
 
   /* Force light theme regardless of user preference */
   :root, [data-theme='dark'] {
@@ -1736,9 +1739,9 @@ html, body, #root {
   .app-body   { overflow: visible !important; height: auto !important; }
 
   /* Hide everything that isn't the calendar */
+  .app-header,
   .header-actions,
   .header-desktop-actions,
-  .app-header h1,
   .weather-bar,
   .weather-widget,
   .week-nav .btn-icon,
@@ -1758,13 +1761,6 @@ html, body, #root {
     border-bottom: 1px solid var(--border);
     background: none !important;
     background-image: none !important;
-  }
-
-  /* Slim the header down to just a ruled line (title is hidden) */
-  .app-header {
-    height: auto !important;
-    padding: 4px 12px !important;
-    border-bottom: 2px solid var(--border) !important;
   }
 
   /* Remove all overflow/scroll so the full grid prints */
