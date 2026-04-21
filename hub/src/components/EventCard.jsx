@@ -209,7 +209,9 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
       return (
         <span key="title" className="event-title">
           {!emojiAsBadge && emoji && <span className="event-emoji">{emoji}</span>}
-          {cardSummary}
+          {isSportsTeamEvent
+            ? <><span className="sports-name-full">{cleanSummary}</span><span className="sports-name-abbrev">{cardSummary}</span></>
+            : cleanSummary}
         </span>
       );
     }

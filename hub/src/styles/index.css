@@ -1813,8 +1813,12 @@ html, body, #root {
   .day-header.past { opacity: 1 !important; }
 
   /* Hide the forecast section and live score chips (not useful on paper) */
-  .section-row--forecast { display: none !important; }
-  .event-card-score-chip { display: none !important; }
+  .section-row--forecast  { display: none !important; }
+  .event-card-score-chip  { display: none !important; }
+
+  /* Sports cards: swap to abbreviated name on print */
+  .sports-name-full   { display: none !important; }
+  .sports-name-abbrev { display: inline !important; }
 
   /* Keep calendar colors but ensure they print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -2034,7 +2038,7 @@ html, body, #root {
   border-bottom: none;
 }
 
-/* Sports team cards — force single line so they don't wrap to multiple rows */
+/* Sports team cards — single line, full name on screen / abbreviated on print */
 .event-card--sports .event-card-body {
   flex-direction: row;
   align-items: center;
@@ -2049,7 +2053,8 @@ html, body, #root {
   flex: 1;
   min-width: 0;
 }
-.event-card--sports .event-time { white-space: nowrap; flex-shrink: 0; }
+.event-card--sports .event-time    { white-space: nowrap; flex-shrink: 0; }
+.event-card--sports .sports-name-abbrev { display: none; }
 
 /* Event card score chip */
 .event-card-score-chip {
