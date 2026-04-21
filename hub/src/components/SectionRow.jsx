@@ -84,7 +84,11 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   if (!hasContent) return null;
 
   return (
-    <div className={`section-row${showForecast ? ' section-row--forecast' : ''}`}>
+    <div className={[
+      'section-row',
+      showForecast ? 'section-row--forecast' : '',
+      section.name ? `section-row--${section.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : '',
+    ].filter(Boolean).join(' ')}>
       <div className="section-row-label">
         {section.name && <span>{section.name}</span>}
       </div>
