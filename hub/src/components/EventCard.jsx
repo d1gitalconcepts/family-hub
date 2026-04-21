@@ -180,6 +180,10 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
   }
 
   const cleanSummary = stripLeadingEmoji(event.summary || '');
+  // For team sports use "NYK @ BOS" — saves card width vs full city+team names
+  const cardSummary  = (enrichment?.data?.awayTeam?.abbrev && enrichment?.data?.homeTeam?.abbrev)
+    ? `${enrichment.data.awayTeam.abbrev} @ ${enrichment.data.homeTeam.abbrev}`
+    : cleanSummary;
 
   function getKeywordIcon(title) {
     if (!iconRules?.length) return null;
@@ -205,7 +209,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
       return (
         <span key="title" className="event-title">
           {!emojiAsBadge && emoji && <span className="event-emoji">{emoji}</span>}
-          {cleanSummary}
+          {cardSummary}
         </span>
       );
     }
