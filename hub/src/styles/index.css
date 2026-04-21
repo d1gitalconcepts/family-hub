@@ -1818,7 +1818,9 @@ html, body, #root {
   .section-cells > *:nth-child(2) { border-left: 1px solid var(--border) !important; }
   .day-headers   > *:nth-child(3) { border-left: 1px solid var(--border) !important; }
 
-  /* Event cards */
+  /* Event cards — white background, colored left border only (no ink-heavy tints) */
+  .event-card--border { background: #ffffff !important; }
+  .event-card--chip   { background: #ffffff !important; border-left: 3px solid var(--cal-color, #cccccc) !important; border-radius: 0 4px 4px 0 !important; }
   .event-card,
   .forecast-card { font-size: 10px !important; padding: 2px 4px !important; color: #111111 !important; }
   .event-title   { font-size: 10px !important; color: #111111 !important; }
