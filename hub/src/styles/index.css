@@ -1831,6 +1831,12 @@ html, body, #root {
   .event-card .event-title     { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; flex: 1 !important; min-width: 0 !important; }
   .event-card .event-time      { white-space: nowrap !important; flex-shrink: 0 !important; }
 
+  /* Hide rows whose only content is in the hidden Sunday column */
+  .section-row:not(:has(.section-cells > *:not(:first-child) .event-card,
+                         .section-cells > *:not(:first-child) .forecast-card)) {
+    display: none !important;
+  }
+
   /* Calendars with "Wrap" enabled — let title text wrap, keep row layout intact */
   .event-card--print-wrap .event-card-body { overflow: visible !important; }
   .event-card--print-wrap .event-title     { white-space: normal !important; overflow: visible !important; text-overflow: unset !important; }
