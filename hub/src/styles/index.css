@@ -1718,17 +1718,20 @@ html, body, #root {
 @media print {
   @page { size: landscape; margin: 0.4cm; }
 
-  /* Scale everything down so the full week fits on one landscape page */
-  html { zoom: 62%; }
-
-  /* Center content vertically on the page */
+  /* Body fills the full page and centers its content */
+  html, body {
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
   body {
-    height: 100vh !important;
     display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
+    align-items: center !important;
     overflow: hidden !important;
   }
+
+  /* Scale the app content to fit one landscape page */
+  #root { zoom: 75%; width: 100%; }
 
   /* Force light theme regardless of user preference */
   :root, [data-theme='dark'] {
