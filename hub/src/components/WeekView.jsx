@@ -198,6 +198,15 @@ export default function WeekView() {
   const isMobile    = useIsMobile();
   const enrichments = useSportsEnrichment();
 
+  const [isPrinting, setIsPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => setIsPrinting(true);
+    const after  = () => setIsPrinting(false);
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint',  after);
+    return () => { window.removeEventListener('beforeprint', before); window.removeEventListener('afterprint', after); };
+  }, []);
+
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
 
@@ -224,7 +233,7 @@ export default function WeekView() {
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
   function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const visibleDays  = isMobile ? [days[mobileDayIdx]] : days;
+  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : days;
   const dayClasses   = days.map((d) =>
     sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );

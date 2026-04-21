@@ -1738,9 +1738,12 @@ html, body, #root {
   /* Hide everything that isn't the calendar */
   .header-actions,
   .header-desktop-actions,
+  .app-header h1,
   .weather-bar,
+  .weather-widget,
   .week-nav .btn-icon,
   .week-nav .btn,
+  .week-nav canvas,
   .sidebar, .sidebar-wrap, .sidebar-rail,
   .status-bar,
   .mobile-list-fab,
@@ -1749,16 +1752,20 @@ html, body, #root {
   .event-popout-overlay,
   .scrape-alert { display: none !important; }
 
-  /* Keep the week-nav strip for the date label, just hide the buttons */
-  .week-nav { justify-content: center; border-bottom: 1px solid var(--border); }
+  /* Keep the week-nav strip for the date label — strip animated background */
+  .week-nav {
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    background: none !important;
+    background-image: none !important;
+  }
 
-  /* Slim down the header */
+  /* Slim the header down to just a ruled line (title is hidden) */
   .app-header {
     height: auto !important;
-    padding: 6px 12px !important;
+    padding: 4px 12px !important;
     border-bottom: 2px solid var(--border) !important;
   }
-  .app-header h1 { font-size: 15px !important; }
 
   /* Remove all overflow/scroll so the full grid prints */
   .week-container,
@@ -1774,11 +1781,11 @@ html, body, #root {
   .day-date     { font-size: 16px !important; }
   .day-cell     { padding: 3px !important; gap: 2px !important; min-height: 24px !important; }
 
-  /* Smaller event cards */
+  /* Smaller event cards — force dark text regardless of theme or card color */
   .event-card,
-  .forecast-card { font-size: 10px !important; padding: 3px 5px !important; }
-  .event-title   { font-size: 10px !important; }
-  .event-time    { font-size: 9px !important; }
+  .forecast-card { font-size: 10px !important; padding: 3px 5px !important; color: #111111 !important; }
+  .event-title   { font-size: 10px !important; color: #111111 !important; }
+  .event-time    { font-size: 9px !important;  color: #444444 !important; }
   .event-cal     { display: none !important; }
 
   /* No today highlight or yesterday dimming when printing */
