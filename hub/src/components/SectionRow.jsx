@@ -46,7 +46,8 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   const unfiltered = section.id === '__all';
 
   function eventsForDay(day) {
-    const dateStr = day.toISOString().split('T')[0];
+    const y = day.getFullYear(), m = String(day.getMonth() + 1).padStart(2, '0'), d = String(day.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${d}`;
     return events
       .filter((e) => {
         if (!unfiltered && !visibleIds.has(e.calendar_id)) return false;
@@ -60,7 +61,10 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
           return e.start_date === dateStr;
         }
         if (!e.start_at) return false;
-        return new Date(e.start_at).toISOString().split('T')[0] === dateStr;
+        // Compare local dates: UTC timestamps for evening events can roll into the next UTC day
+        const ed = new Date(e.start_at);
+        const ey = ed.getFullYear(), em = String(ed.getMonth() + 1).padStart(2, '0'), eday = String(ed.getDate()).padStart(2, '0');
+        return `${ey}-${em}-${eday}` === dateStr;
       })
       .sort((a, b) => {
         if (a.is_all_day !== b.is_all_day) return a.is_all_day ? -1 : 1;
