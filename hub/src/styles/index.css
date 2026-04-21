@@ -1783,13 +1783,13 @@ html, body, #root {
   /* Day-header row */
   .day-header {
     padding:       3px 4px 2px !important;
-    font-size:     10px        !important;
+    font-size:     12px        !important;
     background:    var(--bg-secondary) !important;
     border-right:  1px solid var(--border) !important;
     border-bottom: 2px solid var(--border) !important;
   }
   .day-header:last-child { border-right: none !important; }
-  .day-date { font-size: 14px !important; }
+  .day-date { font-size: 18px !important; }
 
   /* Today / past */
   .day-header.today { color: var(--text-muted) !important; }
@@ -1818,12 +1818,12 @@ html, body, #root {
   .day-headers   > *:nth-child(3) { border-left: 1px solid var(--border) !important; }
 
   /* Event cards — stronger tint so colors read clearly on white paper */
-  .event-card--border { background: color-mix(in srgb, var(--cal-color, #4285f4) 25%, #ffffff) !important; }
-  .event-card--chip   { background: color-mix(in srgb, var(--cal-color, #4285f4) 25%, #ffffff) !important; }
+  .event-card--border { background: color-mix(in srgb, var(--cal-color, #4285f4) 40%, #ffffff) !important; }
+  .event-card--chip   { background: color-mix(in srgb, var(--cal-color, #4285f4) 40%, #ffffff) !important; }
   .event-card,
-  .forecast-card { font-size: 10px !important; padding: 2px 4px !important; color: #111111 !important; }
-  .event-title   { font-size: 10px !important; color: #111111 !important; }
-  .event-time    { font-size: 9px  !important; color: #444444 !important; }
+  .forecast-card { font-size: 13px !important; padding: 2px 4px !important; color: #111111 !important; }
+  .event-title   { font-size: 13px !important; color: #111111 !important; }
+  .event-time    { font-size: 11px !important; color: #444444 !important; }
   .event-cal     { display: none !important; }
 
   /* Single-line compact cards with ellipsis */
