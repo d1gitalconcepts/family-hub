@@ -1718,15 +1718,8 @@ html, body, #root {
 @media print {
   @page { size: landscape; margin: 0.6cm; }
 
-  /* Full-page fill: flex chain from root down to section rows */
-  html, body, #root {
-    height: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-  }
-  body  { display: flex !important; flex-direction: column !important; }
-  #root { display: flex !important; flex-direction: column !important; width: 100%; }
+  html, body { margin: 0 !important; padding: 0 !important; }
+  #root { zoom: 72%; }
 
   /* Force light theme regardless of user preference */
   :root, [data-theme='dark'] {
@@ -1739,9 +1732,9 @@ html, body, #root {
     --accent:       #1a73e8 !important;
   }
 
-  /* Stretch the shell/body so sections fill the page */
-  .app-shell { flex: 1 !important; min-height: 0 !important; height: auto !important; }
-  .app-body  { flex: 1 !important; min-height: 0 !important; overflow: hidden !important; height: auto !important; }
+  html, body, #root { height: auto !important; overflow: visible !important; }
+  .app-shell { height: auto !important; }
+  .app-body  { overflow: visible !important; height: auto !important; }
 
   /* Hide everything that isn't the calendar */
   .app-header,
@@ -1771,13 +1764,8 @@ html, body, #root {
   /* Hide section label column — reclaim that space for the calendar grid */
   .section-row-label { display: none !important; }
 
-  /* Distribute section rows to fill available height */
-  .sections-body { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
-  .section-row   { flex: 1 1 0 !important; min-height: 0 !important; overflow: visible !important; }
-
-  /* Remove scroll constraints */
-  .week-container { overflow: hidden !important; }
-  .day-headers    { overflow: visible !important; }
+  /* Remove scroll constraints so full grid prints */
+  .week-container, .sections-body, .day-headers { overflow: visible !important; }
 
   /* Collapse first Sunday column — 0px tracks + zero-height cells so Sunday
      content doesn't push section rows taller than they need to be */

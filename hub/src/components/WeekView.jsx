@@ -1,5 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
-import { flushSync } from 'react-dom';
+import { useState, useEffect } from 'react';
 import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
@@ -199,32 +198,6 @@ export default function WeekView() {
   const isMobile    = useIsMobile();
   const enrichments = useSportsEnrichment();
 
-  const [isPrinting, setIsPrinting] = useState(false);
-  useEffect(() => {
-    // flushSync forces the re-render before the browser captures the print
-    // layout — React 18 batching would otherwise defer it until too late.
-    const before = () => flushSync(() => setIsPrinting(true));
-    const after  = () => {
-      setIsPrinting(false);   // no flushSync needed on cleanup
-      const root = document.getElementById('root');
-      if (root) root.style.zoom = '';
-    };
-    window.addEventListener('beforeprint', before);
-    window.addEventListener('afterprint',  after);
-    return () => { window.removeEventListener('beforeprint', before); window.removeEventListener('afterprint', after); };
-  }, []);
-
-  // After the full-week re-render, zoom down only if content overflows the page
-  useLayoutEffect(() => {
-    if (!isPrinting) return;
-    const root = document.getElementById('root');
-    if (!root) return;
-    const pageH    = root.clientHeight;
-    const contentH = root.scrollHeight;
-    if (pageH > 0 && contentH > pageH) {
-      root.style.zoom = String(pageH / contentH);
-    }
-  }, [isPrinting]);
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
@@ -252,7 +225,7 @@ export default function WeekView() {
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
   function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : days;
+  const visibleDays  = isMobile ? [days[mobileDayIdx]] : days;
   const dayClasses   = days.map((d) =>
     sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );
