@@ -1721,6 +1721,15 @@ html, body, #root {
   /* Scale everything down so the full week fits on one landscape page */
   html { zoom: 62%; }
 
+  /* Center content vertically on the page */
+  body {
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
   /* Force light theme regardless of user preference */
   :root, [data-theme='dark'] {
     --bg:           #ffffff !important;
