@@ -6,11 +6,19 @@ async function fetchJson(url) {
   return r.json();
 }
 
+// Extract local date string from a UTC ISO timestamp.
+// toISOString().split('T')[0] gives the UTC date, which is wrong for evening events
+// that cross midnight UTC (e.g. 8pm ET = 00:00 UTC next day).
+function localDate(isoStr, tz = 'America/New_York') {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .format(new Date(isoStr));
+}
+
 // ── MLB ──────────────────────────────────────────────────────────────────────
 
 // standingsMap is fetched once per sync and passed in to avoid repeated API calls
 async function enrichMlb(event, config, standingsMap = {}) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for MLB event');
 
   const teamId = config.teamId;
@@ -80,7 +88,7 @@ async function enrichMlb(event, config, standingsMap = {}) {
 // ── NFL ──────────────────────────────────────────────────────────────────────
 
 async function enrichNfl(event, config) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for NFL event');
 
   const yyyymmdd = dateStr.replace(/-/g, '');
@@ -119,7 +127,7 @@ async function enrichNfl(event, config) {
 // ── NBA ──────────────────────────────────────────────────────────────────────
 
 async function enrichNba(event, config) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for NBA event');
 
   const yyyymmdd = dateStr.replace(/-/g, '');
@@ -163,7 +171,7 @@ async function enrichNba(event, config) {
 // ── NHL ──────────────────────────────────────────────────────────────────────
 
 async function enrichNhl(event, config) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for NHL event');
 
   // Step 1: find the game on the scoreboard
@@ -315,7 +323,7 @@ async function enrichNhl(event, config) {
 // ── Golf ─────────────────────────────────────────────────────────────────────
 
 async function enrichGolf(event, config) {
-  const startStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const startStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!startStr) throw new Error('No date for Golf event');
 
   // For multi-day tournaments use today's date so ESPN returns the live leaderboard.
@@ -480,7 +488,7 @@ function detectF1SessionType(title) {
 }
 
 async function enrichF1(event) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for F1 event');
 
   // Skip future sessions — OpenF1 has no data yet and the calls waste subrequest budget
@@ -562,7 +570,7 @@ async function enrichF1(event) {
 // ── NASCAR ───────────────────────────────────────────────────────────────────
 
 async function enrichNascar(event) {
-  const dateStr = (event.start_date || (event.start_at ? event.start_at.split('T')[0] : null));
+  const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for NASCAR event');
 
   const yyyymmdd = dateStr.replace(/-/g, '');
@@ -689,7 +697,7 @@ export async function enrichSportsEvents(env) {
     // All other sports: always enrich so future games show current standings/records.
 
     // Dedup: same sport + same calendar + same date → one API call, result shared.
-    const eventDate = event.start_date || (event.start_at ? event.start_at.split('T')[0] : null);
+    const eventDate = event.start_date || (event.start_at ? localDate(event.start_at) : null);
     const dedupKey  = `${config.sport}:${config.calendarId}:${eventDate}`;
 
     try {
