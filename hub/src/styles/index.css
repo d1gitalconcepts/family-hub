@@ -1779,9 +1779,9 @@ html, body, #root {
   .week-container { overflow: hidden !important; }
   .day-headers    { overflow: visible !important; }
 
-  /* Full-width columns — no label column since it's hidden */
-  .day-headers   { grid-template-columns: 0 repeat(8, 1fr) !important; }
-  .section-cells { grid-template-columns: repeat(8, 1fr) !important; }
+  /* 7 columns (Mon–Sun) — spacer collapses to 0, first Sunday excluded */
+  .day-headers   { grid-template-columns: 0 repeat(7, 1fr) !important; }
+  .section-cells { grid-template-columns: repeat(7, 1fr) !important; }
 
   /* Tighter cells for print */
   .day-header   { padding: 4px 4px 2px !important; font-size: 11px !important; }

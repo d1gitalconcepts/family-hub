@@ -249,8 +249,9 @@ export default function WeekView() {
   function nextWeek() { const d = new Date(anchor); d.setDate(d.getDate() + 7); setAnchor(d); }
   function goToday()  { setAnchor(new Date()); setMobileDayIdx(new Date().getDay()); }
 
-  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : days;
-  const dayClasses   = days.map((d) =>
+  const printDays    = isPrinting ? days.slice(1) : days;
+  const visibleDays  = (isMobile && !isPrinting) ? [days[mobileDayIdx]] : printDays;
+  const dayClasses   = printDays.map((d) =>
     sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );
 
@@ -354,7 +355,7 @@ export default function WeekView() {
         {!isMobile && (
           <div className="day-headers" style={headerGridStyle}>
             <div className="day-header-spacer" />
-            {days.map((day, i) => (
+            {visibleDays.map((day, i) => (
               <div key={i} className={`day-header${dayClasses[i] ? ' ' + dayClasses[i] : ''}`}>
                 {DAY_NAMES[day.getDay()]}
                 <span className="day-date">{day.getDate()}</span>
