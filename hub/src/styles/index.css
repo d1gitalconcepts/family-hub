@@ -1718,20 +1718,15 @@ html, body, #root {
 @media print {
   @page { size: landscape; margin: 0.6cm; }
 
-  /* Body fills the full page and centers its content */
-  html, body {
+  /* Full-page fill: flex chain from root down to section rows */
+  html, body, #root {
     height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-  }
-  body {
-    display: flex !important;
-    align-items: center !important;
     overflow: hidden !important;
   }
-
-  /* Scale the app content to fit one landscape page */
-  #root { zoom: 75%; width: 100%; }
+  body  { display: flex !important; flex-direction: column !important; }
+  #root { display: flex !important; flex-direction: column !important; width: 100%; }
 
   /* Force light theme regardless of user preference */
   :root, [data-theme='dark'] {
@@ -1744,11 +1739,9 @@ html, body, #root {
     --accent:       #1a73e8 !important;
   }
 
-  /* Remove height constraints so everything renders */
-  html, body, #root { height: auto !important; overflow: visible !important; }
-
-  .app-shell  { height: auto !important; }
-  .app-body   { overflow: visible !important; height: auto !important; }
+  /* Stretch the shell/body so sections fill the page */
+  .app-shell { flex: 1 !important; min-height: 0 !important; height: auto !important; }
+  .app-body  { flex: 1 !important; min-height: 0 !important; overflow: hidden !important; height: auto !important; }
 
   /* Hide everything that isn't the calendar */
   .app-header,
@@ -1775,10 +1768,13 @@ html, body, #root {
     background-image: none !important;
   }
 
-  /* Remove all overflow/scroll so the full grid prints */
-  .week-container,
-  .sections-body,
-  .day-headers { overflow: visible !important; }
+  /* Distribute section rows to fill available height */
+  .sections-body { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+  .section-row   { flex: 1 1 0 !important; min-height: 0 !important; }
+
+  /* Remove scroll constraints */
+  .week-container { overflow: hidden !important; }
+  .day-headers    { overflow: visible !important; }
 
   /* Equal-width columns — override the inline gridTemplateColumns */
   .day-headers  { grid-template-columns: var(--label-w) repeat(8, 1fr) !important; }
@@ -1819,7 +1815,6 @@ html, body, #root {
   /* Keep calendar colors but ensure they print */
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-  /* Don't break sections across pages */
   .section-row { break-inside: avoid; }
 }
 

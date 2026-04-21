@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
@@ -201,11 +201,27 @@ export default function WeekView() {
   const [isPrinting, setIsPrinting] = useState(false);
   useEffect(() => {
     const before = () => setIsPrinting(true);
-    const after  = () => setIsPrinting(false);
+    const after  = () => {
+      setIsPrinting(false);
+      const root = document.getElementById('root');
+      if (root) root.style.zoom = '';
+    };
     window.addEventListener('beforeprint', before);
     window.addEventListener('afterprint',  after);
     return () => { window.removeEventListener('beforeprint', before); window.removeEventListener('afterprint', after); };
   }, []);
+
+  // After the full-week re-render, zoom down only if content overflows the page
+  useLayoutEffect(() => {
+    if (!isPrinting) return;
+    const root = document.getElementById('root');
+    if (!root) return;
+    const pageH    = root.clientHeight;
+    const contentH = root.scrollHeight;
+    if (pageH > 0 && contentH > pageH) {
+      root.style.zoom = String(pageH / contentH);
+    }
+  }, [isPrinting]);
 
   // Mobile: default to today's index in the week (0=Sun … 6=Sat)
   const [mobileDayIdx, setMobileDayIdx] = useState(() => new Date().getDay());
