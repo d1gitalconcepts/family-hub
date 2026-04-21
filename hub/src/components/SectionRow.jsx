@@ -31,14 +31,16 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   const calIds = new Set(section.calendarIds || []);
   const showForecast = calIds.has(FORECAST_ID);
 
-  const colorMap  = {};
-  const emojiMap  = {};
-  const abbrevMap = {};
+  const colorMap     = {};
+  const emojiMap     = {};
+  const abbrevMap    = {};
+  const printWrapMap = {};
   const visibleIds = new Set();
   (calendarConfig || []).forEach((c) => {
-    colorMap[c.id]  = c.color;
-    emojiMap[c.id]  = c.emoji  || null;
-    abbrevMap[c.id] = c.abbrev || null;
+    colorMap[c.id]     = c.color;
+    emojiMap[c.id]     = c.emoji     || null;
+    abbrevMap[c.id]    = c.abbrev    || null;
+    printWrapMap[c.id] = c.printWrap || false;
     if (calIds.has(c.id) && c.visible !== false) visibleIds.add(c.id);
   });
 
@@ -84,11 +86,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
   if (!hasContent) return null;
 
   return (
-    <div className={[
-      'section-row',
-      showForecast ? 'section-row--forecast' : '',
-      section.printWrap ? 'section-row--print-wrap' : '',
-    ].filter(Boolean).join(' ')}>
+    <div className={`section-row${showForecast ? ' section-row--forecast' : ''}`}>
       <div className="section-row-label">
         {section.name && <span>{section.name}</span>}
       </div>
@@ -101,7 +99,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
               {forecastDay && <ForecastCard day={forecastDay} cardStyle={cardStyle} />}
               {dayEvents.map((e) => (
-                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} calAbbrev={abbrevMap[e.calendar_id]} iconRules={iconRules} iconRulesOverride={iconRulesOverride} cardStyle={cardStyle} compact={compact} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} />
+                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} calAbbrev={abbrevMap[e.calendar_id]} iconRules={iconRules} iconRulesOverride={iconRulesOverride} cardStyle={cardStyle} compact={compact} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} printWrap={printWrapMap[e.calendar_id]} />
               ))}
               {isEmpty && <span className="day-cell-empty">—</span>}
             </div>

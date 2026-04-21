@@ -369,6 +369,10 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               title="Abbreviation badge (fallback when no emoji)"
               style={{ width: 38, textAlign: 'center', fontSize: 'var(--s-sm)', fontWeight: 600, letterSpacing: '0.03em', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '2px 2px', flexShrink: 0 }}
             />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 'var(--s-sm)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }} title="Wrap titles in print instead of truncating">
+              <input type="checkbox" checked={cal.printWrap || false} onChange={(e) => updateCalendar(cal.id, 'printWrap', e.target.checked)} />
+              Wrap
+            </label>
             <input
               className="cal-name-input"
               value={cal.name || ''}
@@ -485,10 +489,6 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                           onChange={(e) => renameSection(section.id, e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                         />
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--s-sm)', color: 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }} title="Allow titles to wrap instead of truncate when printing">
-                          <input type="checkbox" checked={section.printWrap || false} onChange={(e) => setSections(sectionList.map((s) => s.id === section.id ? { ...s, printWrap: e.target.checked } : s))} onClick={(e) => e.stopPropagation()} />
-                          Wrap print
-                        </label>
                         <button
                           className="btn-icon"
                           style={{ fontSize: 'var(--s-sm)', color: 'var(--danger)' }}
