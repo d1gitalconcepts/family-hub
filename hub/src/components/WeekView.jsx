@@ -384,6 +384,7 @@ export default function WeekView() {
               iconRules={iconRules}
               iconRulesOverride={iconRulesOverride}
               cardStyle={cardStyleCfg}
+              compact={cardStyleCfg?.compact || false}
               filterRules={eventFiltersCfg?.rules || []}
               enrichments={enrichments}
               sportsDisplay={sportsDisplayCfg}

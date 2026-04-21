@@ -834,6 +834,19 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
         <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>from icon rules</span>
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+        padding: '10px 0', borderTop: '1px solid var(--border)', marginTop: 4,
+      }}>
+        <input
+          type="checkbox"
+          checked={cs.compact || false}
+          onChange={(e) => setCs({ compact: e.target.checked })}
+          style={{ accentColor: 'var(--accent)', flexShrink: 0 }}
+        />
+        <span style={{ flex: 1, fontSize: 'var(--s-base)' }}>Compact cards</span>
+        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>single-line, abbrev teams, ellipsis</span>
+      </div>
+
       {/* ── Alignment 3×3 grid ── */}
       <h3 style={{ marginBottom: 10, marginTop: 20 }}>Alignment</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 24, maxWidth: 200 }}>

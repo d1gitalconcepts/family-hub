@@ -94,7 +94,7 @@ function resolvePopoutElements(style) {
   ];
 }
 
-export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRules, iconRulesOverride, cardStyle, enrichment, sportsDisplay }) {
+export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRules, iconRulesOverride, cardStyle, compact, enrichment, sportsDisplay }) {
   const [open, setOpen] = useState(false);
   const color = calColor || event.cal_color || '#4285f4';
 
@@ -270,6 +270,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
     chipStyle ? 'event-card--chip' : 'event-card--border',
     photoUrl && showPhotoOnCard ? `event-card--has-photo${isTitlePhoto ? ' event-card--has-photo--title' : ''}` : '',
     isSportsTeamEvent ? 'event-card--sports' : '',
+    compact ? 'event-card--compact' : '',
   ].filter(Boolean).join(' ');
 
   return (

@@ -14,7 +14,7 @@ function isEventHidden(event, filterRules) {
   });
 }
 
-export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, iconRulesOverride, cardStyle, filterRules, enrichments, sportsDisplay }) {
+export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, iconRulesOverride, cardStyle, compact, filterRules, enrichments, sportsDisplay }) {
   const cellsRef = useRef(null);
 
   useLayoutEffect(() => {
@@ -97,7 +97,7 @@ export default function SectionRow({ section, days, events, calendarConfig, fore
             <div key={i} className={`day-cell${dayClasses?.[i] ? ' ' + dayClasses[i] : ''}`}>
               {forecastDay && <ForecastCard day={forecastDay} cardStyle={cardStyle} />}
               {dayEvents.map((e) => (
-                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} calAbbrev={abbrevMap[e.calendar_id]} iconRules={iconRules} iconRulesOverride={iconRulesOverride} cardStyle={cardStyle} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} />
+                <EventCard key={e.google_id} event={e} calColor={colorMap[e.calendar_id]} calEmoji={emojiMap[e.calendar_id]} calAbbrev={abbrevMap[e.calendar_id]} iconRules={iconRules} iconRulesOverride={iconRulesOverride} cardStyle={cardStyle} compact={compact} enrichment={enrichments?.[e.google_id]} sportsDisplay={sportsDisplay} />
               ))}
               {isEmpty && <span className="day-cell-empty">—</span>}
             </div>
