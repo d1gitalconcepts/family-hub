@@ -95,5 +95,16 @@ export async function getConfigValue(env, key) {
 }
 
 export async function setConfigValue(env, key, value) {
+  if (value == null) {
+    await ensureAuth(env);
+    const url = new URL(`${env.SUPABASE_URL}/rest/v1/config`);
+    url.searchParams.set('key', `eq.${key}`);
+    const res = await fetch(url.toString(), {
+      method:  'DELETE',
+      headers: hdrs(env, { 'Prefer': 'return=minimal' }),
+    });
+    if (!res.ok) console.warn(`[Supabase] delete config ${key}:`, await res.text());
+    return;
+  }
   await sbUpsert(env, 'config', [{ key, value, updated_at: new Date().toISOString() }]);
 }
