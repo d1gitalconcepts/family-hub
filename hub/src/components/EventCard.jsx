@@ -282,7 +282,6 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
     isSportsTeamEvent ? 'event-card--sports' : '',
     compact ? 'event-card--compact' : '',
     printWrap ? 'event-card--print-wrap' : '',
-    enrichment?.data?.network ? 'event-card--has-network' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -321,9 +320,6 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
               </div>
             )}
           </>
-        )}
-        {enrichment?.data?.network && (
-          <div className="event-card-network-chip">{enrichment.data.network}</div>
         )}
       </div>
 
@@ -370,14 +366,21 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
                     <span>{formatTime(event.start_at)}{event.end_at ? ` – ${formatTime(event.end_at)}` : ''}</span>
                   </div>
                 );
-                if (el.key === 'location' && event.location) return (
-                  <div key="location" className="event-popout-row">
-                    <span className="event-popout-label">Where</span>
-                    <a href={mapsUrl(event.location)} target="_blank" rel="noreferrer" className="event-popout-location-link">
-                      {event.location}
-                    </a>
-                  </div>
-                );
+                if (el.key === 'location') {
+                  const calLoc = event.location;
+                  const enrichLoc = enrichment?.data?.venue;
+                  const displayLoc = calLoc || enrichLoc;
+                  if (!displayLoc) return null;
+                  return (
+                    <div key="location" className="event-popout-row">
+                      <span className="event-popout-label">Where</span>
+                      {calLoc
+                        ? <a href={mapsUrl(calLoc)} target="_blank" rel="noreferrer" className="event-popout-location-link">{calLoc}</a>
+                        : <span>{enrichLoc}</span>
+                      }
+                    </div>
+                  );
+                }
                 if (el.key === 'description' && event.description && !enrichment) {
                   const desc = event.description.trim();
                   const isLink = isUrl(desc);
@@ -404,6 +407,12 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
                 }
                 return null;
               })}
+              {enrichment?.data?.network && (
+                <div className="event-popout-row">
+                  <span className="event-popout-label">Network</span>
+                  <span>{enrichment.data.network}</span>
+                </div>
+              )}
               {enrichment && <SportsPanel enrichment={enrichment} detailLevel={(sportsDisplay?.detail || {})[enrichment.sport] || 'all'} />}
             </div>
           </div>

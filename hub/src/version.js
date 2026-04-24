@@ -7,7 +7,8 @@ export const CHANGELOG = [
     notes: [
       'Golf: fix team event leaderboard — player names now resolve from team data, ranking sorted by score (not ESPN tee-time order)',
       'Golf: fix tee time URL — competition ID now correctly used instead of event ID',
-      'Sports: broadcast network shown as a bubble in the bottom-left corner of event cards, scales with font size setting',
+      'Sports: broadcast network shown as a "Network" row in the event popout alongside date/time/location',
+      'MLB: venue shown as fallback "Where" in popout when Google Calendar location is not set',
     ],
   },
   {
