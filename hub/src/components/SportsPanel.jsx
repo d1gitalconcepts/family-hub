@@ -62,7 +62,7 @@ function MlbPanel({ data, detail }) {
           </span>
         )}
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {showAll && occasion && (
         <div style={{ fontSize: 'var(--s-xs)', color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
@@ -158,7 +158,7 @@ function NflPanel({ data, detail }) {
         <StatusBadge sport="nfl" status={status} />
         {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">{awayTeam?.name}</div>
@@ -215,7 +215,7 @@ function NbaPanel({ data, detail }) {
         <StatusBadge sport="nba" status={status} />
         {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
@@ -284,7 +284,7 @@ function NhlPanel({ data, detail }) {
           </span>
         )}
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {/* Score row */}
       <div className="sports-score-row">
@@ -391,7 +391,7 @@ function GolfPanel({ data, detail }) {
         <StatusBadge sport="golf" status={status} />
         {currentRound && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Round {currentRound}</span>}
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {tournamentName && (
         <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{tournamentName}</div>
@@ -472,7 +472,7 @@ function NascarPanel({ data }) {
       <div className="sports-panel-header">
         <StatusBadge sport="nascar" status={status} />
       </div>
-      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
+      {network && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {raceName && (
         <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{raceName}</div>
