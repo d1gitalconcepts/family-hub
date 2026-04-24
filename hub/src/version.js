@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.6';
+export const APP_VERSION = '1.10.7';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.7',
+    date: 'April 2026',
+    notes: [
+      'Masters: bridge arch now correctly curves upward with gentle road crown; 24 trees in 7 tight clusters across the banner',
+    ],
+  },
   {
     version: '1.10.6',
     date: 'April 2026',

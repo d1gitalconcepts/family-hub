@@ -1013,129 +1013,142 @@ function drawMastersFlag(ctx, cx, groundY, h, t) {
 }
 
 function drawStoneBridge(ctx, cx, creekY, bw, h) {
-  // Core geometry
-  const archR  = bw * 0.42;                  // inner arch opening radius
-  const vW     = Math.max(h * 0.12, 5);      // voussoir ring thickness
-  const deckT  = Math.max(h * 0.16, 6);      // deck/spandrel thickness
-  const wallH  = Math.max(h * 0.18, 7);      // parapet wall height
-  const abutW  = Math.max(h * 0.12, 5);      // abutment width either side of arch
-  const deckY  = creekY - archR;             // y where arch spring line meets deck underside
-  const fullL  = cx - archR - abutW;         // left edge of bridge
-  const fullW  = (archR + abutW) * 2;        // total bridge width
-  const bodyTop = deckY - deckT;             // top of deck (= bottom of parapets)
-  const copH   = Math.max(h * 0.055, 2.5);  // coping stone height
+  // The arch springs from creek level and curves UPWARD — like a proper arch bridge.
+  // Circle center is AT creekY; arc goes from left spring point up to apex then to right.
+  const archR  = Math.min(creekY * 0.70, h * 0.58);   // arch radius (upward from creek)
+  const apexY  = creekY - archR;                        // top of arch opening
+  const vW     = Math.max(h * 0.095, 4.5);             // voussoir ring thickness
+  const sH     = Math.max(h * 0.072, 4);               // stone course height
+  const wallH  = Math.max(h * 0.16, 6);                // parapet wall height
+  const copH   = Math.max(h * 0.050, 2.5);             // coping capstone height
+  const abutW  = Math.max(h * 0.10, 5);                // pier width either side
+  const fullL  = cx - archR - abutW;
+  const fullW  = (archR + abutW) * 2;
 
-  // Stone color palette — light granite
-  const sBase  = 'rgba(168,160,148,0.93)';
-  const sMid   = 'rgba(148,140,128,0.92)';
-  const sDark  = 'rgba(118,110,98,0.91)';
-  const sLight = 'rgba(188,182,170,0.88)';
-  const sJoint = 'rgba(68,58,45,0.30)';
+  const sB = 'rgba(168,160,148,0.94)';
+  const sM = 'rgba(148,140,128,0.92)';
+  const sD = 'rgba(112,104,92,0.93)';
+  const sL = 'rgba(190,184,172,0.88)';
+  const sJ = 'rgba(65,55,42,0.30)';
+  const cols = [sB, sM, sL, sM, sD, sB, sM];
 
-  // ── Arch interior — dark shadow with a little reflected water ──
-  ctx.fillStyle = 'rgba(14,20,10,0.84)';
+  // Course helper: draw one horizontal stone course with running-bond joints
+  const course = (x1, x2, y, col, row) => {
+    if (x2 - x1 < 1) return;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.rect(x1, y, x2-x1, sH); ctx.fill();
+    ctx.strokeStyle = sJ; ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+    const jW = sH * 2.5, off = (row % 2) * jW * 0.5;
+    for (let jx = x1+off; jx < x2; jx += jW) {
+      ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y+sH); ctx.stroke();
+    }
+  };
+
+  // 1. Solid stone fill for the whole bridge mass
+  const topY = apexY - vW - wallH - copH;
+  ctx.fillStyle = sM;
+  ctx.beginPath(); ctx.rect(fullL, topY, fullW, creekY - topY + h*0.04); ctx.fill();
+
+  // 2. Stone courses across the full body (arch interior will be covered in step 3)
+  let row = 0;
+  for (let y = creekY - sH; y >= topY - sH; y -= sH, row++) {
+    course(fullL, fullL + fullW, y, cols[row % cols.length], row);
+  }
+
+  // 3. Arch opening — dark shadow (arc goes UP from left spring to right spring)
+  //    ctx.arc with anticlockwise=false and start=π, end=0 goes UP through apex
+  ctx.fillStyle = 'rgba(12,18,8,0.87)';
   ctx.beginPath();
-  ctx.arc(cx, deckY, archR, Math.PI, 0, true);
-  ctx.lineTo(cx + archR, creekY + h * 0.06);
-  ctx.lineTo(cx - archR, creekY + h * 0.06);
+  ctx.moveTo(cx - archR, creekY);
+  ctx.arc(cx, creekY, archR, Math.PI, 0, false);   // ← upward arch opening ✓
+  ctx.lineTo(cx + archR, creekY + h*0.06);
+  ctx.lineTo(cx - archR, creekY + h*0.06);
   ctx.closePath(); ctx.fill();
 
-  // Water shimmer low in the arch opening
-  ctx.fillStyle = 'rgba(48,130,192,0.28)';
+  // 4. Water shimmer at base of arch
+  ctx.fillStyle = 'rgba(44,122,185,0.32)';
   ctx.beginPath();
-  ctx.arc(cx, deckY + archR * 0.18, archR * 0.78, Math.PI, 0, true);
-  ctx.lineTo(cx + archR * 0.78, creekY + h * 0.02);
-  ctx.lineTo(cx - archR * 0.78, creekY + h * 0.02);
+  ctx.moveTo(cx - archR*0.84, creekY - 1);
+  ctx.arc(cx, creekY, archR*0.84, Math.PI, 0, false);
+  ctx.lineTo(cx + archR*0.84, creekY + h*0.025);
+  ctx.lineTo(cx - archR*0.84, creekY + h*0.025);
   ctx.closePath(); ctx.fill();
 
-  // ── Stone body fill — abutments + spandrel ──
-  ctx.fillStyle = sMid;
-  // Left abutment (pier into ground)
-  ctx.beginPath(); ctx.rect(fullL, bodyTop, abutW, creekY - bodyTop + h * 0.05); ctx.fill();
-  // Right abutment
-  ctx.beginPath(); ctx.rect(cx + archR, bodyTop, abutW, creekY - bodyTop + h * 0.05); ctx.fill();
-  // Spandrel above arch (the fill between arch crown and deck)
-  ctx.beginPath(); ctx.rect(cx - archR, bodyTop, archR * 2, deckT); ctx.fill();
+  // 5. Voussoir arch ring — thick stroke along the upward arc
+  ctx.strokeStyle = sD; ctx.lineWidth = vW; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.arc(cx, creekY, archR + vW*0.5, Math.PI, 0, false); ctx.stroke();
 
-  // ── Voussoir arch ring (thick stroked arc = the stone arch ring) ──
-  ctx.strokeStyle = sDark;
-  ctx.lineWidth = vW; ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.arc(cx, deckY, archR + vW * 0.5, Math.PI, 0, true); ctx.stroke();
-
-  // Radial joint lines between voussoir stones
-  ctx.strokeStyle = sJoint; ctx.lineWidth = 0.9;
-  const nVouss = 13;
-  for (let i = 1; i < nVouss; i++) {
-    const a = Math.PI + (i / nVouss) * Math.PI;
+  // 6. Radial voussoir joint lines (fan out from circle centre at creekY)
+  ctx.strokeStyle = sJ; ctx.lineWidth = 0.9;
+  for (let i = 1; i < 13; i++) {
+    const a = Math.PI + (i / 13) * Math.PI;   // π → 2π sweeping up through apex
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * (archR - vW * 0.1), deckY + Math.sin(a) * (archR - vW * 0.1));
-    ctx.lineTo(cx + Math.cos(a) * (archR + vW * 0.9), deckY + Math.sin(a) * (archR + vW * 0.9));
+    ctx.moveTo(cx + Math.cos(a)*(archR - vW*0.15), creekY + Math.sin(a)*(archR - vW*0.15));
+    ctx.lineTo(cx + Math.cos(a)*(archR + vW*0.90), creekY + Math.sin(a)*(archR + vW*0.90));
     ctx.stroke();
   }
 
-  // Arch highlight — lighter tone on upper crown face
-  ctx.strokeStyle = 'rgba(192,184,170,0.42)'; ctx.lineWidth = vW * 0.26;
-  ctx.beginPath(); ctx.arc(cx, deckY, archR + vW * 0.20, Math.PI * 1.10, Math.PI * 1.90, true); ctx.stroke();
+  // 7. Arch crown highlight (lighter stone on upper face)
+  ctx.strokeStyle = 'rgba(196,188,174,0.42)'; ctx.lineWidth = vW * 0.24;
+  ctx.beginPath(); ctx.arc(cx, creekY, archR + vW*0.20, Math.PI*1.10, Math.PI*1.90, false); ctx.stroke();
 
-  // ── Stone courses on bridge body (horizontal bands + offset vertical joints) ──
-  const sH = Math.max(h * 0.072, 4.5); // one stone course height
-  const courseCols = [sBase, sMid, sLight, sMid, sBase, sDark];
-  const drawCourse = (x1, x2, y, col, rowIdx) => {
-    ctx.fillStyle = col;
-    ctx.beginPath(); ctx.rect(x1, y, x2 - x1, sH); ctx.fill();
-    // Horizontal joint
-    ctx.strokeStyle = sJoint; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
-    // Vertical joints — offset every other row (running bond)
-    const jW = sH * 2.6;
-    const off = (rowIdx % 2) * jW * 0.5;
-    for (let jx = x1 + off; jx < x2; jx += jW) {
-      ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y + sH); ctx.stroke();
-    }
-  };
-
-  let row = 0;
-  for (let y = deckY - sH; y >= bodyTop - sH; y -= sH, row++) {
-    drawCourse(fullL, fullL + fullW, y, courseCols[row % courseCols.length], row);
-  }
-
-  // ── Parapet walls on each end (left and right of arch opening) ──
-  const drawParapet = (px, pw) => {
+  // 8. Parapet walls + coping on the pier ends (above where arch meets the body)
+  const pBase = apexY - vW;   // base of parapet = top of arch extrados
+  [fullL, cx + archR].forEach((px) => {
+    const pw = abutW;
     let pr = 0;
-    for (let y = bodyTop - sH; y >= bodyTop - wallH - sH; y -= sH, pr++) {
-      drawCourse(px, px + pw, y, courseCols[(pr + 2) % courseCols.length], pr + 1);
+    for (let y = pBase - sH; y >= pBase - wallH - sH; y -= sH, pr++) {
+      course(px, px + pw, y, cols[(pr + 3) % cols.length], pr + 10);
     }
-    // Coping stones — wider, lighter capstones
-    ctx.fillStyle = sLight;
-    ctx.beginPath(); ctx.rect(px - 1, bodyTop - wallH - copH, pw + 2, copH); ctx.fill();
-    ctx.strokeStyle = sJoint; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(px - 1, bodyTop - wallH - copH); ctx.lineTo(px + pw + 1, bodyTop - wallH - copH); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px - 1, bodyTop - wallH); ctx.lineTo(px + pw + 1, bodyTop - wallH); ctx.stroke();
-    const copJW = sH * 2.0;
-    for (let jx = px; jx < px + pw; jx += copJW) {
-      ctx.beginPath(); ctx.moveTo(jx, bodyTop - wallH - copH); ctx.lineTo(jx, bodyTop - wallH); ctx.stroke();
+    // Coping capstones — slightly wider, lighter
+    ctx.fillStyle = sL;
+    ctx.beginPath(); ctx.rect(px - 1.5, pBase - wallH - copH, pw + 3, copH); ctx.fill();
+    ctx.strokeStyle = sJ; ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(px-1.5, pBase-wallH-copH); ctx.lineTo(px+pw+1.5, pBase-wallH-copH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px-1.5, pBase-wallH);      ctx.lineTo(px+pw+1.5, pBase-wallH);      ctx.stroke();
+    const cjW = sH * 2;
+    for (let jx = px; jx < px+pw; jx += cjW) {
+      ctx.beginPath(); ctx.moveTo(jx, pBase-wallH-copH); ctx.lineTo(jx, pBase-wallH); ctx.stroke();
     }
-  };
+  });
 
-  drawParapet(fullL, abutW);
-  drawParapet(cx + archR, abutW);
+  // 9. Road crown — gentle upward curve along the top surface of the deck
+  const roadY = pBase - wallH - copH;
+  const crownPeak = h * 0.04;
+  ctx.fillStyle = sL;
+  ctx.beginPath();
+  ctx.moveTo(fullL, roadY);
+  ctx.quadraticCurveTo(cx, roadY - crownPeak, fullL + fullW, roadY);
+  ctx.lineTo(fullL + fullW, roadY + sH * 0.5);
+  ctx.quadraticCurveTo(cx, roadY + sH * 0.5 - crownPeak, fullL, roadY + sH * 0.5);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = sJ; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(fullL, roadY); ctx.quadraticCurveTo(cx, roadY - crownPeak, fullL + fullW, roadY); ctx.stroke();
 }
 
 function initMasters(w, h) {
-  // Trees in natural clusters; gaps around bridge (~0.24–0.37) and flagstick (0.40)
+  // Dense clusters with tight spacing (~0.03–0.05 apart within cluster)
+  // Gaps around bridge centre (0.31) and flagstick (0.40)
   const treeData = [
-    // Cluster A — far left
-    { xFrac: 0.02, hFrac: 0.57 }, { xFrac: 0.07, hFrac: 0.50 }, { xFrac: 0.13, hFrac: 0.55 },
-    // Cluster B — left
-    { xFrac: 0.19, hFrac: 0.46 }, { xFrac: 0.23, hFrac: 0.52 },
-    // Cluster C — center (between flag and bridge gap)
-    { xFrac: 0.44, hFrac: 0.52 }, { xFrac: 0.49, hFrac: 0.46 }, { xFrac: 0.54, hFrac: 0.54 },
-    // Cluster D — right-center
-    { xFrac: 0.61, hFrac: 0.49 }, { xFrac: 0.66, hFrac: 0.55 },
-    // Cluster E — right
-    { xFrac: 0.73, hFrac: 0.53 }, { xFrac: 0.79, hFrac: 0.47 }, { xFrac: 0.84, hFrac: 0.57 },
-    // Cluster F — far right
-    { xFrac: 0.91, hFrac: 0.51 }, { xFrac: 0.96, hFrac: 0.56 },
+    // Cluster A — far left (4 trees)
+    { xFrac: 0.01, hFrac: 0.56 }, { xFrac: 0.05, hFrac: 0.48 },
+    { xFrac: 0.09, hFrac: 0.54 }, { xFrac: 0.13, hFrac: 0.50 },
+    // Cluster B — left (3 trees)
+    { xFrac: 0.18, hFrac: 0.52 }, { xFrac: 0.22, hFrac: 0.46 }, { xFrac: 0.26, hFrac: 0.55 },
+    // [bridge at 0.31, gap ~0.28–0.35]
+    // Cluster C — just right of bridge (3 trees)
+    { xFrac: 0.37, hFrac: 0.50 }, { xFrac: 0.41, hFrac: 0.54 }, { xFrac: 0.45, hFrac: 0.47 },
+    // [flagstick at 0.40 — trees cluster around it, flag reads through]
+    // Cluster D — centre-right (4 trees)
+    { xFrac: 0.51, hFrac: 0.53 }, { xFrac: 0.55, hFrac: 0.46 },
+    { xFrac: 0.59, hFrac: 0.55 }, { xFrac: 0.63, hFrac: 0.49 },
+    // Cluster E — right (3 trees)
+    { xFrac: 0.68, hFrac: 0.52 }, { xFrac: 0.72, hFrac: 0.57 }, { xFrac: 0.76, hFrac: 0.47 },
+    // Cluster F — right (3 trees)
+    { xFrac: 0.81, hFrac: 0.54 }, { xFrac: 0.85, hFrac: 0.50 }, { xFrac: 0.89, hFrac: 0.56 },
+    // Cluster G — far right (4 trees)
+    { xFrac: 0.93, hFrac: 0.48 }, { xFrac: 0.96, hFrac: 0.54 },
+    { xFrac: 0.99, hFrac: 0.51 }, { xFrac: 1.02, hFrac: 0.57 },
   ];
 
   const azaleaSeeds = [
@@ -1198,7 +1211,7 @@ function drawMasters(ctx, w, h, t, s, isTest) {
   ctx.stroke();
 
   // ── stone bridge over creek ──
-  drawStoneBridge(ctx, w * 0.31, h * 0.775, w * 0.14, h);
+  drawStoneBridge(ctx, w * 0.31, h * 0.775, w * 0.12, h);
 
   // ── pine trees ──
   for (const tr of s.trees) drawAugustaPine(ctx, tr.xFrac*w, mastersGroundY(tr.xFrac, h), h*tr.hFrac);
