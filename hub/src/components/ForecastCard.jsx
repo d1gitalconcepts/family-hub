@@ -73,8 +73,17 @@ function hourLabel(hhmm) {
 }
 
 // ── SVG bar + temperature chart ───────────────────────────────
-function HourlyChart({ hourly }) {
+function HourlyChart({ hourly, dayDate }) {
   if (!hourly?.length) return null;
+
+  // Highlight the current hour column only if this card is for today
+  const now          = new Date();
+  const todayStr     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isToday      = dayDate === todayStr;
+  const currentHour  = now.getHours();
+  const currentIdx   = isToday
+    ? hourly.findIndex((h) => parseInt(h.hour.split(':')[0], 10) === currentHour)
+    : -1;
 
   const W = 340, H = 110;
   const PT = 22, PB = 20, PL = 6, PR = 6;
@@ -118,6 +127,19 @@ function HourlyChart({ hourly }) {
       style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
       aria-hidden="true"
     >
+      {/* Current hour highlight — subtle vertical band behind everything */}
+      {currentIdx >= 0 && (
+        <rect
+          x={PL + currentIdx * slotW}
+          y={PT}
+          width={slotW}
+          height={cH}
+          fill="var(--text)"
+          opacity="0.08"
+          rx={2}
+        />
+      )}
+
       {/* Subtle grid lines at 25 / 50 / 75 % precip */}
       {[25, 50, 75].map((pct) => (
         <line
@@ -301,7 +323,7 @@ export default function ForecastCard({ day, cardStyle }) {
                   <span style={{ color: '#4fc3f7' }}>■ Precip chance</span>
                   <span style={{ color: '#ff8c42' }}>— Temperature</span>
                 </div>
-                <HourlyChart hourly={day.hourly} />
+                <HourlyChart hourly={day.hourly} dayDate={day.date} />
               </div>
             )}
 

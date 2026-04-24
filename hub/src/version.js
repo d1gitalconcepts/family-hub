@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.2';
+export const APP_VERSION = '1.10.3';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.3',
+    date: 'April 2026',
+    notes: [
+      'Weather hourly chart: subtle vertical highlight marks the current hour column (today only)',
+    ],
+  },
   {
     version: '1.10.2',
     date: 'April 2026',
