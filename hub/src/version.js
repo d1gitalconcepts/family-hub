@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.5';
+export const APP_VERSION = '1.10.6';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.6',
+    date: 'April 2026',
+    notes: [
+      'Masters: stone bridge redrawn with visible voussoir arch ring, running-bond stone courses, coping capstones, and granite color palette; pines given 3-layer crown, wispy needle tips, branch stubs, and natural clustering',
+    ],
+  },
   {
     version: '1.10.5',
     date: 'April 2026',
