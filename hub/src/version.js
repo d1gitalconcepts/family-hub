@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.1';
+export const APP_VERSION = '1.10.2';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.2',
+    date: 'April 2026',
+    notes: [
+      'Meal plan: note content hashing prevents this week\'s meals from duplicating into next week when planning hasn\'t started yet — sync to next week is skipped until the note actually changes',
+    ],
+  },
   {
     version: '1.10.1',
     date: 'April 2026',

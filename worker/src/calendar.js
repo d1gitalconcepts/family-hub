@@ -24,8 +24,18 @@ export async function syncMealCalendar(env, lines, config = {}) {
       return;
     }
 
+    const noteHash              = await hashLines(lines);
+    const { weekDates, nextWeek } = getWeekDates(prepStartDay);
+
+    // After the cutoff day we target next week. If the note hasn't changed since
+    // the last time we synced, the user hasn't done their planning yet — skip to
+    // avoid duplicating this week's meals into next week.
+    if (nextWeek && noteHash === config.lastNoteHash) {
+      console.log('[Calendar] Skipping next-week sync — note unchanged since last sync.');
+      return;
+    }
+
     const calendarId = await getOrCreateMealCalendar(env);
-    const weekDates  = getWeekDates(prepStartDay);
     const meals      = parseMeals(lines, weekDates, noteFormat);
     if (!Object.keys(meals).length) return;
 
@@ -85,6 +95,10 @@ export async function syncMealCalendar(env, lines, config = {}) {
         console.log(`[Calendar] Created ${date}: ${meal}`);
       }
     }
+
+    // Persist the current note hash so next-week syncs can detect whether
+    // the note has been updated since we last wrote this week's meals.
+    await setConfigValue(env, 'meal_plan', { ...config, lastNoteHash: noteHash });
   } finally {
     _mealSyncRunning = false;
   }
@@ -195,13 +209,18 @@ function getWeekDates(prepStartDay) {
   saturday.setHours(0, 0, 0, 0);
 
   const order  = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const result = {};
+  const weekDates = {};
   order.forEach((name, i) => {
     const d = new Date(saturday);
     d.setDate(saturday.getDate() + i);
-    result[name] = d.toISOString().split('T')[0];
+    weekDates[name] = d.toISOString().split('T')[0];
   });
-  return result;
+  return { weekDates, nextWeek };
+}
+
+async function hashLines(lines) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(lines.join('\n')));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ── All-calendar poller ───────────────────────────────────────────────────────
