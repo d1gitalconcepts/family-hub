@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.7';
+export const APP_VERSION = '1.10.8';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.8',
+    date: 'April 2026',
+    notes: [
+      'Masters: wider stone bridge; putting green ellipse and sand bunker around the hole; golf ball now arcs toward hole, rolls onto green, and drops into cup; reduced ball frequency',
+    ],
+  },
   {
     version: '1.10.7',
     date: 'April 2026',

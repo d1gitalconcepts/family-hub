@@ -986,6 +986,33 @@ function drawAugustaPine(ctx, cx, groundY, treeH) {
   }
 }
 
+function drawPuttingGreen(ctx, cx, gY, w, h) {
+  const rX = w * 0.062, rY = h * 0.028;
+  const g = ctx.createRadialGradient(cx, gY, rX * 0.1, cx, gY, rX);
+  g.addColorStop(0, 'rgba(46,160,40,0.88)');
+  g.addColorStop(0.7, 'rgba(34,128,28,0.80)');
+  g.addColorStop(1, 'rgba(22,96,18,0.40)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(cx, gY, rX, rY, 0, 0, Math.PI * 2); ctx.fill();
+  // Subtle fringe edge
+  ctx.strokeStyle = 'rgba(20,80,16,0.30)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(cx, gY, rX, rY, 0, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawSandBunker(ctx, cx, cy, w, h) {
+  const rX = w * 0.038, rY = h * 0.018;
+  // Sand fill — kidney-ish via slight x-skew
+  const sg = ctx.createRadialGradient(cx, cy, rX * 0.05, cx + rX * 0.2, cy - rY * 0.3, rX);
+  sg.addColorStop(0, 'rgba(240,224,170,0.95)');
+  sg.addColorStop(0.6, 'rgba(210,190,130,0.88)');
+  sg.addColorStop(1, 'rgba(180,158,100,0.50)');
+  ctx.fillStyle = sg;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, -0.25, 0, Math.PI * 2); ctx.fill();
+  // Thin lip shadow
+  ctx.strokeStyle = 'rgba(100,80,30,0.28)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rX, rY, -0.25, 0, Math.PI * 2); ctx.stroke();
+}
+
 function drawMastersFlag(ctx, cx, groundY, h, t) {
   // poleH sized so the flag tip sits ~12% from canvas top regardless of groundY
   const poleH = groundY - h * 0.12;
@@ -1021,7 +1048,7 @@ function drawStoneBridge(ctx, cx, creekY, bw, h) {
   const sH     = Math.max(h * 0.072, 4);               // stone course height
   const wallH  = Math.max(h * 0.16, 6);                // parapet wall height
   const copH   = Math.max(h * 0.050, 2.5);             // coping capstone height
-  const abutW  = Math.max(h * 0.10, 5);                // pier width either side
+  const abutW  = Math.max(bw * 0.22, h * 0.08);        // pier width — driven by bw to control stretch
   const fullL  = cx - archR - abutW;
   const fullW  = (archR + abutW) * 2;
 
@@ -1211,7 +1238,12 @@ function drawMasters(ctx, w, h, t, s, isTest) {
   ctx.stroke();
 
   // ── stone bridge over creek ──
-  drawStoneBridge(ctx, w * 0.31, h * 0.775, w * 0.12, h);
+  drawStoneBridge(ctx, w * 0.31, h * 0.775, w * 0.24, h);
+
+  // ── putting green + sand bunker near hole ──
+  const greenGY = mastersGroundY(0.40, h);
+  drawPuttingGreen(ctx, w * 0.40, greenGY, w, h);
+  drawSandBunker(ctx, w * 0.345, greenGY + h * 0.008, w, h);
 
   // ── pine trees ──
   for (const tr of s.trees) drawAugustaPine(ctx, tr.xFrac*w, mastersGroundY(tr.xFrac, h), h*tr.hFrac);
@@ -1240,40 +1272,77 @@ function drawMasters(ctx, w, h, t, s, isTest) {
   const flagGY = mastersGroundY(0.40, h);
   drawMastersFlag(ctx, w * 0.40, flagGY, h, T);
 
-  // ── golf ball arc ──
+  // ── golf ball: arc → roll on green → drop into cup ──
+  // Phase 0–0.50: aerial arc from edge, landing near hole
+  // Phase 0.50–0.80: roll along green toward cup (easeOut)
+  // Phase 0.80–1.00: shrink into cup
   s.ballTimer++;
-  if (s.ballTimer >= (isTest ? 160 : 420) && !s.ballActive) {
+  if (s.ballTimer >= (isTest ? 240 : 700) && !s.ballActive) {
     s.ballActive = true; s.ballStartT = t; s.ballFromLeft = !s.ballFromLeft;
   }
   if (s.ballActive) {
     const prog = (t - s.ballStartT) / s.ballTotalF;
     if (prog >= 1) { s.ballActive = false; s.ballTimer = 0; }
     else {
-      const fromX = s.ballFromLeft ? w*0.06 : w*0.94;
-      const toX   = s.ballFromLeft ? w*0.94 : w*0.06;
-      const bx = fromX + (toX - fromX) * prog;
-      const landY = mastersGroundY(bx/w, h) - h*0.03;
-      const by = landY - (landY - h*0.06) * Math.sin(prog * Math.PI);
-      const br = h * 0.048;
+      const holeX = w * 0.40;
+      const holeY = mastersGroundY(0.40, h);
+      // Landing spot just short of hole
+      const landX = s.ballFromLeft ? holeX - w * 0.06 : holeX + w * 0.06;
+      const landY = mastersGroundY(landX / w, h);
 
-      // Shadow beneath ball on fairway
-      const sAlpha = 0.10 * (1 - Math.sin(prog*Math.PI)*0.65);
-      ctx.fillStyle = `rgba(0,0,0,${sAlpha.toFixed(3)})`;
-      ctx.beginPath(); ctx.ellipse(bx, mastersGroundY(bx/w,h)+br*0.25, br*(0.4+Math.sin(prog*Math.PI)*0.55), br*0.20, 0, 0, Math.PI*2); ctx.fill();
+      let bx, by, br;
 
-      // Ball with radial gradient
-      const bg = ctx.createRadialGradient(bx-br*0.32, by-br*0.32, br*0.04, bx, by, br);
-      bg.addColorStop(0, 'rgba(255,255,255,0.98)');
-      bg.addColorStop(0.55, 'rgba(238,238,238,0.95)');
-      bg.addColorStop(1, 'rgba(198,198,198,0.90)');
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
+      if (prog < 0.50) {
+        // Aerial phase
+        const p = prog / 0.50;
+        const fromX = s.ballFromLeft ? w * 0.04 : w * 0.96;
+        bx = fromX + (landX - fromX) * p;
+        const apex = h * 0.07;
+        by = landY - (landY - apex) * Math.sin(p * Math.PI);
+        br = h * 0.038;
 
-      // Dimples
-      ctx.fillStyle = 'rgba(170,170,170,0.42)';
-      for (let i = 0; i < 5; i++) {
-        const da = (i/5)*Math.PI*2 + T*0.07;
-        ctx.beginPath(); ctx.arc(bx+Math.cos(da)*br*0.50, by+Math.sin(da)*br*0.50, br*0.15, 0, Math.PI*2); ctx.fill();
+        // Shadow
+        const sA = 0.08 * (1 - Math.sin(p * Math.PI) * 0.65);
+        ctx.fillStyle = `rgba(0,0,0,${sA.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(bx, mastersGroundY(bx / w, h) + br * 0.2, br * (0.35 + Math.sin(p * Math.PI) * 0.55), br * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (prog < 0.80) {
+        // Roll phase — easeOut toward cup
+        const p = (prog - 0.50) / 0.30;
+        const ease = 1 - (1 - p) * (1 - p);
+        bx = landX + (holeX - landX) * ease;
+        by = mastersGroundY(bx / w, h) - h * 0.012;
+        br = h * 0.038;
+
+        // Rolling shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.10)';
+        ctx.beginPath();
+        ctx.ellipse(bx, by + br * 0.9, br * 0.9, br * 0.22, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Drop phase — shrink into cup
+        const p = (prog - 0.80) / 0.20;
+        bx = holeX;
+        by = holeY - h * 0.012 * (1 - p);
+        br = h * 0.038 * (1 - p);
+      }
+
+      if (br > 0.5) {
+        // Ball
+        const bg = ctx.createRadialGradient(bx - br * 0.30, by - br * 0.30, br * 0.04, bx, by, br);
+        bg.addColorStop(0, 'rgba(255,255,255,0.98)');
+        bg.addColorStop(0.55, 'rgba(238,238,238,0.95)');
+        bg.addColorStop(1, 'rgba(198,198,198,0.90)');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+
+        // Dimples
+        ctx.fillStyle = 'rgba(170,170,170,0.42)';
+        for (let i = 0; i < 5; i++) {
+          const da = (i / 5) * Math.PI * 2 + T * 0.07;
+          ctx.beginPath(); ctx.arc(bx + Math.cos(da) * br * 0.48, by + Math.sin(da) * br * 0.48, br * 0.14, 0, Math.PI * 2); ctx.fill();
+        }
       }
     }
   }
