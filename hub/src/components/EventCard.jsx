@@ -136,6 +136,12 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
   const showPhotoOnCard   = !!(placesPhotosCfg && activeCfg?.showOnCard   !== false);
   const showPhotoOnPopout = !!(placesPhotosCfg && activeCfg?.showOnPopout !== false);
 
+  // Preload the popout photo while the card sits on the grid so the browser
+  // has it cached before the user clicks — eliminates the flash on open.
+  useEffect(() => {
+    if (photoUrl && showPhotoOnPopout) { new Image().src = photoUrl; }
+  }, [photoUrl, showPhotoOnPopout]);
+
   const style = {
     popout: { ...DEFAULT_POPOUT },
     ...(cardStyle || {}),
