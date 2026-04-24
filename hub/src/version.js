@@ -1,6 +1,15 @@
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.10.1';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.1',
+    date: 'April 2026',
+    notes: [
+      'Golf: fix team event leaderboard — player names now resolve from team data, ranking sorted by score (not ESPN tee-time order)',
+      'Golf: fix tee time URL — competition ID now correctly used instead of event ID',
+      'Sports: broadcast network added to all sport panels (MLB, NFL, NBA, NHL, Golf, NASCAR)',
+    ],
+  },
   {
     version: '1.10.0',
     date: 'April 2026',

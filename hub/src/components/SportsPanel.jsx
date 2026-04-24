@@ -47,7 +47,7 @@ function StatusBadge({ sport, status }) {
 
 function MlbPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, innings, totals, decisions,
-          homeRecord, awayRecord, walkoffNote, seriesGame, seriesTotal, occasion, venue } = data;
+          homeRecord, awayRecord, walkoffNote, seriesGame, seriesTotal, occasion, venue, network } = data;
   const isScheduled = status === 'Scheduled' || status === 'Pre-Game';
   const showBox  = detail === 'boxscore' || detail === 'all';
   const showAll  = detail === 'all';
@@ -62,6 +62,7 @@ function MlbPanel({ data, detail }) {
           </span>
         )}
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {showAll && occasion && (
         <div style={{ fontSize: 'var(--s-xs)', color: 'var(--accent)', fontWeight: 600, marginBottom: 6 }}>
@@ -145,7 +146,7 @@ function MlbPanel({ data, detail }) {
 // ── NFL Panel ────────────────────────────────────────────────────────────────
 
 function NflPanel({ data, detail }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock, network } = data;
   const showBox = detail === 'boxscore' || detail === 'all';
   const quarters = homeLinescores?.length > 4
     ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
@@ -157,6 +158,7 @@ function NflPanel({ data, detail }) {
         <StatusBadge sport="nfl" status={status} />
         {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">{awayTeam?.name}</div>
@@ -201,7 +203,7 @@ function NflPanel({ data, detail }) {
 // ── NBA Panel ────────────────────────────────────────────────────────────────
 
 function NbaPanel({ data, detail }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock, network } = data;
   const showBox = detail === 'boxscore' || detail === 'all';
   const quarters = homeLinescores?.length > 4
     ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
@@ -213,6 +215,7 @@ function NbaPanel({ data, detail }) {
         <StatusBadge sport="nba" status={status} />
         {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">
@@ -263,7 +266,7 @@ const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
 
 function NhlPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType, lastPeriodType,
-          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars } = data;
+          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars, network } = data;
   const showBox = detail === 'boxscore' || detail === 'all';
   const showAll = detail === 'all';
   const isLive   = status === 'LIVE' || status === 'CRIT';
@@ -281,6 +284,7 @@ function NhlPanel({ data, detail }) {
           </span>
         )}
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {/* Score row */}
       <div className="sports-score-row">
@@ -374,7 +378,7 @@ function NhlPanel({ data, detail }) {
 // ── Golf Panel ───────────────────────────────────────────────────────────────
 
 function GolfPanel({ data, detail }) {
-  const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine, espnUrl } = data;
+  const { tournamentName, status, currentRound, leaderboard, trackedGolfers, cutLine, espnUrl, network } = data;
   const hasRounds = leaderboard?.[0]?.rounds?.length > 1;
   const showBox = detail === 'boxscore' || detail === 'all';
   const showAll = detail === 'all';
@@ -387,6 +391,7 @@ function GolfPanel({ data, detail }) {
         <StatusBadge sport="golf" status={status} />
         {currentRound && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Round {currentRound}</span>}
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {tournamentName && (
         <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{tournamentName}</div>
@@ -460,13 +465,14 @@ function GolfPanel({ data, detail }) {
 // ── NASCAR Panel ─────────────────────────────────────────────────────────────
 
 function NascarPanel({ data }) {
-  const { raceName, status, results } = data;
+  const { raceName, status, results, network } = data;
 
   return (
     <div>
       <div className="sports-panel-header">
         <StatusBadge sport="nascar" status={status} />
       </div>
+      {network && <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginBottom: 4 }}>{network}</div>}
 
       {raceName && (
         <div style={{ fontSize: 'var(--s-sm)', fontWeight: 600, marginBottom: 8 }}>{raceName}</div>

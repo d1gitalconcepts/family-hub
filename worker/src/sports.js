@@ -14,6 +14,14 @@ function localDate(isoStr, tz = 'America/New_York') {
     .format(new Date(isoStr));
 }
 
+// Extract broadcast network string from an ESPN API object's broadcasts array.
+// Golf uses a pre-joined `broadcast` string; other ESPN sports use a `names` array.
+function espnBroadcast(obj) {
+  const b = (obj?.broadcasts || [])[0];
+  if (!b) return null;
+  return b.broadcast || (b.names || []).join(' / ') || null;
+}
+
 // ── MLB ──────────────────────────────────────────────────────────────────────
 
 // standingsMap is fetched once per sync and passed in to avoid repeated API calls
@@ -23,7 +31,7 @@ async function enrichMlb(event, config, standingsMap = {}) {
 
   const teamId = config.teamId;
   const json = await fetchJson(
-    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team`
+    `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${dateStr}&teamId=${teamId}&hydrate=linescore,decisions,team,broadcasts(all)`
   );
 
   const game = json?.dates?.[0]?.games?.[0];
@@ -82,6 +90,10 @@ async function enrichMlb(event, config, standingsMap = {}) {
     occasion: game.description || null,
     venue: game.venue?.name || null,
     gamePk: game.gamePk,
+    network: (() => {
+      const tv = (game.broadcasts || []).filter((b) => b.type === 'TV' && b.language === 'en');
+      return (tv.find((b) => b.availability === 'exclusive') || tv[0])?.name || null;
+    })(),
   };
 }
 
@@ -121,6 +133,7 @@ async function enrichNfl(event, config) {
     awayRecord: away?.records?.[0]?.summary || null,
     period: comp?.status?.period || null,
     clock: comp?.status?.displayClock || null,
+    network: espnBroadcast(game) || espnBroadcast(comp),
   };
 }
 
@@ -165,6 +178,7 @@ async function enrichNba(event, config) {
     awayRecord: away?.records?.[0]?.summary || null,
     period,
     clock,
+    network: espnBroadcast(game) || espnBroadcast(comp),
   };
 }
 
@@ -186,6 +200,7 @@ async function enrichNhl(event, config) {
   const isFinal = statusCode === 'OFF' || statusCode === 'FINAL';
   const isLive  = statusCode === 'LIVE' || statusCode === 'CRIT';
 
+  const nhlTv = game.tvBroadcasts || [];
   const base = {
     status: statusCode,
     homeTeam: { abbrev: game.homeTeam?.abbrev, name: game.homeTeam?.commonName?.default || game.homeTeam?.abbrev },
@@ -194,6 +209,7 @@ async function enrichNhl(event, config) {
     awayScore: game.awayTeam?.score ?? null,
     period: game.period || null,
     periodType: game.periodType || null,
+    network: (nhlTv.find((b) => b.market === 'N') || nhlTv[0])?.network || null,
   };
 
   // Step 2: fetch boxscore for completed or live games
@@ -346,17 +362,24 @@ async function enrichGolf(event, config) {
   const comp = ev.competitions?.[0];
   const currentRound = comp?.status?.period || 1;
 
-  // Competitors come pre-sorted by position (order field = leaderboard position)
-  const competitors = comp?.competitors || [];
+  // Sort competitors by score. For individual events the API pre-sorts by leaderboard position,
+  // but for team events (e.g. Zurich Classic) `order` reflects tee-time order, not score.
+  function parseGolfScore(s) {
+    if (!s || s === 'E') return 0;
+    return parseInt(s, 10) || 0;
+  }
+  const competitors = [...(comp?.competitors || [])].sort(
+    (a, b) => parseGolfScore(a.score) - parseGolfScore(b.score),
+  );
 
-  // Tie detection: find first order for each score value
+  // Tie detection: find first 1-based rank for each score value
   const scoreCounts = {};
-  const scoreFirstOrder = {};
-  for (const c of competitors) {
+  const scoreFirstRank = {};
+  competitors.forEach((c, i) => {
     const s = c.score;
     scoreCounts[s] = (scoreCounts[s] || 0) + 1;
-    if (!Object.prototype.hasOwnProperty.call(scoreFirstOrder, s)) scoreFirstOrder[s] = c.order;
-  }
+    if (!Object.prototype.hasOwnProperty.call(scoreFirstRank, s)) scoreFirstRank[s] = i + 1;
+  });
 
   // Derive tournament local UTC offset from the event's start date.
   // ESPN sets ev.date to midnight local time (e.g. "2026-04-16T04:00Z" → UTC-4 = EDT).
@@ -377,8 +400,10 @@ async function enrichGolf(event, config) {
 
   // Pre-fetch tee times for unstarted players in the top N via core API status endpoint.
   // Tee times are NOT in the scoreboard API — they live at:
-  // sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/{id}/competitions/{id}/competitors/{id}/status
+  // sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/{eventId}/competitions/{compId}/competitors/{id}/status
+  // Note: comp.id differs from ev.id (e.g. team events); using comp.id here fixes the URL.
   const eventId = ev.id;
+  const compId = comp.id || eventId;
   const topCompetitors = competitors.slice(0, leaderboardSize);
   const teeTimeMap = {};
   if (eventId) {
@@ -388,14 +413,14 @@ async function enrichGolf(event, config) {
     });
     await Promise.all(unstartedTop.map(async (c) => {
       try {
-        const statusUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${eventId}/competitions/${eventId}/competitors/${c.id}/status?lang=en&region=us`;
+        const statusUrl = `https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/${eventId}/competitions/${compId}/competitors/${c.id}/status?lang=en&region=us`;
         const st = await fetchJson(statusUrl);
         if (st?.teeTime) teeTimeMap[c.id] = formatTeeTimeUtc(st.teeTime);
       } catch (_) { /* silently skip */ }
     }));
   }
 
-  function mapCompetitor(c) {
+  function mapCompetitor(c, rank) {
     // Per-round linescores (top-level, one per round)
     const roundLinescores = (c.linescores || []).filter((ls) => ls.period != null);
 
@@ -423,8 +448,8 @@ async function enrichGolf(event, config) {
 
     // Position text with tie prefix
     const isTied = scoreCounts[c.score] > 1;
-    const posText = c.order != null
-      ? (isTied ? `T${scoreFirstOrder[c.score]}` : String(c.order))
+    const posText = rank != null
+      ? (isTied ? `T${scoreFirstRank[c.score]}` : String(rank))
       : '—';
 
     // Normalise score: "0" or "" → "E"
@@ -438,7 +463,7 @@ async function enrichGolf(event, config) {
 
     return {
       positionText: posText,
-      name: c.athlete?.displayName || '?',
+      name: c.athlete?.displayName || c.team?.displayName || '?',
       score: normScore,
       today: normToday,
       thru,
@@ -446,13 +471,14 @@ async function enrichGolf(event, config) {
     };
   }
 
-  const top = competitors.slice(0, leaderboardSize).map(mapCompetitor);
+  const top = competitors.slice(0, leaderboardSize).map((c, i) => mapCompetitor(c, i + 1));
   const topNameSet = new Set(top.map((c) => c.name.toLowerCase()));
 
   const tracked = trackedNames.length > 0
     ? competitors
-        .filter((c) => trackedNames.includes((c.athlete?.displayName || '').toLowerCase()))
-        .map((c) => ({ ...mapCompetitor(c), isTracked: true }))
+        .map((c, i) => ({ c, rank: i + 1 }))
+        .filter(({ c }) => trackedNames.includes((c.athlete?.displayName || c.team?.displayName || '').toLowerCase()))
+        .map(({ c, rank }) => ({ ...mapCompetitor(c, rank), isTracked: true }))
         .filter((c) => !topNameSet.has(c.name.toLowerCase()))
     : [];
 
@@ -471,6 +497,7 @@ async function enrichGolf(event, config) {
     trackedGolfers: tracked,
     cutLine: comp?.notes?.find((n) => n.type === 'cut')?.headline || null,
     espnUrl,
+    network: espnBroadcast(comp) || espnBroadcast(ev),
   };
 }
 
@@ -596,6 +623,7 @@ async function enrichNascar(event) {
     raceName: ev.name || ev.shortName || 'NASCAR Race',
     status: statusStr,
     results: competitors,
+    network: espnBroadcast(comp) || espnBroadcast(ev),
   };
 }
 
