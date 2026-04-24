@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.3';
+export const APP_VERSION = '1.10.4';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.4',
+    date: 'April 2026',
+    notes: [
+      'Holiday easter egg: Masters golf — rolling Augusta fairways, longleaf pine silhouettes, magenta azalea bushes, waving gold flagstick, golf ball arcing across the sky, drifting petals; shown during first week of April',
+    ],
+  },
   {
     version: '1.10.3',
     date: 'April 2026',

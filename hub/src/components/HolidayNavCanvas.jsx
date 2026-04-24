@@ -43,6 +43,10 @@ export function getActiveHoliday(testHoliday) {
   const easter = easterDate(y);
   if (inRange(offset(easter, -3), easter))            return 'easter';
 
+  // Masters: first Thursday of April (Mon–Sun of tournament week)
+  const mastersThur = nthWeekday(y, 3, 4, 1);
+  if (m === 4 && inRange(offset(mastersThur, -3), offset(mastersThur, 3))) return 'masters';
+
   const motherDay    = nthWeekday(y, 4, 0, 2);
   const memorialDay  = lastWeekday(y, 4, 1);
   const fatherDay    = nthWeekday(y, 5, 0, 3);
@@ -68,6 +72,7 @@ export const HOLIDAYS = [
   { key: 'fathersday',   label: "🏌️ Father's Day" },
   { key: 'july4',        label: '🎆 Fourth of July' },
   { key: 'halloween',    label: '🎃 Halloween' },
+  { key: 'masters',      label: '⛳ The Masters' },
   { key: 'thanksgiving', label: '🦃 Thanksgiving' },
   { key: 'christmas',    label: '🎄 Christmas' },
 ];
@@ -889,9 +894,233 @@ function drawThanksgiving(ctx, w, h, t, s) {
   }
 }
 
+// ─── Masters ──────────────────────────────────────────────────────────────────
+
+// Y-coordinate of the rolling fairway at a given x fraction
+function mastersGroundY(xFrac, h) {
+  return h * 0.62 + Math.sin(xFrac * Math.PI * 3 + 1.8) * h * 0.065
+               + Math.sin(xFrac * Math.PI * 6 + 2.1) * h * 0.028;
+}
+
+function drawAzaleaBloom(ctx, cx, cy, r) {
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(218,25,110,0.84)' : 'rgba(235,52,128,0.80)';
+    ctx.beginPath();
+    ctx.ellipse(cx + Math.cos(a)*r*0.44, cy + Math.sin(a)*r*0.44, r*0.54, r*0.34, a, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(255,218,42,0.95)';
+  ctx.beginPath(); ctx.arc(cx, cy, r*0.28, 0, Math.PI*2); ctx.fill();
+}
+
+function drawAugustaPine(ctx, cx, groundY, treeH) {
+  const trunkH = treeH * 0.58;
+  const trunkW = Math.max(treeH * 0.028, 1.5);
+  const crownW = treeH * 0.28;
+  const crownH = treeH * 0.50;
+  const crownTop = groundY - treeH;
+  const crownBot = groundY - trunkH + crownH * 0.18;
+
+  // Trunk
+  ctx.fillStyle = 'rgba(58,36,15,0.86)';
+  ctx.beginPath(); ctx.rect(cx - trunkW, groundY - trunkH, trunkW * 2, trunkH); ctx.fill();
+
+  // Dark outer crown silhouette
+  ctx.fillStyle = 'rgba(14,50,14,0.92)';
+  ctx.beginPath();
+  ctx.moveTo(cx, crownTop);
+  ctx.bezierCurveTo(cx+crownW, crownTop+crownH*0.22, cx+crownW*0.82, crownBot, cx, crownBot+crownH*0.06);
+  ctx.bezierCurveTo(cx-crownW*0.82, crownBot, cx-crownW, crownTop+crownH*0.22, cx, crownTop);
+  ctx.fill();
+
+  // Lighter inner crown layer for depth
+  ctx.fillStyle = 'rgba(24,68,20,0.68)';
+  ctx.beginPath();
+  ctx.moveTo(cx, crownTop + crownH*0.10);
+  ctx.bezierCurveTo(cx+crownW*0.62, crownTop+crownH*0.36, cx+crownW*0.52, crownBot-crownH*0.04, cx, crownBot+crownH*0.02);
+  ctx.bezierCurveTo(cx-crownW*0.52, crownBot-crownH*0.04, cx-crownW*0.62, crownTop+crownH*0.36, cx, crownTop+crownH*0.10);
+  ctx.fill();
+}
+
+function drawMastersFlag(ctx, cx, groundY, h, t) {
+  const poleH = h * 0.74;
+
+  // Hole cup
+  ctx.fillStyle = 'rgba(8,6,6,0.72)';
+  ctx.beginPath(); ctx.ellipse(cx, groundY, poleH*0.09, poleH*0.038, 0, 0, Math.PI*2); ctx.fill();
+
+  // Pole
+  ctx.strokeStyle = 'rgba(215,198,60,0.92)';
+  ctx.lineWidth = Math.max(poleH * 0.020, 1.5); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, groundY - 1); ctx.lineTo(cx, groundY - poleH); ctx.stroke();
+
+  // Waving golden flag
+  const fw = poleH * 0.36, fh = poleH * 0.23, wp = t * 0.042;
+  ctx.fillStyle = 'rgba(255,208,24,0.93)';
+  ctx.beginPath();
+  ctx.moveTo(cx, groundY - poleH);
+  ctx.quadraticCurveTo(
+    cx + fw*0.55, groundY - poleH + fh*0.44 + Math.sin(wp)*fh*0.20,
+    cx + fw,      groundY - poleH + fh      + Math.sin(wp*1.3+0.4)*fh*0.17
+  );
+  ctx.lineTo(cx, groundY - poleH + fh);
+  ctx.closePath(); ctx.fill();
+}
+
+function initMasters(w, h) {
+  const treeData = [
+    { xFrac: 0.04, hFrac: 0.58 }, { xFrac: 0.12, hFrac: 0.50 },
+    { xFrac: 0.22, hFrac: 0.54 }, { xFrac: 0.33, hFrac: 0.47 },
+    { xFrac: 0.46, hFrac: 0.52 }, { xFrac: 0.58, hFrac: 0.48 },
+    { xFrac: 0.72, hFrac: 0.55 }, { xFrac: 0.83, hFrac: 0.49 },
+    { xFrac: 0.91, hFrac: 0.53 }, { xFrac: 0.97, hFrac: 0.57 },
+  ];
+
+  const azaleaSeeds = [
+    { xFrac: 0.07, rFrac: 0.30, phase: 0.0 },
+    { xFrac: 0.28, rFrac: 0.25, phase: 1.5 },
+    { xFrac: 0.52, rFrac: 0.32, phase: 2.8 },
+    { xFrac: 0.76, rFrac: 0.26, phase: 0.9 },
+    { xFrac: 0.93, rFrac: 0.28, phase: 3.2 },
+  ];
+
+  // Phyllotaxis (golden angle) spiral for natural-looking bloom placement
+  const azaleas = azaleaSeeds.map((az) => ({
+    ...az,
+    blooms: Array.from({ length: 18 }, (_, i) => ({
+      r:     Math.sqrt((i + 0.5) / 18) * 0.88,
+      theta: i * 2.3998 + az.phase,
+    })),
+  }));
+
+  const petals = Array.from({ length: 24 }, (_, i) => ({
+    x:    (i * 139.4) % w,
+    y:    ((i * 107) % (h * 2)) - h * 0.5,
+    vx:   ((i % 7) - 3) * 0.16,
+    vy:   0.24 + (i % 8) * 0.065,
+    rot:  (i * 59) % (Math.PI * 2),
+    rotV: ((i % 5) - 2) * 0.030,
+    r:    2.4 + (i % 5) * 0.7,
+    pink: i % 4 !== 0,
+    alpha: 0.50 + (i % 6) * 0.08,
+  }));
+
+  return { trees: treeData, azaleas, petals, ballTimer: 0, ballActive: false, ballStartT: 0, ballTotalF: 215, ballFromLeft: true };
+}
+
+function drawMasters(ctx, w, h, t, s, isTest) {
+  const T = isTest ? t * 2.5 : t;
+
+  // ── rolling fairway — back layer ──
+  ctx.fillStyle = 'rgba(38,98,28,0.52)';
+  ctx.beginPath(); ctx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 5) {
+    ctx.lineTo(x, h*0.42 + Math.sin(x/w*Math.PI*2.5+0.8)*h*0.10 + Math.sin(x/w*Math.PI*5+1.5)*h*0.04);
+  }
+  ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+
+  // ── rolling fairway — front layer ──
+  const fg = ctx.createLinearGradient(0, h*0.58, 0, h);
+  fg.addColorStop(0, 'rgba(30,126,26,0.70)');
+  fg.addColorStop(1, 'rgba(14,80,14,0.84)');
+  ctx.fillStyle = fg;
+  ctx.beginPath(); ctx.moveTo(0, h);
+  for (let x = 0; x <= w; x += 5) ctx.lineTo(x, mastersGroundY(x/w, h));
+  ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+
+  // ── Rae's Creek ──
+  ctx.strokeStyle = 'rgba(62,144,208,0.28)';
+  ctx.lineWidth = h * 0.030; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(0, h * 0.775);
+  for (let x = 0; x <= w; x += 6) ctx.lineTo(x, h*0.775 + Math.sin(x*0.022 + T*0.010)*h*0.015);
+  ctx.stroke();
+
+  // ── pine trees ──
+  for (const tr of s.trees) drawAugustaPine(ctx, tr.xFrac*w, mastersGroundY(tr.xFrac, h), h*tr.hFrac);
+
+  // ── azalea bushes ──
+  for (const az of s.azaleas) {
+    const bx = az.xFrac * w;
+    const br = h * az.rFrac;
+    const gY = mastersGroundY(az.xFrac, h);
+    const cy = gY - br * 0.48;
+    const sway = Math.sin(T * 0.011 + az.phase) * 0.04;
+
+    // Foliage base
+    ctx.fillStyle = 'rgba(18,72,14,0.86)';
+    ctx.beginPath(); ctx.arc(bx, cy, br, 0, Math.PI*2); ctx.fill();
+
+    // Blooms (only on upper portion)
+    for (const bl of az.blooms) {
+      const bx2 = bx + Math.cos(bl.theta + sway) * bl.r * br;
+      const by2 = cy + Math.sin(bl.theta + sway) * bl.r * br;
+      if (by2 < gY - br * 0.05) drawAzaleaBloom(ctx, bx2, by2, br * 0.17);
+    }
+  }
+
+  // ── flagstick — positioned on a clearing between trees ──
+  const flagGY = mastersGroundY(0.40, h);
+  drawMastersFlag(ctx, w * 0.40, flagGY, h, T);
+
+  // ── golf ball arc ──
+  s.ballTimer++;
+  if (s.ballTimer >= (isTest ? 160 : 420) && !s.ballActive) {
+    s.ballActive = true; s.ballStartT = t; s.ballFromLeft = !s.ballFromLeft;
+  }
+  if (s.ballActive) {
+    const prog = (t - s.ballStartT) / s.ballTotalF;
+    if (prog >= 1) { s.ballActive = false; s.ballTimer = 0; }
+    else {
+      const fromX = s.ballFromLeft ? w*0.06 : w*0.94;
+      const toX   = s.ballFromLeft ? w*0.94 : w*0.06;
+      const bx = fromX + (toX - fromX) * prog;
+      const landY = mastersGroundY(bx/w, h) - h*0.03;
+      const by = landY - (landY - h*0.06) * Math.sin(prog * Math.PI);
+      const br = h * 0.048;
+
+      // Shadow beneath ball on fairway
+      const sAlpha = 0.10 * (1 - Math.sin(prog*Math.PI)*0.65);
+      ctx.fillStyle = `rgba(0,0,0,${sAlpha.toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(bx, mastersGroundY(bx/w,h)+br*0.25, br*(0.4+Math.sin(prog*Math.PI)*0.55), br*0.20, 0, 0, Math.PI*2); ctx.fill();
+
+      // Ball with radial gradient
+      const bg = ctx.createRadialGradient(bx-br*0.32, by-br*0.32, br*0.04, bx, by, br);
+      bg.addColorStop(0, 'rgba(255,255,255,0.98)');
+      bg.addColorStop(0.55, 'rgba(238,238,238,0.95)');
+      bg.addColorStop(1, 'rgba(198,198,198,0.90)');
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI*2); ctx.fill();
+
+      // Dimples
+      ctx.fillStyle = 'rgba(170,170,170,0.42)';
+      for (let i = 0; i < 5; i++) {
+        const da = (i/5)*Math.PI*2 + T*0.07;
+        ctx.beginPath(); ctx.arc(bx+Math.cos(da)*br*0.50, by+Math.sin(da)*br*0.50, br*0.15, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  // ── falling azalea & dogwood petals ──
+  for (const p of s.petals) {
+    p.x += p.vx + Math.sin(T*0.015 + p.x*0.003) * 0.20;
+    p.y += p.vy; p.rot += p.rotV;
+    if (p.y > h+8) { p.y = -8; p.x = Math.random()*w; }
+    if (p.x > w+8) p.x = -8; if (p.x < -8) p.x = w+8;
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+    ctx.fillStyle = p.pink ? 'rgba(220,30,108,0.82)' : 'rgba(248,236,248,0.80)';
+    ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r*1.80, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 const DRAW_MAP = {
+  masters:      { init: initMasters,      draw: drawMasters },
   halloween:    { init: initHalloween,    draw: drawHalloween },
   christmas:    { init: initChristmas,    draw: drawChristmas },
   newyears:     { init: initNewYears,     draw: drawNewYears },
