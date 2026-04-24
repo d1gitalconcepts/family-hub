@@ -409,7 +409,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
               })}
               {enrichment?.data?.network && (
                 <div className="event-popout-row">
-                  <span className="event-popout-label">Network</span>
+                  <span className="event-popout-label">Broadcast</span>
                   <span>{enrichment.data.network}</span>
                 </div>
               )}

@@ -1455,7 +1455,8 @@ html, body, #root {
 .event-popout-label {
   color: var(--text-muted);
   font-size: 0.875rem;
-  min-width: 52px;
+  width: 72px;
+  flex-shrink: 0;
   padding-top: 1px;
   flex-shrink: 0;
 }
