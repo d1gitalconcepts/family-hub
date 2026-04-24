@@ -282,6 +282,7 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
     isSportsTeamEvent ? 'event-card--sports' : '',
     compact ? 'event-card--compact' : '',
     printWrap ? 'event-card--print-wrap' : '',
+    enrichment?.data?.network ? 'event-card--has-network' : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -320,6 +321,9 @@ export default function EventCard({ event, calColor, calEmoji, calAbbrev, iconRu
               </div>
             )}
           </>
+        )}
+        {enrichment?.data?.network && (
+          <div className="event-card-network-chip">{enrichment.data.network}</div>
         )}
       </div>
 

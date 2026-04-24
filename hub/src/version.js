@@ -7,7 +7,7 @@ export const CHANGELOG = [
     notes: [
       'Golf: fix team event leaderboard — player names now resolve from team data, ranking sorted by score (not ESPN tee-time order)',
       'Golf: fix tee time URL — competition ID now correctly used instead of event ID',
-      'Sports: broadcast network added to all sport panels (MLB, NFL, NBA, NHL, Golf, NASCAR)',
+      'Sports: broadcast network shown as a bubble in the bottom-left corner of event cards, scales with font size setting',
     ],
   },
   {

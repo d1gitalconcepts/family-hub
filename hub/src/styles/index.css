@@ -643,6 +643,7 @@ html, body, #root {
 .event-card {
   border-radius: 4px;
   padding: 4px 6px;
+  position: relative;
   font-size: var(--card-font, 13px);
   line-height: 1.3;
   cursor: default;
@@ -2089,10 +2090,31 @@ html, body, #root {
 
 /* Event card score chip */
 .event-card-score-chip {
-  font-size: 0.72rem;
+  font-size: var(--card-meta-font, 11px);
   color: var(--text-muted);
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Network bubble — bottom-left corner of sports event cards */
+.event-card--has-network {
+  padding-bottom: 20px;
+}
+
+.event-card-network-chip {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  font-size: var(--card-meta-font, 11px);
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--cal-color, #4285f4) 20%, var(--surface));
+  padding: 1px 6px;
+  border-radius: 6px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: calc(100% - 12px);
+  text-overflow: ellipsis;
 }
 
 /* F1 results */
