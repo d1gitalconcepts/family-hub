@@ -1040,17 +1040,29 @@ function drawMastersFlag(ctx, cx, groundY, h, t) {
 }
 
 function drawStoneBridge(ctx, cx, creekY, bw, h) {
-  // The arch springs from creek level and curves UPWARD — like a proper arch bridge.
-  // Circle center is AT creekY; arc goes from left spring point up to apex then to right.
-  const archR  = Math.min(creekY * 0.70, h * 0.58);   // arch radius (upward from creek)
-  const apexY  = creekY - archR;                        // top of arch opening
-  const vW     = Math.max(h * 0.095, 4.5);             // voussoir ring thickness
-  const sH     = Math.max(h * 0.072, 4);               // stone course height
-  const wallH  = Math.max(h * 0.16, 6);                // parapet wall height
-  const copH   = Math.max(h * 0.050, 2.5);             // coping capstone height
-  const abutW  = Math.max(bw * 0.22, h * 0.08);        // pier width — driven by bw to control stretch
-  const fullL  = cx - archR - abutW;
-  const fullW  = (archR + abutW) * 2;
+  // Segmental arch bridge — lower half extends below canvas bottom.
+  // Visible: road deck + parapet walls, stonework spandrel, and the arch curve.
+  // Arch span ties directly to bw so proportions hold at any width.
+
+  const roadY    = creekY - h * 0.20;   // road surface above creek
+  const sH       = Math.max(h * 0.052, 3);
+  const wallH    = Math.max(h * 0.060, 3.5);
+  const copH     = Math.max(h * 0.016, 1.2);
+  const vW       = Math.max(h * 0.054, 2.8);
+  const topY     = roadY - wallH - copH;  // top of parapet coping
+  const bL       = cx - bw * 0.5;
+  const bR       = cx + bw * 0.5;
+
+  // Arch geometry: place spring points below canvas so only the top of the arch is visible.
+  // archR solved from: chord = 2*halfSpan, rise = springY - apexY.
+  const halfSpan = bw * 0.43;            // clear half-span of arch opening
+  const apexY    = creekY + h * 0.01;   // arch top sits just inside bridge body at creek level
+  const springY  = h + 6;               // spring points below canvas
+  const d        = springY - apexY;
+  const archR    = (d * d + halfSpan * halfSpan) / (2 * d);
+  const archCy   = apexY + archR;       // circle centre (well below canvas)
+  const startA   = Math.atan2(springY - archCy, -halfSpan);  // left spring angle
+  const endA     = Math.atan2(springY - archCy,  halfSpan);  // right spring angle
 
   const sB = 'rgba(168,160,148,0.94)';
   const sM = 'rgba(148,140,128,0.92)';
@@ -1059,98 +1071,91 @@ function drawStoneBridge(ctx, cx, creekY, bw, h) {
   const sJ = 'rgba(65,55,42,0.30)';
   const cols = [sB, sM, sL, sM, sD, sB, sM];
 
-  // Course helper: draw one horizontal stone course with running-bond joints
   const course = (x1, x2, y, col, row) => {
     if (x2 - x1 < 1) return;
-    ctx.fillStyle = col; ctx.beginPath(); ctx.rect(x1, y, x2-x1, sH); ctx.fill();
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.rect(x1, y, x2 - x1, sH); ctx.fill();
     ctx.strokeStyle = sJ; ctx.lineWidth = 0.75;
     ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
     const jW = sH * 2.5, off = (row % 2) * jW * 0.5;
-    for (let jx = x1+off; jx < x2; jx += jW) {
-      ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y+sH); ctx.stroke();
+    for (let jx = x1 + off; jx < x2; jx += jW) {
+      ctx.beginPath(); ctx.moveTo(jx, y); ctx.lineTo(jx, y + sH); ctx.stroke();
     }
   };
 
-  // 1. Solid stone fill for the whole bridge mass
-  const topY = apexY - vW - wallH - copH;
+  // 1. Solid stone fill from parapet top to below canvas
   ctx.fillStyle = sM;
-  ctx.beginPath(); ctx.rect(fullL, topY, fullW, creekY - topY + h*0.04); ctx.fill();
+  ctx.beginPath(); ctx.rect(bL, topY, bw, h + 8 - topY); ctx.fill();
 
-  // 2. Stone courses across the full body (arch interior will be covered in step 3)
+  // 2. Stone courses across full bridge width
   let row = 0;
-  for (let y = creekY - sH; y >= topY - sH; y -= sH, row++) {
-    course(fullL, fullL + fullW, y, cols[row % cols.length], row);
+  for (let y = topY; y < h + 8; y += sH, row++) {
+    course(bL, bR, y, cols[row % cols.length], row);
   }
 
-  // 3. Arch opening — dark shadow (arc goes UP from left spring to right spring)
-  //    ctx.arc with anticlockwise=false and start=π, end=0 goes UP through apex
-  ctx.fillStyle = 'rgba(12,18,8,0.87)';
+  // 3. Arch opening — dark interior
+  ctx.fillStyle = 'rgba(10,15,6,0.90)';
   ctx.beginPath();
-  ctx.moveTo(cx - archR, creekY);
-  ctx.arc(cx, creekY, archR, Math.PI, 0, false);   // ← upward arch opening ✓
-  ctx.lineTo(cx + archR, creekY + h*0.06);
-  ctx.lineTo(cx - archR, creekY + h*0.06);
+  ctx.moveTo(cx - halfSpan, springY);
+  ctx.arc(cx, archCy, archR, startA, endA, false);  // upper arc: upper-left → apex → upper-right
+  ctx.lineTo(cx + halfSpan, h + 8);
+  ctx.lineTo(cx - halfSpan, h + 8);
   ctx.closePath(); ctx.fill();
 
-  // 4. Water shimmer at base of arch
-  ctx.fillStyle = 'rgba(44,122,185,0.32)';
+  // 4. Water shimmer visible at canvas bottom through arch
+  const wHalf = halfSpan * 0.78;
+  ctx.fillStyle = 'rgba(48,128,192,0.38)';
   ctx.beginPath();
-  ctx.moveTo(cx - archR*0.84, creekY - 1);
-  ctx.arc(cx, creekY, archR*0.84, Math.PI, 0, false);
-  ctx.lineTo(cx + archR*0.84, creekY + h*0.025);
-  ctx.lineTo(cx - archR*0.84, creekY + h*0.025);
+  ctx.moveTo(cx - wHalf, h - 4);
+  for (let x = cx - wHalf; x <= cx + wHalf; x += 4) ctx.lineTo(x, h - 4 + Math.sin((x - cx) * 0.10) * 2);
+  ctx.lineTo(cx + wHalf, h + 8); ctx.lineTo(cx - wHalf, h + 8);
   ctx.closePath(); ctx.fill();
 
-  // 5. Voussoir arch ring — thick stroke along the upward arc
+  // 5. Voussoir arch ring (thick stroke centred on archR)
   ctx.strokeStyle = sD; ctx.lineWidth = vW; ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.arc(cx, creekY, archR + vW*0.5, Math.PI, 0, false); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, archCy, archR, startA, endA, false); ctx.stroke();
 
-  // 6. Radial voussoir joint lines (fan out from circle centre at creekY)
+  // 6. Radial voussoir joint lines
+  const sweep = endA - startA;   // positive: startA (upper-left) → endA (upper-right) clockwise
   ctx.strokeStyle = sJ; ctx.lineWidth = 0.9;
-  for (let i = 1; i < 13; i++) {
-    const a = Math.PI + (i / 13) * Math.PI;   // π → 2π sweeping up through apex
+  for (let i = 1; i < 11; i++) {
+    const a = startA + (i / 11) * sweep;
     ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a)*(archR - vW*0.15), creekY + Math.sin(a)*(archR - vW*0.15));
-    ctx.lineTo(cx + Math.cos(a)*(archR + vW*0.90), creekY + Math.sin(a)*(archR + vW*0.90));
+    ctx.moveTo(cx + Math.cos(a) * (archR - vW * 0.40), archCy + Math.sin(a) * (archR - vW * 0.40));
+    ctx.lineTo(cx + Math.cos(a) * (archR + vW * 0.62), archCy + Math.sin(a) * (archR + vW * 0.62));
     ctx.stroke();
   }
 
-  // 7. Arch crown highlight (lighter stone on upper face)
-  ctx.strokeStyle = 'rgba(196,188,174,0.42)'; ctx.lineWidth = vW * 0.24;
-  ctx.beginPath(); ctx.arc(cx, creekY, archR + vW*0.20, Math.PI*1.10, Math.PI*1.90, false); ctx.stroke();
+  // 7. Crown highlight on keystone zone
+  const midA = (startA + endA) / 2;
+  ctx.strokeStyle = 'rgba(196,188,174,0.38)'; ctx.lineWidth = vW * 0.20;
+  ctx.beginPath(); ctx.arc(cx, archCy, archR + vW * 0.12, midA - sweep * 0.28, midA + sweep * 0.28, false); ctx.stroke();
 
-  // 8. Parapet walls + coping on the pier ends (above where arch meets the body)
-  const pBase = apexY - vW;   // base of parapet = top of arch extrados
-  [fullL, cx + archR].forEach((px) => {
-    const pw = abutW;
-    let pr = 0;
-    for (let y = pBase - sH; y >= pBase - wallH - sH; y -= sH, pr++) {
-      course(px, px + pw, y, cols[(pr + 3) % cols.length], pr + 10);
-    }
-    // Coping capstones — slightly wider, lighter
-    ctx.fillStyle = sL;
-    ctx.beginPath(); ctx.rect(px - 1.5, pBase - wallH - copH, pw + 3, copH); ctx.fill();
-    ctx.strokeStyle = sJ; ctx.lineWidth = 0.75;
-    ctx.beginPath(); ctx.moveTo(px-1.5, pBase-wallH-copH); ctx.lineTo(px+pw+1.5, pBase-wallH-copH); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px-1.5, pBase-wallH);      ctx.lineTo(px+pw+1.5, pBase-wallH);      ctx.stroke();
-    const cjW = sH * 2;
-    for (let jx = px; jx < px+pw; jx += cjW) {
-      ctx.beginPath(); ctx.moveTo(jx, pBase-wallH-copH); ctx.lineTo(jx, pBase-wallH); ctx.stroke();
-    }
-  });
+  // 8. Parapet wall courses (full width) + coping capstones
+  let pr = 0;
+  for (let y = topY + copH; y < roadY; y += sH, pr++) {
+    course(bL, bR, y, cols[(pr + 4) % cols.length], pr + 20);
+  }
+  ctx.fillStyle = sL;
+  ctx.beginPath(); ctx.rect(bL - 1.5, topY, bw + 3, copH); ctx.fill();
+  ctx.strokeStyle = sJ; ctx.lineWidth = 0.75;
+  ctx.beginPath(); ctx.moveTo(bL - 1.5, topY);        ctx.lineTo(bR + 1.5, topY);        ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bL - 1.5, topY + copH); ctx.lineTo(bR + 1.5, topY + copH); ctx.stroke();
+  for (let jx = bL; jx < bR; jx += sH * 2.2) {
+    ctx.beginPath(); ctx.moveTo(jx, topY); ctx.lineTo(jx, topY + copH); ctx.stroke();
+  }
 
-  // 9. Road crown — gentle upward curve along the top surface of the deck
-  const roadY = pBase - wallH - copH;
-  const crownPeak = h * 0.04;
+  // 9. Road crown
+  const crownPeak = h * 0.020;
   ctx.fillStyle = sL;
   ctx.beginPath();
-  ctx.moveTo(fullL, roadY);
-  ctx.quadraticCurveTo(cx, roadY - crownPeak, fullL + fullW, roadY);
-  ctx.lineTo(fullL + fullW, roadY + sH * 0.5);
-  ctx.quadraticCurveTo(cx, roadY + sH * 0.5 - crownPeak, fullL, roadY + sH * 0.5);
+  ctx.moveTo(bL, roadY);
+  ctx.quadraticCurveTo(cx, roadY - crownPeak, bR, roadY);
+  ctx.lineTo(bR, roadY + sH * 0.4);
+  ctx.quadraticCurveTo(cx, roadY + sH * 0.4 - crownPeak, bL, roadY + sH * 0.4);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = sJ; ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.moveTo(fullL, roadY); ctx.quadraticCurveTo(cx, roadY - crownPeak, fullL + fullW, roadY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bL, roadY); ctx.quadraticCurveTo(cx, roadY - crownPeak, bR, roadY); ctx.stroke();
 }
 
 function initMasters(w, h) {

@@ -1,6 +1,13 @@
-export const APP_VERSION = '1.10.8';
+export const APP_VERSION = '1.10.9';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.9',
+    date: 'April 2026',
+    notes: [
+      'Masters: bridge redrawn as segmental arch — lower half extends below canvas, arch span tied to bridge width, only top of arch + stonework visible',
+    ],
+  },
   {
     version: '1.10.8',
     date: 'April 2026',
