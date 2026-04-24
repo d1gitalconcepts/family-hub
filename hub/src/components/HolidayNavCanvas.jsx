@@ -944,28 +944,86 @@ function drawAugustaPine(ctx, cx, groundY, treeH) {
 }
 
 function drawMastersFlag(ctx, cx, groundY, h, t) {
-  const poleH = h * 0.74;
+  // poleH sized so the flag tip sits ~12% from canvas top regardless of groundY
+  const poleH = groundY - h * 0.12;
 
   // Hole cup
   ctx.fillStyle = 'rgba(8,6,6,0.72)';
-  ctx.beginPath(); ctx.ellipse(cx, groundY, poleH*0.09, poleH*0.038, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx, groundY, Math.max(poleH*0.06,3), Math.max(poleH*0.025,1.5), 0, 0, Math.PI*2); ctx.fill();
 
-  // Pole
-  ctx.strokeStyle = 'rgba(215,198,60,0.92)';
-  ctx.lineWidth = Math.max(poleH * 0.020, 1.5); ctx.lineCap = 'round';
+  // Pole (white, like Augusta)
+  ctx.strokeStyle = 'rgba(240,240,238,0.94)';
+  ctx.lineWidth = Math.max(poleH * 0.022, 1.5); ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(cx, groundY - 1); ctx.lineTo(cx, groundY - poleH); ctx.stroke();
 
-  // Waving golden flag
-  const fw = poleH * 0.36, fh = poleH * 0.23, wp = t * 0.042;
-  ctx.fillStyle = 'rgba(255,208,24,0.93)';
+  // Waving red flag
+  const fw = poleH * 0.38, fh = poleH * 0.26, wp = t * 0.042;
+  ctx.fillStyle = 'rgba(200,28,28,0.94)';
   ctx.beginPath();
   ctx.moveTo(cx, groundY - poleH);
   ctx.quadraticCurveTo(
-    cx + fw*0.55, groundY - poleH + fh*0.44 + Math.sin(wp)*fh*0.20,
-    cx + fw,      groundY - poleH + fh      + Math.sin(wp*1.3+0.4)*fh*0.17
+    cx + fw*0.55, groundY - poleH + fh*0.44 + Math.sin(wp)*fh*0.22,
+    cx + fw,      groundY - poleH + fh      + Math.sin(wp*1.3+0.4)*fh*0.18
   );
   ctx.lineTo(cx, groundY - poleH + fh);
   ctx.closePath(); ctx.fill();
+}
+
+function drawStoneBridge(ctx, cx, creekY, bw, h) {
+  const archR  = bw * 0.38;
+  const ringW  = Math.max(bw * 0.09, 3.5);
+  const deckT  = Math.max(ringW * 0.75, 3);
+  const deckY  = creekY - archR;          // top of arch opening = underside of deck
+  const wallH  = Math.max(h * 0.048, 3);
+  const abutW  = ringW * 1.1;
+  const deckL  = cx - archR - abutW;
+  const deckTotalW = (archR + abutW) * 2;
+
+  const stone  = 'rgba(124,104,80,0.92)';
+  const stoneD = 'rgba(96,78,58,0.90)';
+
+  // Left & right abutments
+  ctx.fillStyle = stone;
+  ctx.beginPath(); ctx.rect(deckL, deckY - deckT, abutW, creekY - deckY + deckT + h*0.04); ctx.fill();
+  ctx.beginPath(); ctx.rect(cx + archR, deckY - deckT, abutW, creekY - deckY + deckT + h*0.04); ctx.fill();
+
+  // Arch ring (thick stroke gives the stone voussoir look)
+  ctx.strokeStyle = stoneD;
+  ctx.lineWidth = ringW; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.arc(cx, deckY, archR + ringW * 0.5, Math.PI, 0, true); ctx.stroke();
+
+  // Water/sky visible inside arch
+  ctx.fillStyle = 'rgba(52,136,205,0.38)';
+  ctx.beginPath();
+  ctx.arc(cx, deckY, archR, Math.PI, 0, true);
+  ctx.lineTo(cx + archR, creekY + 2); ctx.lineTo(cx - archR, creekY + 2);
+  ctx.closePath(); ctx.fill();
+
+  // Shadow under bridge deck inside arch
+  ctx.fillStyle = 'rgba(0,0,0,0.20)';
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, deckY, archR, Math.PI, 0, true);
+  ctx.arc(cx, deckY, archR * 0.50, 0, Math.PI, false);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+
+  // Deck surface
+  ctx.fillStyle = stone;
+  ctx.beginPath(); ctx.rect(deckL, deckY - deckT, deckTotalW, deckT); ctx.fill();
+
+  // Parapets on each end
+  ctx.fillStyle = stoneD;
+  ctx.beginPath(); ctx.rect(deckL, deckY - deckT - wallH, abutW, wallH); ctx.fill();
+  ctx.beginPath(); ctx.rect(cx + archR, deckY - deckT - wallH, abutW, wallH); ctx.fill();
+
+  // Subtle stone course lines on deck
+  ctx.strokeStyle = 'rgba(70,55,40,0.26)'; ctx.lineWidth = 0.7;
+  for (let y = deckY - deckT + 1.8; y < deckY; y += 3.2) {
+    ctx.beginPath(); ctx.moveTo(deckL, y); ctx.lineTo(deckL + deckTotalW, y); ctx.stroke();
+  }
+  // Highlight on arch crown
+  ctx.strokeStyle = 'rgba(158,138,110,0.40)'; ctx.lineWidth = ringW * 0.28;
+  ctx.beginPath(); ctx.arc(cx, deckY, archR + ringW*0.22, Math.PI*1.12, Math.PI*1.88, true); ctx.stroke();
 }
 
 function initMasters(w, h) {
@@ -1035,6 +1093,9 @@ function drawMasters(ctx, w, h, t, s, isTest) {
   ctx.beginPath(); ctx.moveTo(0, h * 0.775);
   for (let x = 0; x <= w; x += 6) ctx.lineTo(x, h*0.775 + Math.sin(x*0.022 + T*0.010)*h*0.015);
   ctx.stroke();
+
+  // ── stone bridge over creek ──
+  drawStoneBridge(ctx, w * 0.30, h * 0.775, w * 0.11, h);
 
   // ── pine trees ──
   for (const tr of s.trees) drawAugustaPine(ctx, tr.xFrac*w, mastersGroundY(tr.xFrac, h), h*tr.hFrac);

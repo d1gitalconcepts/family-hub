@@ -1,11 +1,18 @@
-export const APP_VERSION = '1.10.4';
+export const APP_VERSION = '1.10.5';
 
 export const CHANGELOG = [
+  {
+    version: '1.10.5',
+    date: 'April 2026',
+    notes: [
+      'Masters animation: red flag, pole height fixed so flag is always visible, arched stone bridge over Rae\'s Creek',
+    ],
+  },
   {
     version: '1.10.4',
     date: 'April 2026',
     notes: [
-      'Holiday easter egg: Masters golf — rolling Augusta fairways, longleaf pine silhouettes, magenta azalea bushes, waving gold flagstick, golf ball arcing across the sky, drifting petals; shown during first week of April',
+      'Holiday easter egg: Masters golf — rolling Augusta fairways, longleaf pine silhouettes, magenta azalea bushes, red flagstick, golf ball arcing across the sky, drifting petals; shown during first week of April',
     ],
   },
   {
