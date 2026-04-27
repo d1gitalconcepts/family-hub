@@ -179,7 +179,7 @@ function parseMeals(lines, weekDates, noteFormat) {
       }
       if (currentDay && trimmed.startsWith('- ')) {
         const mealText = trimmed.slice(2).trim();
-        if (mealText && !mealText.startsWith('http')) meals[currentDay].meal = mealText;
+        if (mealText && !mealText.startsWith('http') && !meals[currentDay].meal) meals[currentDay].meal = mealText;
         continue;
       }
       if (currentDay && meals[currentDay]?.meal && trimmed.startsWith('http')) {
