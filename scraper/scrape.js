@@ -223,7 +223,7 @@ async function applyKeepUpdates(page, updates, noteName) {
     if (!result.alreadyCorrect) {
       // Use real mouse event (trusted) so Keep's React handlers fire correctly
       await page.mouse.click(result.x, result.y);
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(600);
     }
 
     appliedIds.push(update.id);
@@ -569,6 +569,9 @@ async function main() {
             const appliedIds = await applyKeepUpdates(notePage, pendingUpdates, noteName);
             if (appliedIds.length) {
               console.log(`[${ts}] Applied ${appliedIds.length} checkbox update(s) to "${noteName}"`);
+              // Wait for Keep to queue its background sync to Google's servers
+              // before closing the tab — 300ms was not enough.
+              await notePage.waitForTimeout(2500);
               await clearPendingKeepUpdates(appliedIds);
             }
             const notApplied = pendingUpdates.filter((u) => !appliedIds.includes(u.id)).map((u) => u.id);
