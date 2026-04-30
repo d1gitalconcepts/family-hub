@@ -50,6 +50,7 @@ export default function App() {
   const [lastSync, setLastSync]       = useState(null);
   const [syncing, setSyncing]         = useState(false);
   const [lastScrape, setLastScrape]   = useState(null);
+  const [syncError,  setSyncError]    = useState(null);
   const manualSyncPending             = useRef(false);
   const menuRef                       = useRef(null);
   const [showChangelog, setShowChangelog] = useState(false);
@@ -134,6 +135,22 @@ export default function App() {
   }, [role]);
 
   const scrapeIsStale = role === 'admin' && lastScrape && (Date.now() - lastScrape.getTime()) > 15 * 60 * 1000;
+
+  // Monitor worker sync errors (admin only)
+  useEffect(() => {
+    if (role !== 'admin') return;
+    async function fetchSyncError() {
+      const { data } = await supabase.from('config').select('value').eq('key', 'sync_error').maybeSingle();
+      setSyncError(data?.value || null);
+    }
+    fetchSyncError();
+    const ch = supabase.channel(`sync_error_${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'config', filter: 'key=eq.sync_error' }, (payload) => {
+        setSyncError(payload.new?.value || null);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [role]);
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
@@ -346,6 +363,12 @@ export default function App() {
       {scrapeIsStale && (
         <div className="scrape-alert">
           ⚠ Keep sync is overdue — last scraped {lastScrape.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Check the scraper on the Linux server (<code>cat ~/family-hub/scraper/scraper.log</code>).
+        </div>
+      )}
+
+      {syncError?.type === 'token_expired' && (
+        <div className="scrape-alert">
+          ⚠ Google OAuth token expired — calendar sync is paused. Run <code>node get-token.js</code> in <code>worker/</code>, then <code>npx wrangler secret put GOOGLE_REFRESH_TOKEN</code>.
         </div>
       )}
 

@@ -148,9 +148,20 @@ async function runFullSync(env) {
     const now = new Date().toISOString();
     await sbUpsert(env, 'config', [{ key: 'last_calendar_sync', value: now, updated_at: now }]);
 
+    // Clear any previous sync error
+    await sbUpsert(env, 'config', [{ key: 'sync_error', value: null, updated_at: now }]).catch(() => {});
+
     console.log('[Worker] Full sync complete.');
   } catch (err) {
     console.error('[Worker] Sync error:', err.stack || err.message);
+    if (err.message?.includes('invalid_grant') || err.message?.includes('Token refresh failed')) {
+      const now = new Date().toISOString();
+      await sbUpsert(env, 'config', [{
+        key: 'sync_error',
+        value: { type: 'token_expired', at: now },
+        updated_at: now,
+      }]).catch(() => {});
+    }
   }
 }
 
