@@ -8,6 +8,7 @@ hub/dist/
 hub/.env
 worker/node_modules/
 worker/.wrangler/
+.wrangler/
 config.js
 .claude/settings.local.json
 .claude/
