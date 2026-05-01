@@ -201,6 +201,15 @@ async function enrichNhl(event, config) {
   const isLive  = statusCode === 'LIVE' || statusCode === 'CRIT';
 
   const nhlTv = game.tvBroadcasts || [];
+
+  const ss = game.seriesSummary || null;
+  const series = ss ? {
+    gameLabel:   ss.gameLabel   || null,
+    description: ss.series      || ss.seriesAbbrev || null,
+    homeWins:    ss.teamWins?.home  ?? null,
+    awayWins:    ss.teamWins?.road  ?? null,
+  } : null;
+
   const base = {
     status: statusCode,
     homeTeam: { abbrev: game.homeTeam?.abbrev, name: game.homeTeam?.commonName?.default || game.homeTeam?.abbrev },
@@ -209,6 +218,7 @@ async function enrichNhl(event, config) {
     awayScore: game.awayTeam?.score ?? null,
     period: game.period || null,
     periodType: game.periodType || null,
+    series,
     network: (nhlTv.find((b) => b.market === 'N') || nhlTv[0])?.network || null,
   };
 

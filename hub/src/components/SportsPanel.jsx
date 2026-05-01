@@ -263,7 +263,8 @@ const STRENGTH_LABEL = { pp: 'PP', sh: 'SH', ev: null };
 
 function NhlPanel({ data, detail }) {
   const { status, homeTeam, awayTeam, homeScore, awayScore, period, periodType, lastPeriodType,
-          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars, network } = data;
+          periods, goals, homeShots, awayShots, homePP, awayPP, homeGoalie, awayGoalie, threeStars,
+          series, network } = data;
   const showBox = detail === 'boxscore' || detail === 'all';
   const showAll = detail === 'all';
   const isLive   = status === 'LIVE' || status === 'CRIT';
@@ -275,6 +276,11 @@ function NhlPanel({ data, detail }) {
     <div>
       <div className="sports-panel-header">
         <StatusBadge sport="nhl" status={statusLabel} />
+        {series?.gameLabel && (
+          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+            {series.gameLabel}{series.description ? ` · ${series.description}` : ''}
+          </span>
+        )}
         {isLive && period && (
           <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
             {periodType === 'OT' ? 'OT' : periodType === 'SO' ? 'SO' : `P${period}`}
