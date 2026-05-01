@@ -202,12 +202,16 @@ async function enrichNhl(event, config) {
 
   const nhlTv = game.tvBroadcasts || [];
 
-  const ss = game.seriesSummary || null;
+  const ss = game.seriesStatus || null;
   const series = ss ? {
-    gameLabel:   ss.gameLabel   || null,
-    description: ss.series      || ss.seriesAbbrev || null,
-    homeWins:    ss.teamWins?.home  ?? null,
-    awayWins:    ss.teamWins?.road  ?? null,
+    gameLabel: `Game ${ss.gameNumberOfSeries}`,
+    description: (() => {
+      const { topSeedTeamAbbrev, topSeedWins, bottomSeedTeamAbbrev, bottomSeedWins } = ss;
+      if (topSeedWins > bottomSeedWins) return `${topSeedTeamAbbrev} leads ${topSeedWins}-${bottomSeedWins}`;
+      if (bottomSeedWins > topSeedWins) return `${bottomSeedTeamAbbrev} leads ${bottomSeedWins}-${topSeedWins}`;
+      return `Tied ${topSeedWins}-${bottomSeedWins}`;
+    })(),
+    seriesTitle: ss.seriesTitle || null,
   } : null;
 
   const base = {
