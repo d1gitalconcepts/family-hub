@@ -1,6 +1,6 @@
 import { pollAllCalendars, syncMealCalendar } from './calendar.js';
 import { pollWeather } from './weather.js';
-import { sbSelect, sbUpsert } from './supabase.js';
+import { sbSelect, sbUpsert, setConfigValue } from './supabase.js';
 import { enrichSportsEvents } from './sports.js';
 
 export default {
@@ -149,7 +149,7 @@ async function runFullSync(env) {
     await sbUpsert(env, 'config', [{ key: 'last_calendar_sync', value: now, updated_at: now }]);
 
     // Clear any previous sync error
-    await sbUpsert(env, 'config', [{ key: 'sync_error', value: null, updated_at: now }]).catch(() => {});
+    await setConfigValue(env, 'sync_error', null).catch(() => {});
 
     console.log('[Worker] Full sync complete.');
   } catch (err) {
