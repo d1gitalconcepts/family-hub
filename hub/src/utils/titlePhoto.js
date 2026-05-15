@@ -8,13 +8,14 @@ const STOP_WORDS = new Set([
 
 export function extractKeyword(title) {
   if (!title) return null;
-  const clean = title
+  const segment = title.split(',')[0];
+  const clean = segment
     .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
     .replace(/[^a-zA-Z0-9 ]/g, ' ')
     .toLowerCase()
     .trim();
   const words = clean.split(/\s+/).filter(w => w.length > 2 && !STOP_WORDS.has(w));
-  return words.slice(0, 3).join(' ') || null;
+  return words.slice(0, 2).join(' ') || null;
 }
 
 async function fetchUnsplash(keyword, apiKey) {
