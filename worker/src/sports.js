@@ -358,15 +358,21 @@ async function enrichGolf(event, config) {
 
   // For multi-day tournaments use today's date so ESPN returns the live leaderboard.
   // Fall back to start date if today is outside the event window.
+  // Note: the worker runs in UTC. Late-evening US time the UTC clock rolls to the next day,
+  // so ESPN's scoreboard for "tomorrow" may return no events yet. Retry with yesterday's date
+  // before falling back to startStr so end-of-round data is never left stale.
   const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayStr = (() => { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.toISOString().split('T')[0]; })();
   const endStr   = event.end_date || startStr;
   const dateStr  = (todayStr >= startStr && todayStr < endStr) ? todayStr : startStr;
 
-  const yyyymmdd = dateStr.replace(/-/g, '');
-  const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${yyyymmdd}`;
-  const json = await fetchJson(url);
-
-  const ev = json?.events?.[0];
+  let ev, json;
+  for (const d of [dateStr, yesterdayStr, startStr]) {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=${d.replace(/-/g, '')}`;
+    json = await fetchJson(url);
+    ev = json?.events?.[0];
+    if (ev) break;
+  }
   if (!ev) return null;
 
   const display = config.display || {};
