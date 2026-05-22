@@ -177,8 +177,8 @@ function parseMeals(lines, weekDates, noteFormat) {
         meals[currentDay] = { date: weekDates[dayMatch], meal: null };
         continue;
       }
-      if (currentDay && trimmed.startsWith('- ')) {
-        const mealText = trimmed.slice(2).trim();
+      if (currentDay && trimmed.startsWith('-')) {
+        const mealText = trimmed.slice(1).trim();
         if (mealText && !mealText.startsWith('http') && !meals[currentDay].meal) meals[currentDay].meal = mealText;
         continue;
       }
