@@ -4,15 +4,24 @@ import ForecastCard from './ForecastCard';
 
 const FORECAST_ID = '__weather_forecast';
 
+function ruleMatches(rule, title) {
+  const keywords = rule.keyword.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
+  return keywords.some((k) => title.includes(k));
+}
+
 function isEventHidden(event, filterRules) {
   if (!filterRules?.length) return false;
   const title = (event.summary || '').toLowerCase();
-  return filterRules.some((rule) => {
-    if (!rule.keyword || rule.enabled === false) return false;
-    if (rule.calendarId && rule.calendarId !== event.calendar_id) return false;
-    const keywords = rule.keyword.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
-    return keywords.some((k) => title.includes(k));
-  });
+  const active = filterRules.filter((rule) => rule.keyword && rule.enabled !== false
+    && (!rule.calendarId || rule.calendarId === event.calendar_id));
+
+  // "show only" rules act as an allow-list for their calendar: anything that
+  // doesn't match at least one of them is hidden, regardless of hide rules.
+  const showRules = active.filter((rule) => rule.mode === 'show' && rule.calendarId);
+  if (showRules.length > 0 && !showRules.some((rule) => ruleMatches(rule, title))) return true;
+
+  const hideRules = active.filter((rule) => rule.mode !== 'show');
+  return hideRules.some((rule) => ruleMatches(rule, title));
 }
 
 export default function SectionRow({ section, days, events, calendarConfig, forecast, gridStyle, dayClasses, iconRules, iconRulesOverride, cardStyle, compact, filterRules, enrichments, sportsDisplay }) {

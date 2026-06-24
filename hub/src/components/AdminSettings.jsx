@@ -961,7 +961,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: rules.filter((_, ri) => ri !== i) });
             }
             function addRule() {
-              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: [...rules, { keyword: '', enabled: true, calendarId: '' }] });
+              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: [...rules, { keyword: '', enabled: true, calendarId: '', mode: 'hide' }] });
             }
             function onFilterDragStart(e, idx) {
               drag.current = { type: 'filter-rule', fromIdx: idx };
@@ -986,9 +986,11 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               <div className="settings-section">
                 <h3 style={{ marginBottom: 6 }}>Hidden Event Rules</h3>
                 <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-                  Events whose title matches any active rule are hidden from the calendar.
-                  Separate multiple keywords with commas — any match will hide the event.
-                  Optionally limit a rule to a single calendar.
+                  Separate multiple keywords with commas — any match counts.
+                  "Hide matching" removes matching events; "Show only matching" (requires
+                  picking a calendar) hides everything else on that calendar instead —
+                  handy for a noisy calendar where you'd otherwise have to exclude every
+                  other case (e.g. a World Cup calendar where you only want USA games).
                 </p>
 
                 {rules.length === 0 && (
@@ -1025,6 +1027,16 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         placeholder="vitamin, reminder, daily check-in…"
                         style={{ flex: 1, fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
                       />
+                      <select
+                        value={rule.mode === 'show' ? 'show' : 'hide'}
+                        onChange={(e) => updateRule(i, 'mode', e.target.value)}
+                        disabled={!rule.calendarId}
+                        title={rule.calendarId ? 'Hide matching events, or hide everything except matches' : 'Pick a calendar to enable "show only"'}
+                        style={{ fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px', maxWidth: 130 }}
+                      >
+                        <option value="hide">Hide matching</option>
+                        <option value="show">Show only matching</option>
+                      </select>
                       <select
                         value={rule.calendarId || ''}
                         onChange={(e) => updateRule(i, 'calendarId', e.target.value)}
