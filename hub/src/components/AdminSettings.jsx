@@ -961,7 +961,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
               setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: rules.filter((_, ri) => ri !== i) });
             }
             function addRule() {
-              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: [...rules, { keyword: '', enabled: true }] });
+              setEventFiltersCfg({ ...(eventFiltersCfg || {}), rules: [...rules, { keyword: '', enabled: true, calendarId: '' }] });
             }
             function onFilterDragStart(e, idx) {
               drag.current = { type: 'filter-rule', fromIdx: idx };
@@ -988,6 +988,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                 <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
                   Events whose title matches any active rule are hidden from the calendar.
                   Separate multiple keywords with commas — any match will hide the event.
+                  Optionally limit a rule to a single calendar.
                 </p>
 
                 {rules.length === 0 && (
@@ -1024,6 +1025,17 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
                         placeholder="vitamin, reminder, daily check-in…"
                         style={{ flex: 1, fontSize: 'var(--s-base)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px' }}
                       />
+                      <select
+                        value={rule.calendarId || ''}
+                        onChange={(e) => updateRule(i, 'calendarId', e.target.value)}
+                        title="Limit this rule to one calendar"
+                        style={{ fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 6px', maxWidth: 140 }}
+                      >
+                        <option value="">All calendars</option>
+                        {calendars.filter((c) => !c.virtual).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
                       <button className="btn-icon" style={{ fontSize: 'var(--s-base)', color: 'var(--danger)' }} onClick={() => removeRule(i)}>✕</button>
                     </div>
                   );

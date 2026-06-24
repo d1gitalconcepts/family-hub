@@ -9,6 +9,7 @@ function isEventHidden(event, filterRules) {
   const title = (event.summary || '').toLowerCase();
   return filterRules.some((rule) => {
     if (!rule.keyword || rule.enabled === false) return false;
+    if (rule.calendarId && rule.calendarId !== event.calendar_id) return false;
     const keywords = rule.keyword.split(',').map((k) => k.trim().toLowerCase()).filter(Boolean);
     return keywords.some((k) => title.includes(k));
   });
