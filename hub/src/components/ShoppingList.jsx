@@ -8,10 +8,13 @@ const DEFAULT_NOTES = [
   { title: 'Shopping List', key: 'shopping-list', label: 'Shopping List', visible: true },
 ];
 
-export default function ShoppingList({ pinned, onTogglePin }) {
+export default function ShoppingList({ pinned, onTogglePin, profile }) {
   const [keepNotesCfg] = useConfig('keep_notes');
   const notes = (keepNotesCfg && keepNotesCfg.length > 0) ? keepNotesCfg : DEFAULT_NOTES;
-  const visibleNotes = notes.filter((n) => n.visible !== false);
+  const profileChecklistKeys = profile?.visible_checklist_keys;
+  const visibleNotes = notes
+    .filter((n) => n.visible !== false)
+    .filter((n) => !profileChecklistKeys || profileChecklistKeys.includes(n.key));
 
   return (
     <div className="sidebar">
