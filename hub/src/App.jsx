@@ -4,9 +4,10 @@ import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
 import AdminSettings from './components/AdminSettings';
 import WeatherWidget from './components/WeatherWidget';
-import { getSession, getRole, saveRole, logout } from './auth';
+import { getSession, logout } from './auth';
 import { supabase } from './supabaseClient';
 import { useConfig } from './hooks/useConfig';
+import { useCurrentProfile } from './hooks/useCurrentProfile';
 import { APP_VERSION, CHANGELOG } from './version';
 import './styles/index.css';
 
@@ -36,7 +37,8 @@ export default function App() {
   const [headerIconCfg]  = useConfig('header_icon');
   const [monogramText]   = useConfig('monogram_text');
   const [customIcon]     = useConfig('custom_icon');
-  const [role, setRole]               = useState(null);
+  const [session, setSession]         = useState(null);
+  const profile                       = useCurrentProfile(session?.user?.id);
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showMobileList, setShowMobileList] = useState(false);
@@ -56,9 +58,10 @@ export default function App() {
   const [showChangelog, setShowChangelog] = useState(false);
 
   useEffect(() => {
+    localStorage.removeItem('fh_role'); // stale key from the old role-string auth scheme
     async function checkSession() {
-      const session = await getSession();
-      if (session) setRole(getRole() || 'family');
+      const s = await getSession();
+      if (s) setSession(s);
       setLoading(false);
     }
     checkSession();
@@ -120,7 +123,7 @@ export default function App() {
 
   // Monitor Keep scraper freshness (admin only)
   useEffect(() => {
-    if (role !== 'admin') return;
+    if (!profile?.is_admin) return;
     async function fetchLastScrape() {
       const { data } = await supabase.from('notes').select('scraped_at').eq('key', 'shopping-list').maybeSingle();
       if (data?.scraped_at) setLastScrape(new Date(data.scraped_at));
@@ -132,13 +135,13 @@ export default function App() {
       })
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [role]);
+  }, [profile?.is_admin]);
 
-  const scrapeIsStale = role === 'admin' && lastScrape && (Date.now() - lastScrape.getTime()) > 15 * 60 * 1000;
+  const scrapeIsStale = profile?.is_admin && lastScrape && (Date.now() - lastScrape.getTime()) > 15 * 60 * 1000;
 
   // Monitor worker sync errors (admin only)
   useEffect(() => {
-    if (role !== 'admin') return;
+    if (!profile?.is_admin) return;
     async function fetchSyncError() {
       const { data } = await supabase.from('config').select('value').eq('key', 'sync_error').maybeSingle();
       setSyncError(data?.value || null);
@@ -150,7 +153,7 @@ export default function App() {
       })
       .subscribe();
     return () => supabase.removeChannel(ch);
-  }, [role]);
+  }, [profile?.is_admin]);
 
   const requestSync = useCallback(async () => {
     setSyncing(true);
@@ -234,11 +237,15 @@ export default function App() {
 
   async function handleLogout() {
     await logout();
-    setRole(null);
+    setSession(null);
   }
 
+  const canSync    = profile?.is_admin || profile?.can_sync !== false;
+  const canPrint   = profile?.is_admin || profile?.can_print !== false;
+  const canSettings = profile?.is_admin || !!profile?.can_access_settings;
+
   if (loading) return null;
-  if (!role) return <LoginScreen onLogin={(r) => { saveRole(r); setRole(r); }} />;
+  if (!session) return <LoginScreen onLogin={setSession} />;
 
   return (
     <div className="app-shell">
@@ -275,7 +282,7 @@ export default function App() {
         </h1>
         <WeatherWidget position="in-header" />
         {/* Desktop: persistent sync chip + gear icon */}
-        {!isMobile && (
+        {!isMobile && canSync && (
           <div className="header-desktop-actions">
             <button
               className={`header-sync-chip${syncing ? ' header-sync-chip--syncing' : ''}`}
@@ -305,7 +312,7 @@ export default function App() {
           {showMenu && (
             <div className="header-menu">
               {/* Mobile-only: sync in menu */}
-              {isMobile && (
+              {isMobile && canSync && (
                 <button
                   className={`header-menu-item${syncing ? ' header-menu-item--syncing' : ''}`}
                   onClick={requestSync}
@@ -323,7 +330,7 @@ export default function App() {
                 </button>
               )}
               {/* Settings — always in hamburger (mobile and desktop) */}
-              {role === 'admin' && (
+              {canSettings && (
                 <button
                   className="header-menu-item"
                   onClick={() => { setShowSettings(true); setShowMenu(false); }}
@@ -332,17 +339,19 @@ export default function App() {
                   <span className="header-menu-item-label">Settings</span>
                 </button>
               )}
-              <button className="header-menu-item" onClick={() => { setShowMenu(false); window.print(); }}>
-                <span>🖨</span>
-                <span className="header-menu-item-label">Print calendar</span>
-              </button>
+              {canPrint && (
+                <button className="header-menu-item" onClick={() => { setShowMenu(false); window.print(); }}>
+                  <span>🖨</span>
+                  <span className="header-menu-item-label">Print calendar</span>
+                </button>
+              )}
               <button className="header-menu-item header-menu-item--danger" onClick={handleLogout}>
                 <span>⎋</span>
                 <span className="header-menu-item-label">Sign out</span>
               </button>
               {/* Version number at bottom of menu */}
               <div className="header-menu-version">
-                {role === 'admin' ? (
+                {profile?.is_admin ? (
                   <button
                     className="header-menu-version-btn"
                     onClick={() => { setShowChangelog(true); setShowMenu(false); }}
@@ -373,7 +382,7 @@ export default function App() {
       )}
 
       <div className="app-body">
-        <WeekView key={viewKey} />
+        <WeekView key={viewKey} profile={profile} />
         {!isMobile && (
           <div
             ref={sidebarRef}
@@ -394,7 +403,7 @@ export default function App() {
                 {!sidebarOpen && <span className="sidebar-rail-label">List</span>}
               </button>
             </div>
-            <ShoppingList pinned={sidebarPinned} onTogglePin={handleSidebarPin} />
+            <ShoppingList pinned={sidebarPinned} onTogglePin={handleSidebarPin} profile={profile} />
           </div>
         )}
       </div>
@@ -415,13 +424,15 @@ export default function App() {
         <div className="mobile-drawer-overlay" onClick={() => setShowMobileList(false)}>
           <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-drawer-handle" onClick={() => setShowMobileList(false)} />
-            <ShoppingList />
+            <ShoppingList profile={profile} />
           </div>
         </div>
       )}
 
       {showSettings && (
         <AdminSettings
+          profile={profile}
+          session={session}
           onClose={() => window.location.reload()}
           theme={theme}
           onThemeChange={setTheme}
