@@ -2,6 +2,9 @@ import { useRef, useState, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { HOLIDAYS } from './HolidayNavCanvas';
 import { useTaskLists } from '../hooks/useTaskLists';
+import { useProfiles } from '../hooks/useProfiles';
+import { supabase } from '../supabaseClient';
+import { createProfile, resetPassword, deleteProfile } from '../auth';
 
 function makeMonogramDataUrl(text, bg = '#1a73e8') {
   const letters = ((text || 'H').slice(0, 4)).toUpperCase();
@@ -10,7 +13,7 @@ function makeMonogramDataUrl(text, bg = '#1a73e8') {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
-export default function AdminSettings({ onClose, theme, onThemeChange }) {
+export default function AdminSettings({ onClose, theme, onThemeChange, profile, session }) {
   const [activeTab, setActiveTab] = useState('calendars');
 
   const [calConfig,      setCalConfig]     = useConfig('visible_calendars');
@@ -38,6 +41,17 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
   const [placesPhotosCfg,  setPlacesPhotosCfg]  = useConfig('places_photos');
   const allTaskLists = useTaskLists();
+  const allProfiles = useProfiles();
+
+  const [newPersonName,     setNewPersonName]     = useState('');
+  const [newPersonEmail,    setNewPersonEmail]    = useState('');
+  const [newPersonPassword, setNewPersonPassword] = useState('');
+  const [newPersonIsAdmin,  setNewPersonIsAdmin]  = useState(false);
+  const [addPersonError,    setAddPersonError]    = useState('');
+  const [addingPerson,      setAddingPerson]      = useState(false);
+  const [passwordDrafts,    setPasswordDrafts]    = useState({});
+  const [personStatus,      setPersonStatus]      = useState({});
+  const [deleteConfirmId,   setDeleteConfirmId]   = useState(null);
 
   const [awApiKey,       setAwApiKey]       = useState('');
   const [awAppKey,       setAwAppKey]       = useState('');
@@ -222,6 +236,65 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
   function updateListRow(listId, field, value) {
     const updated = listRows.map((r) => r.list_id === listId ? { ...r, [field]: value } : r);
     setListConfig(updated);
+  }
+
+  // --- Profile (People tab) field updates ---
+  async function updateProfileField(id, field, value) {
+    await supabase.from('profiles').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
+  }
+
+  function slugifyEmail(name) {
+    const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    return slug ? `${slug}@hub.local` : '';
+  }
+
+  async function handleAddPerson() {
+    setAddPersonError('');
+    if (!newPersonName.trim() || !newPersonEmail.trim() || !newPersonPassword) {
+      setAddPersonError('Name, email, and password are all required.');
+      return;
+    }
+    setAddingPerson(true);
+    try {
+      await createProfile(session, {
+        display_name: newPersonName.trim(),
+        email:        newPersonEmail.trim(),
+        password:     newPersonPassword,
+        is_admin:     newPersonIsAdmin,
+      });
+      setNewPersonName('');
+      setNewPersonEmail('');
+      setNewPersonPassword('');
+      setNewPersonIsAdmin(false);
+    } catch (err) {
+      setAddPersonError(err.message || 'Failed to create account.');
+    } finally {
+      setAddingPerson(false);
+    }
+  }
+
+  async function handleResetPassword(id) {
+    const password = passwordDrafts[id];
+    if (!password) return;
+    setPersonStatus((s) => ({ ...s, [id]: 'saving' }));
+    try {
+      await resetPassword(session, id, password);
+      setPasswordDrafts((d) => ({ ...d, [id]: '' }));
+      setPersonStatus((s) => ({ ...s, [id]: 'done' }));
+      setTimeout(() => setPersonStatus((s) => ({ ...s, [id]: null })), 2500);
+    } catch (err) {
+      setPersonStatus((s) => ({ ...s, [id]: err.message || 'Failed' }));
+    }
+  }
+
+  async function handleDeleteProfile(id) {
+    setPersonStatus((s) => ({ ...s, [id]: 'deleting' }));
+    try {
+      await deleteProfile(session, id);
+      setDeleteConfirmId(null);
+    } catch (err) {
+      setPersonStatus((s) => ({ ...s, [id]: err.message || 'Failed' }));
+    }
   }
 
   // --- Section CRUD ---
@@ -419,6 +492,9 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
     { id: 'weather',      label: 'Weather'     },
     { id: 'places',       label: 'Places'      },
     { id: 'display',      label: 'Display'     },
+    // Managing other people's accounts/permissions stays strictly
+    // admin-only, even for someone granted can_access_settings.
+    ...(profile?.is_admin ? [{ id: 'people', label: 'People' }] : []),
   ];
 
   return (
@@ -2520,6 +2596,237 @@ export default function AdminSettings({ onClose, theme, onThemeChange }) {
 
             </div>
           )}
+
+          {/* ── People tab (admin only) ─────────────────────────── */}
+          {activeTab === 'people' && profile?.is_admin && (() => {
+            const allVisibleCalendarIds   = (calConfig || []).filter((c) => c.visible !== false).map((c) => c.id);
+            const allVisibleChecklistKeys = ((keepNotesCfg && keepNotesCfg.length > 0) ? keepNotesCfg : [{ key: 'shopping-list' }])
+              .filter((n) => n.visible !== false).map((n) => n.key);
+
+            function toggleCalendarCustomize(person, on) {
+              updateProfileField(person.id, 'visible_calendar_ids', on ? allVisibleCalendarIds : null);
+            }
+            function toggleChecklistCustomize(person, on) {
+              updateProfileField(person.id, 'visible_checklist_keys', on ? allVisibleChecklistKeys : null);
+            }
+            function togglePersonCalendar(person, calId) {
+              const current = person.visible_calendar_ids || [];
+              const next = current.includes(calId) ? current.filter((id) => id !== calId) : [...current, calId];
+              updateProfileField(person.id, 'visible_calendar_ids', next);
+            }
+            function togglePersonChecklist(person, key) {
+              const current = person.visible_checklist_keys || [];
+              const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
+              updateProfileField(person.id, 'visible_checklist_keys', next);
+            }
+
+            return (
+              <div className="settings-section">
+                <h3 style={{ marginBottom: 6 }}>People</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
+                  Give each family member their own login. By default a new person sees everything you've made
+                  globally visible — customize a person's calendars or checklists below to scope their view down.
+                </p>
+
+                {allProfiles.map((person) => {
+                  const isSelf = person.id === profile.id;
+                  const customCalendars   = Array.isArray(person.visible_calendar_ids);
+                  const customChecklists  = Array.isArray(person.visible_checklist_keys);
+                  const status = personStatus[person.id];
+
+                  return (
+                    <div key={person.id} style={{
+                      display: 'flex', flexDirection: 'column', gap: 10,
+                      padding: '14px 0', borderBottom: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <input
+                          className="cal-name-input"
+                          value={person.display_name}
+                          onChange={(e) => updateProfileField(person.id, 'display_name', e.target.value)}
+                          style={{ flex: '1 1 140px' }}
+                        />
+                        <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                          {person.email}
+                        </span>
+                        {!isSelf && (
+                          <button
+                            className="btn-icon"
+                            style={{ fontSize: 'var(--s-base)', color: 'var(--danger)' }}
+                            onClick={() => setDeleteConfirmId(deleteConfirmId === person.id ? null : person.id)}
+                            title="Remove person"
+                          >✕</button>
+                        )}
+                      </div>
+
+                      {deleteConfirmId === person.id && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-secondary)', borderRadius: 8, padding: '8px 12px' }}>
+                          <span style={{ fontSize: 'var(--s-sm)' }}>Remove {person.display_name}'s account? This can't be undone.</span>
+                          <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '3px 10px', color: 'var(--danger)' }}
+                            onClick={() => handleDeleteProfile(person.id)}>
+                            {status === 'deleting' ? 'Removing…' : 'Remove'}
+                          </button>
+                          <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '3px 10px' }}
+                            onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: isSelf ? 'default' : 'pointer', fontSize: 'var(--s-sm)' }}>
+                          <input type="checkbox" checked={!!person.is_admin} disabled={isSelf}
+                            onChange={(e) => updateProfileField(person.id, 'is_admin', e.target.checked)} />
+                          Admin (full access)
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', opacity: person.is_admin ? 0.5 : 1 }}>
+                          <input type="checkbox" checked={person.is_admin || !!person.can_access_settings} disabled={person.is_admin}
+                            onChange={(e) => updateProfileField(person.id, 'can_access_settings', e.target.checked)} />
+                          Settings access
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', opacity: person.is_admin ? 0.5 : 1 }}>
+                          <input type="checkbox" checked={person.is_admin || person.can_sync !== false} disabled={person.is_admin}
+                            onChange={(e) => updateProfileField(person.id, 'can_sync', e.target.checked)} />
+                          Can sync
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', opacity: person.is_admin ? 0.5 : 1 }}>
+                          <input type="checkbox" checked={person.is_admin || person.can_print !== false} disabled={person.is_admin}
+                            onChange={(e) => updateProfileField(person.id, 'can_print', e.target.checked)} />
+                          Can print
+                        </label>
+                      </div>
+
+                      {/* Calendar visibility */}
+                      <div style={{ paddingLeft: 2 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', fontWeight: 500 }}>
+                          <input type="checkbox" checked={customCalendars}
+                            onChange={(e) => toggleCalendarCustomize(person, e.target.checked)} />
+                          Customize this person's calendars
+                        </label>
+                        {!customCalendars && (
+                          <p style={{ margin: '4px 0 0 22px', fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+                            Sees everything you show globally.
+                          </p>
+                        )}
+                        {customCalendars && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', paddingLeft: 22, marginTop: 6 }}>
+                            {(calConfig || []).filter((c) => !c.virtual).map((cal) => (
+                              <label key={cal.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={(person.visible_calendar_ids || []).includes(cal.id)}
+                                  onChange={() => togglePersonCalendar(person, cal.id)}
+                                />
+                                {cal.name}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Checklist visibility */}
+                      <div style={{ paddingLeft: 2 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', fontWeight: 500 }}>
+                          <input type="checkbox" checked={customChecklists}
+                            onChange={(e) => toggleChecklistCustomize(person, e.target.checked)} />
+                          Customize this person's checklists
+                        </label>
+                        {!customChecklists && (
+                          <p style={{ margin: '4px 0 0 22px', fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>
+                            Sees everything you show globally.
+                          </p>
+                        )}
+                        {customChecklists && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', paddingLeft: 22, marginTop: 6 }}>
+                            {((keepNotesCfg && keepNotesCfg.length > 0) ? keepNotesCfg : [{ key: 'shopping-list', label: 'Shopping List' }]).map((note) => (
+                              <label key={note.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={(person.visible_checklist_keys || []).includes(note.key)}
+                                  onChange={() => togglePersonChecklist(person, note.key)}
+                                />
+                                {note.label || note.title}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Reset password */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="password"
+                          className="login-input"
+                          placeholder="New password"
+                          value={passwordDrafts[person.id] || ''}
+                          onChange={(e) => setPasswordDrafts((d) => ({ ...d, [person.id]: e.target.value }))}
+                          style={{ flex: '0 1 200px', fontSize: 'var(--s-sm)' }}
+                        />
+                        <button className="btn" style={{ fontSize: 'var(--s-sm)', padding: '4px 10px' }}
+                          disabled={!passwordDrafts[person.id] || status === 'saving'}
+                          onClick={() => handleResetPassword(person.id)}>
+                          {status === 'saving' ? 'Saving…' : status === 'done' ? 'Saved!' : 'Reset password'}
+                        </button>
+                        {status && status !== 'saving' && status !== 'done' && status !== 'deleting' && (
+                          <span style={{ fontSize: 'var(--s-xs)', color: 'var(--danger)' }}>{status}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Add person */}
+                <h3 style={{ marginTop: 20, marginBottom: 6 }}>Add a person</h3>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 140px' }}>
+                    <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Name</span>
+                    <input
+                      className="cal-name-input"
+                      value={newPersonName}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        setNewPersonName(name);
+                        if (!newPersonEmail || newPersonEmail === slugifyEmail(newPersonName)) {
+                          setNewPersonEmail(slugifyEmail(name));
+                        }
+                      }}
+                      placeholder="Emma"
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 160px' }}>
+                    <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Login email</span>
+                    <input
+                      className="cal-name-input"
+                      value={newPersonEmail}
+                      onChange={(e) => setNewPersonEmail(e.target.value)}
+                      placeholder="emma@hub.local"
+                      style={{ fontFamily: 'monospace', fontSize: 'var(--s-xs)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 140px' }}>
+                    <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Password</span>
+                    <input
+                      type="password"
+                      className="login-input"
+                      value={newPersonPassword}
+                      onChange={(e) => setNewPersonPassword(e.target.value)}
+                      placeholder="Password"
+                      style={{ fontSize: 'var(--s-sm)' }}
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--s-sm)', paddingBottom: 8 }}>
+                    <input type="checkbox" checked={newPersonIsAdmin} onChange={(e) => setNewPersonIsAdmin(e.target.checked)} />
+                    Admin
+                  </label>
+                  <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', padding: '6px 14px' }}
+                    disabled={addingPerson} onClick={handleAddPerson}>
+                    {addingPerson ? 'Adding…' : '+ Add person'}
+                  </button>
+                </div>
+                {addPersonError && (
+                  <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginTop: 8 }}>{addPersonError}</p>
+                )}
+              </div>
+            );
+          })()}
 
         </div>
       </div>
