@@ -1,6 +1,15 @@
-export const APP_VERSION = '1.10.9';
+export const APP_VERSION = '1.11.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.11.0',
+    date: 'July 2026',
+    notes: [
+      'New People tab in Settings — give each family member their own login with individually configured admin/settings/sync/print permissions',
+      'Per-person calendar and checklist visibility — scope exactly which calendars and lists show for each kid, e.g. a chore list visible only to one child',
+      'Kid accounts are created, password-reset, and removed entirely from the app — no manual Supabase dashboard steps',
+    ],
+  },
   {
     version: '1.10.9',
     date: 'April 2026',
