@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { loginWithPassword, saveRole } from '../auth';
+import { loginWithPassword } from '../auth';
 
 export default function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
@@ -13,8 +13,7 @@ export default function LoginScreen({ onLogin }) {
     const result = await loginWithPassword(password);
     setLoading(false);
     if (result) {
-      saveRole(result.role);
-      onLogin(result.role);
+      onLogin(result.session);
     } else {
       setError('Incorrect password.');
       setPassword('');
