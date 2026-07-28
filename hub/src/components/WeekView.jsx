@@ -106,7 +106,7 @@ function weatherKind(code) {
   return 'clear';
 }
 
-export default function WeekView() {
+export default function WeekView({ profile }) {
   const [anchor, setAnchor] = useState(new Date());
   const [calConfig]        = useConfig('visible_calendars');
   const [sections]         = useConfig('calendar_sections');
@@ -230,7 +230,13 @@ export default function WeekView() {
     sameDay(d, today) ? 'today' : d < today && !sameDay(d, today) ? 'past' : ''
   );
 
-  const calendars   = calConfig  || [];
+  // profile.visible_calendar_ids (null = inherit everything globally visible) scopes
+  // this person down to a subset — mark the rest as invisible so section structure
+  // (grouping, unassigned bucket) stays intact, same as toggling visible off globally.
+  const profileCalendarIds = profile?.visible_calendar_ids;
+  const calendars   = (calConfig || []).map((c) =>
+    (profileCalendarIds && !profileCalendarIds.includes(c.id)) ? { ...c, visible: false } : c
+  );
   const sectionList = sections   || [];
 
   const assignedIds = new Set(sectionList.flatMap((s) => s.calendarIds || []));
