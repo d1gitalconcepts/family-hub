@@ -24,3 +24,7 @@ crons = ["*/5 * * * *", "2-59/5 * * * *"]
 #   SUPABASE_ANON_KEY
 #   SUPABASE_EMAIL
 #   SUPABASE_PASSWORD
+#   SUPABASE_SERVICE_ROLE_KEY   (Supabase dashboard → Settings → API — used
+#                                only by /admin/* routes to create/reset/
+#                                delete family member accounts; never sent
+#                                to the browser)

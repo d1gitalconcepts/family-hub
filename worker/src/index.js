@@ -2,6 +2,7 @@ import { pollAllCalendars, syncMealCalendar } from './calendar.js';
 import { pollWeather } from './weather.js';
 import { sbSelect, sbUpsert, setConfigValue } from './supabase.js';
 import { enrichSportsEvents } from './sports.js';
+import { handleAdminRequest } from './admin.js';
 
 export default {
   // Two cron triggers, each gets its own invocation and subrequest budget:
@@ -39,6 +40,11 @@ export default {
         status:  200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders() },
       });
+    }
+
+    if (url.pathname.startsWith('/admin/')) {
+      const adminRes = await handleAdminRequest(request, env);
+      if (adminRes) return adminRes;
     }
 
     if (request.method === 'GET' && url.pathname === '/og-img') {
