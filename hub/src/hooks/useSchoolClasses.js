@@ -4,11 +4,19 @@ import { supabase } from '../supabaseClient';
 // The reusable class catalog (course + teacher + room) for one kid's
 // schedule — defined once, then dragged onto blocks/days in the Days tab
 // instead of retyping the same class everywhere it repeats.
+//
+// Returns `undefined` until the first fetch for the current scheduleId
+// resolves (same convention as useCurrentProfile), then always an array.
+// This lets a consumer that keeps its own optimistic local copy tell
+// "haven't loaded yet" apart from "loaded, zero classes" — so it can sync
+// once on load without a later background refetch silently clobbering an
+// in-progress local edit/delete.
 export function useSchoolClasses(scheduleId) {
-  const [classes, setClasses] = useState([]);
+  const [classes, setClasses] = useState(undefined);
 
   useEffect(() => {
     if (!scheduleId) { setClasses([]); return; }
+    setClasses(undefined);
 
     async function fetch() {
       // created_at, not name — sorting by name would reshuffle the whole

@@ -90,19 +90,27 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [newClassTeacher, setNewClassTeacher] = useState('');
   const [newClassRoom, setNewClassRoom]   = useState('');
   const [classError, setClassError]       = useState('');
-  const [classDeleteConfirmId, setClassDeleteConfirmId] = useState(null);
   const drag = useRef(null);
+  const classesSyncedForRef = useRef(null);
 
   const activeId = selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null);
   const activeSchedule = schedules.find((s) => s.id === activeId) || null;
   const periods = useSchoolSchedulePeriods(activeId);
-  const classes = useSchoolClasses(activeId);
+  const rawClasses = useSchoolClasses(activeId); // undefined until first load for activeId, then always an array
   const assignments = useSchoolScheduleAssignments(activeId);
 
-  // Local mirror of `classes` for the Classes tab — edits apply here
-  // immediately (so the UI never looks like it "didn't do anything"),
-  // and are persisted to Supabase in the background.
-  useEffect(() => { setClassDrafts(classes); }, [classes]);
+  // Local mirror of rawClasses, synced from the server exactly once per
+  // schedule (its first load) — every add/edit/delete after that updates
+  // classDrafts directly and persists in the background. Re-syncing on
+  // every later fetch (e.g. the realtime event caused by our own delete)
+  // would risk a stale/racing fetch pasting a just-deleted row back in
+  // when several edits happen in quick succession.
+  useEffect(() => {
+    if (rawClasses !== undefined && classesSyncedForRef.current !== activeId) {
+      setClassDrafts(rawClasses);
+      classesSyncedForRef.current = activeId;
+    }
+  }, [rawClasses, activeId]);
 
   const exceptionsByDate = {};
   exceptions.forEach((e) => { exceptionsByDate[e.date] = e; });
@@ -299,7 +307,6 @@ export default function SchoolSchedule({ profile, onClose }) {
     }
 
     async function handleDeleteClass(id) {
-      setClassDeleteConfirmId(null);
       setClassDrafts((rows) => rows.filter((r) => r.id !== id));
       const { error } = await supabase.from('school_classes').delete().eq('id', id);
       if (error) setClassError(error.message);
@@ -339,18 +346,8 @@ export default function SchoolSchedule({ profile, onClose }) {
             <input className="cal-name-input" style={{ ...inputBoxStyle, width: 80 }} placeholder="Room"
               value={c.room || ''} onChange={(e) => updateClassLocal(c.id, 'room', e.target.value)}
               onBlur={(e) => saveClassField(c.id, 'room', e.target.value)} />
-            {classDeleteConfirmId === c.id ? (
-              <span style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 'var(--s-xs)' }}>
-                Delete?
-                <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px', color: 'var(--danger)' }}
-                  onClick={() => handleDeleteClass(c.id)}>Yes</button>
-                <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px' }}
-                  onClick={() => setClassDeleteConfirmId(null)}>No</button>
-              </span>
-            ) : (
-              <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete class"
-                onClick={() => setClassDeleteConfirmId(c.id)}>✕</button>
-            )}
+            <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete class"
+              onClick={() => handleDeleteClass(c.id)}>✕</button>
           </div>
         ))}
 
