@@ -686,6 +686,7 @@ export default function SchoolSchedule({ profile, onClose }) {
     const ex = exceptionsByDate[dateStr(viewDate)];
     const noSchool = ex?.school_closed;
     const isWeekly = activeSchedule.schedule_type === 'weekly';
+    const needsAnchor = !isWeekly && !activeSchedule.rotation_anchor_date;
 
     function goDay(delta) {
       const d = new Date(viewDate);
@@ -703,6 +704,17 @@ export default function SchoolSchedule({ profile, onClose }) {
           <button className="btn" onClick={() => setViewDate(new Date())}>Today</button>
           <button className="btn-icon" onClick={() => goDay(1)}>›</button>
         </div>
+
+        {needsAnchor && (
+          <div className="school-exception-banner" style={{ display: 'block', marginBottom: 14 }}>
+            ⚠ No rotation start date set yet for {activeSchedule.school_name || activeSchedule.profile?.display_name || 'this schedule'}
+            — every day will show blank until you set one (e.g. "the first day of school is Day A").
+            {isAdmin && (
+              <button className="btn" style={{ fontSize: 'var(--s-xs)', marginLeft: 10, padding: '2px 8px' }}
+                onClick={() => setManageTab('schedules')}>Set it now</button>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
           {weekDays.map((d) => {
