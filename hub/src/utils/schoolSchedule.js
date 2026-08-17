@@ -21,6 +21,27 @@ export function parseDateStr(s) {
   return new Date(y, m - 1, d);
 }
 
+// Permissive parse for a date typed/pasted from Excel — accepts
+// 'YYYY-MM-DD' or US 'M/D/YYYY' / 'M/D/YY' (2-digit year assumed 2000s
+// below 50, 1900s at/above, matching common spreadsheet defaults).
+// Returns a 'YYYY-MM-DD' string, or null if it doesn't look like a date.
+export function parsePastedDate(raw) {
+  const s = (raw || '').trim();
+  if (!s) return null;
+
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    let [, mo, da, yr] = m;
+    if (yr.length === 2) yr = (Number(yr) < 50 ? '20' : '19') + yr;
+    return `${yr}-${mo.padStart(2, '0')}-${da.padStart(2, '0')}`;
+  }
+
+  return null;
+}
+
 // "Is this one of the configured weekdays this kid has school at all",
 // ignoring snow days/holidays — just the recurring weekly pattern.
 function isConfiguredSchoolWeekday(date, schedule) {

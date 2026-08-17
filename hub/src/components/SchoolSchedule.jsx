@@ -7,7 +7,7 @@ import { useSchoolClasses } from '../hooks/useSchoolClasses';
 import { useSchoolScheduleAssignments } from '../hooks/useSchoolScheduleAssignments';
 import { useSchoolCalendarExceptions } from '../hooks/useSchoolCalendarExceptions';
 import {
-  dateStr, parseDateStr, getDayKey, getDayEntries, formatTime,
+  dateStr, parseDateStr, parsePastedDate, getDayKey, getDayEntries, formatTime,
   addMinutesToTime, minutesBetween, getWeekdayStrip, sameDay, WEEKDAY_LABELS,
 } from '../utils/schoolSchedule';
 
@@ -80,6 +80,9 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [newExType, setNewExType]   = useState('snow_day');
   const [newExNote, setNewExNote]   = useState('');
   const [newExClosed, setNewExClosed] = useState(true);
+  const [showExPaste, setShowExPaste] = useState(false);
+  const [exPasteText, setExPasteText] = useState('');
+  const [exPasteError, setExPasteError] = useState('');
   const [selectedDayKey, setSelectedDayKey] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [swapEditingId, setSwapEditingId] = useState(null);
@@ -705,13 +708,82 @@ export default function SchoolSchedule({ profile, onClose }) {
     const todayStr = dateStr(new Date());
     const hasToday = !!exceptionsByDate[todayStr];
 
+    async function handleExceptionPasteImport() {
+      const lines = exPasteText.split(/\r?\n/).filter((l) => l.trim() !== '');
+      if (lines.length === 0) return;
+
+      const rows = [];
+      lines.forEach((line, i) => {
+        const cols = line.split('\t').map((c) => c.trim());
+        if (i === 0 && /^(date|start|start date)$/i.test(cols[0] || '')) return; // skip a pasted header row
+
+        const startDate = parsePastedDate(cols[0]);
+        if (!startDate) return;
+
+        let endDate = null;
+        let label = '';
+        if (cols.length >= 2 && parsePastedDate(cols[1])) {
+          endDate = parsePastedDate(cols[1]);
+          label = cols[2] || '';
+        } else {
+          label = cols[1] || '';
+        }
+        const end = endDate || startDate;
+
+        let cursor = parseDateStr(startDate);
+        const endObj = parseDateStr(end);
+        let guard = 0;
+        while (cursor <= endObj && guard < 60) { // safety cap — no real school break spans 60+ days
+          rows.push({ date: dateStr(cursor), type: endDate ? 'break' : 'holiday', note: label || null, school_closed: true });
+          cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
+          guard++;
+        }
+      });
+
+      if (rows.length === 0) {
+        setExPasteError('Nothing to add — check the first column has a date like 9/7/2026.');
+        return;
+      }
+      setExPasteError('');
+      const { error } = await supabase.from('school_calendar_exceptions').upsert(rows, { onConflict: 'date' });
+      if (error) { setExPasteError(error.message); return; }
+      setExPasteText('');
+      setShowExPaste(false);
+    }
+
     return (
       <div className="settings-section">
-        <h3 style={{ marginBottom: 6 }}>Snow Days & Calendar Exceptions</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>Snow Days & Calendar Exceptions</h3>
+          <button className="btn" style={{ fontSize: 'var(--s-sm)', marginLeft: 'auto' }}
+            onClick={() => setShowExPaste((v) => !v)}>
+            {showExPaste ? 'Cancel paste' : '📋 Paste from Excel'}
+          </button>
+        </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
           Shared across every kid. Adding a day here removes it from every rotation schedule's
           day-letter count — everything after it pushes forward automatically.
         </p>
+
+        {showExPaste && (
+          <div className="school-paste-box">
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-xs)', margin: '0 0 6px' }}>
+              Paste rows of Date [tab] Label — or Start Date [tab] End Date [tab] Label for a
+              multi-day break (each day in the range becomes its own entry). Dates like
+              9/7/2026 or 2026-09-07.
+            </p>
+            <textarea className="school-paste-textarea" rows={6} value={exPasteText}
+              onChange={(e) => setExPasteText(e.target.value)}
+              placeholder={'9/7/2026\tLabor Day\n12/22/2026\t1/2/2027\tWinter Break'} />
+            {exPasteError && (
+              <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', margin: '6px 0 0' }}>⚠ {exPasteError}</p>
+            )}
+            <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', marginTop: 8 }}
+              disabled={!exPasteText.trim()} onClick={handleExceptionPasteImport}>
+              Add these dates
+            </button>
+          </div>
+        )}
 
         {!hasToday && (
           <button className="btn" style={{ fontSize: 'var(--s-sm)', marginBottom: 16 }} onClick={handleQuickSnowDay}>
@@ -769,21 +841,25 @@ export default function SchoolSchedule({ profile, onClose }) {
     const isWeekly = activeSchedule.schedule_type === 'weekly';
     const needsAnchor = !isWeekly && !activeSchedule.rotation_anchor_date;
 
-    function goDay(delta) {
+    // ‹ › page by week (the day-strip below picks a specific day within
+    // whichever week is showing) — paging by single day made the strip
+    // feel like it was shifting by one day every click instead of moving
+    // cleanly between weeks.
+    function goWeek(delta) {
       const d = new Date(viewDate);
-      d.setDate(d.getDate() + delta);
+      d.setDate(d.getDate() + delta * 7);
       setViewDate(d);
     }
 
     return (
       <div className="settings-section">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <button className="btn-icon" onClick={() => goDay(-1)}>‹</button>
+          <button className="btn-icon" title="Previous week" onClick={() => goWeek(-1)}>‹</button>
           <span style={{ flex: 1, textAlign: 'center', fontWeight: 500 }}>
             {viewDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
           </span>
           <button className="btn" onClick={() => setViewDate(new Date())}>Today</button>
-          <button className="btn-icon" onClick={() => goDay(1)}>›</button>
+          <button className="btn-icon" title="Next week" onClick={() => goWeek(1)}>›</button>
         </div>
 
         {needsAnchor && (
