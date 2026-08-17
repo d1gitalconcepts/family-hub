@@ -1646,6 +1646,69 @@ html, body, #root {
   font-family: var(--font);
 }
 
+/* ── School Schedule ───────────────────────────────────────── */
+
+.school-strip-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: var(--s-xs, 0.78em);
+}
+
+.school-strip-day:hover { background: var(--bg-secondary); }
+
+.school-strip-day[data-selected] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg));
+}
+
+.school-strip-daynum { color: var(--text-muted); }
+
+.school-strip-badge {
+  font-size: 1.1em;
+  font-weight: 700;
+  min-height: 1.2em;
+}
+
+.school-day-badge {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.school-exception-banner {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  color: var(--danger);
+  font-size: var(--s-sm, 0.85em);
+  display: inline-block;
+}
+
+.school-exception-banner--open {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.school-block-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
 /* ── Responsive ────────────────────────────────────────────── */
 
 @media (max-width: 1024px) {

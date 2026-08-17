@@ -229,3 +229,94 @@ create policy "admin write place_photos"
 --    under is_admin() (the worker authenticates as admin@hub.local via
 --    SUPABASE_EMAIL/SUPABASE_PASSWORD, which now has is_admin = true).
 -- ============================================================
+
+-- ============================================================
+-- SCHOOL SCHEDULE — block/rotation schedules per kid, editable
+-- entirely from the app (Manage mode inside the School Schedule
+-- panel). No schedule content is seeded here — these tables start
+-- empty and are meant to be filled in and re-filled every school
+-- year through the UI, not by hand-editing this file.
+--
+-- schedule_type:
+--   'rotation' — cyclical day-letters (A/B/C/D/…) that advance only
+--                on real school days. A snow day or holiday in
+--                school_calendar_exceptions is simply never counted,
+--                so every day-letter after it shifts by one
+--                automatically — the "push" the whole schedule
+--                mechanic — with no manual re-numbering.
+--   'weekly'   — a fixed Mon–Fri schedule that doesn't rotate; a
+--                cancelled day just has no school that day.
+--
+-- school_calendar_exceptions is one shared calendar (snow days,
+-- holidays, etc.) that every kid's schedule reads from — matches
+-- one district calendar applying to every kid in the household.
+-- ============================================================
+
+create table if not exists school_schedules (
+  id                      uuid primary key default gen_random_uuid(),
+  profile_id              uuid not null unique references profiles(id) on delete cascade,
+  school_name             text,
+  schedule_type           text not null default 'rotation' check (schedule_type in ('rotation', 'weekly')),
+  day_letters             text[] not null default array['A','B','C','D'],
+  school_days_of_week     int[] not null default array[1,2,3,4,5], -- 0=Sun..6=Sat
+  rotation_anchor_date    date,
+  rotation_anchor_letter  text,
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+
+create table if not exists school_schedule_blocks (
+  id            uuid primary key default gen_random_uuid(),
+  schedule_id   uuid not null references school_schedules(id) on delete cascade,
+  day_key       text not null, -- one of the schedule's day_letters, or 'MON'..'FRI' for schedule_type='weekly'
+  start_time    time not null,
+  end_time      time not null,
+  period_label  text,
+  course_name   text not null,
+  teacher       text,
+  room          text,
+  valid_from    date, -- null = applies from the start of the year
+  valid_until   date, -- null = applies through the end of the year
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists school_schedule_blocks_schedule_idx on school_schedule_blocks(schedule_id);
+
+create table if not exists school_calendar_exceptions (
+  date           date primary key,
+  type           text not null default 'snow_day'
+                   check (type in ('snow_day', 'holiday', 'break', 'teacher_workday', 'early_dismissal', 'other')),
+  school_closed  boolean not null default true, -- false = school happens but is flagged (e.g. early dismissal)
+  note           text,
+  created_at     timestamptz not null default now()
+);
+
+alter table school_schedules            enable row level security;
+alter table school_schedule_blocks      enable row level security;
+alter table school_calendar_exceptions  enable row level security;
+
+create policy "authenticated read school_schedules"
+  on school_schedules for select to authenticated using (true);
+create policy "admin write school_schedules"
+  on school_schedules for all to authenticated
+  using (is_admin()) with check (is_admin());
+
+create policy "authenticated read school_schedule_blocks"
+  on school_schedule_blocks for select to authenticated using (true);
+create policy "admin write school_schedule_blocks"
+  on school_schedule_blocks for all to authenticated
+  using (is_admin()) with check (is_admin());
+
+create policy "authenticated read school_calendar_exceptions"
+  on school_calendar_exceptions for select to authenticated using (true);
+create policy "admin write school_calendar_exceptions"
+  on school_calendar_exceptions for all to authenticated
+  using (is_admin()) with check (is_admin());
+
+-- ============================================================
+-- ONE-TIME MANUAL MIGRATION for the tables above — run this block
+-- by hand in the Supabase SQL editor before using the School
+-- Schedule panel in the app. Nothing to backfill; the tables start
+-- empty and are populated entirely from the Manage UI.
+-- ============================================================

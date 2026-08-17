@@ -1,6 +1,15 @@
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.12.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.12.0',
+    date: 'August 2026',
+    notes: [
+      'New School Schedule tab — editable block/rotation schedules per kid, tied to their existing account',
+      'Snow days and other calendar exceptions are shared across every kid — mark a day off once and every rotation schedule\'s day-letters automatically push forward, with no manual re-numbering',
+      'Supports both day-letter rotation schedules (A/B/C/D…) and fixed weekly schedules, so elementary and middle/high school styles can coexist',
+    ],
+  },
   {
     version: '1.11.0',
     date: 'July 2026',
