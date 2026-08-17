@@ -1745,6 +1745,29 @@ html, body, #root {
   margin: 0;
 }
 
+/* Days tab — rotation type + first-day-of-school setup, right where
+   the day-letter pills and drag-drop grid are, so it isn't a separate
+   trip to a different tab to discover. */
+.school-rotation-setup {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.school-rotation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--s-xs, 0.78em);
+  color: var(--text-muted);
+}
+
 /* Days tab — palette of draggable classes */
 .school-classes-palette {
   display: flex;

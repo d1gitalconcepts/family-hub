@@ -536,6 +536,34 @@ export default function SchoolSchedule({ profile, onClose }) {
           </select>
         </div>
 
+        <div className="school-rotation-setup">
+          <label className="school-rotation-field">
+            <span>Schedule type</span>
+            <select value={activeSchedule.schedule_type} style={selectStyle}
+              onChange={(e) => updateScheduleField(activeId, 'schedule_type', e.target.value)}>
+              <option value="rotation">Rotation (day-letters)</option>
+              <option value="weekly">Weekly (fixed Mon–Fri)</option>
+            </select>
+          </label>
+          {activeSchedule.schedule_type === 'rotation' && (
+            <>
+              <label className="school-rotation-field">
+                <span>First day of school</span>
+                <input type="date" style={inputBoxStyle}
+                  value={activeSchedule.rotation_anchor_date || ''}
+                  onChange={(e) => updateScheduleField(activeId, 'rotation_anchor_date', e.target.value || null)} />
+              </label>
+              <label className="school-rotation-field">
+                <span>...is Day</span>
+                <select value={activeSchedule.rotation_anchor_letter || dayKeys[0] || ''} style={selectStyle}
+                  onChange={(e) => updateScheduleField(activeId, 'rotation_anchor_letter', e.target.value)}>
+                  {dayKeys.map((k) => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </label>
+            </>
+          )}
+        </div>
+
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           {dayKeys.map((k) => (
             <button key={k} className={`btn${currentDayKey === k ? ' btn-primary' : ''}`} style={{ fontSize: 'var(--s-sm)' }}
