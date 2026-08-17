@@ -173,6 +173,11 @@ export default function SchoolSchedule({ profile, onClose }) {
     await supabase.from('school_calendar_exceptions').delete().eq('date', date);
   }
 
+  async function updateExceptionField(date, field, value) {
+    const { error } = await supabase.from('school_calendar_exceptions').update({ [field]: value }).eq('date', date);
+    if (error) setExPasteError(error.message);
+  }
+
   function renderSchedulesTab() {
     const profilesWithoutSchedule = allProfiles.filter((p) => !schedules.some((s) => s.profile_id === p.id));
 
@@ -712,26 +717,19 @@ export default function SchoolSchedule({ profile, onClose }) {
       const lines = exPasteText.split(/\r?\n/).filter((l) => l.trim() !== '');
       if (lines.length === 0) return;
 
+      // Fixed columns: Start Date | End Date | Label. End Date blank = single day.
       const rows = [];
       lines.forEach((line, i) => {
-        const cols = line.split('\t').map((c) => c.trim());
-        if (i === 0 && /^(date|start|start date)$/i.test(cols[0] || '')) return; // skip a pasted header row
+        const [startRaw, endRaw, labelRaw] = line.split('\t').map((c) => (c || '').trim());
+        if (i === 0 && /^(date|start|start date)$/i.test(startRaw || '')) return; // skip a pasted header row
 
-        const startDate = parsePastedDate(cols[0]);
+        const startDate = parsePastedDate(startRaw);
         if (!startDate) return;
-
-        let endDate = null;
-        let label = '';
-        if (cols.length >= 2 && parsePastedDate(cols[1])) {
-          endDate = parsePastedDate(cols[1]);
-          label = cols[2] || '';
-        } else {
-          label = cols[1] || '';
-        }
-        const end = endDate || startDate;
+        const endDate = parsePastedDate(endRaw); // null if blank/unparseable = single day
+        const label = labelRaw || '';
 
         let cursor = parseDateStr(startDate);
-        const endObj = parseDateStr(end);
+        const endObj = parseDateStr(endDate || startDate);
         let guard = 0;
         while (cursor <= endObj && guard < 60) { // safety cap — no real school break spans 60+ days
           rows.push({ date: dateStr(cursor), type: endDate ? 'break' : 'holiday', note: label || null, school_closed: true });
@@ -768,21 +766,22 @@ export default function SchoolSchedule({ profile, onClose }) {
         {showExPaste && (
           <div className="school-paste-box">
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-xs)', margin: '0 0 6px' }}>
-              Paste rows of Date [tab] Label — or Start Date [tab] End Date [tab] Label for a
-              multi-day break (each day in the range becomes its own entry). Dates like
-              9/7/2026 or 2026-09-07.
+              Every row is Start Date [tab] End Date [tab] Label — leave End Date blank for a
+              single day. A range expands into one entry per day. Dates like 9/7/2026 or
+              2026-09-07.
             </p>
             <textarea className="school-paste-textarea" rows={6} value={exPasteText}
               onChange={(e) => setExPasteText(e.target.value)}
-              placeholder={'9/7/2026\tLabor Day\n12/22/2026\t1/2/2027\tWinter Break'} />
-            {exPasteError && (
-              <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', margin: '6px 0 0' }}>⚠ {exPasteError}</p>
-            )}
+              placeholder={'9/7/2026\t\tLabor Day\n12/22/2026\t1/2/2027\tWinter Break'} />
             <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', marginTop: 8 }}
               disabled={!exPasteText.trim()} onClick={handleExceptionPasteImport}>
               Add these dates
             </button>
           </div>
+        )}
+
+        {exPasteError && (
+          <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>⚠ {exPasteError}</p>
         )}
 
         {!hasToday && (
@@ -817,13 +816,21 @@ export default function SchoolSchedule({ profile, onClose }) {
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>None yet.</p>
         ) : (
           [...exceptions].reverse().map((ex) => (
-            <div key={ex.date} className="cal-row" style={{ gap: 10 }}>
+            <div key={ex.date} className="cal-row" style={{ gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 500, width: 100, flexShrink: 0 }}>
                 {parseDateStr(ex.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
-              <span style={{ flex: '0 0 160px' }}>{EXCEPTION_TYPES.find((t) => t.value === ex.type)?.label || ex.type}</span>
-              <span style={{ flex: 1, color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>{ex.note}</span>
-              {!ex.school_closed && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>(school open)</span>}
+              <select value={ex.type} style={{ ...selectStyle, flex: '0 0 170px' }}
+                onChange={(e) => updateExceptionField(ex.date, 'type', e.target.value)}>
+                {EXCEPTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+              <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 140px' }} placeholder="Note"
+                defaultValue={ex.note || ''} onBlur={(e) => updateExceptionField(ex.date, 'note', e.target.value || null)} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--s-xs)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={ex.school_closed}
+                  onChange={(e) => updateExceptionField(ex.date, 'school_closed', e.target.checked)} />
+                Closed
+              </label>
               <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete" onClick={() => handleDeleteException(ex.date)}>✕</button>
             </div>
           ))
