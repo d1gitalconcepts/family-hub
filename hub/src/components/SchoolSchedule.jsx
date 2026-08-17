@@ -90,6 +90,8 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [newClassTeacher, setNewClassTeacher] = useState('');
   const [newClassRoom, setNewClassRoom]   = useState('');
   const [classError, setClassError]       = useState('');
+  const [showClassPaste, setShowClassPaste] = useState(false);
+  const [classPasteText, setClassPasteText] = useState('');
   const drag = useRef(null);
   const classesSyncedForRef = useRef(null);
 
@@ -312,6 +314,31 @@ export default function SchoolSchedule({ profile, onClose }) {
       if (error) setClassError(error.message);
     }
 
+    async function handleClassPasteImport() {
+      const lines = classPasteText.split(/\r?\n/).filter((l) => l.trim() !== '');
+      if (lines.length === 0) return;
+
+      const rows = lines
+        .map((line) => line.split('\t').map((cell) => cell.trim()))
+        // Drop an obvious header row (e.g. pasted "Class / Teacher / Room" too)
+        .filter((cols, i) => !(i === 0 && /^(class|course|name)$/i.test(cols[0] || '')))
+        .map(([name, teacher, room]) => ({
+          schedule_id: activeId,
+          name: name || '',
+          teacher: teacher || null,
+          room: room || null,
+        }))
+        .filter((r) => r.name);
+
+      if (rows.length === 0) { setClassError('Nothing to add — check the pasted rows have a class name in the first column.'); return; }
+      setClassError('');
+      const { data, error } = await supabase.from('school_classes').insert(rows).select();
+      if (error) { setClassError(error.message); return; }
+      if (data) setClassDrafts((prev) => [...prev, ...data]);
+      setClassPasteText('');
+      setShowClassPaste(false);
+    }
+
     return (
       <div className="settings-section">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
@@ -319,11 +346,31 @@ export default function SchoolSchedule({ profile, onClose }) {
           <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
             {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
           </select>
+          <button className="btn" style={{ fontSize: 'var(--s-sm)', marginLeft: 'auto' }}
+            onClick={() => setShowClassPaste((v) => !v)}>
+            {showClassPaste ? 'Cancel paste' : '📋 Paste from Excel'}
+          </button>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
           The classes this person takes — teacher and room included. Drag these onto blocks per
           day in the Days tab; define each class once here and reuse it everywhere it repeats.
         </p>
+
+        {showClassPaste && (
+          <div className="school-paste-box">
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-xs)', margin: '0 0 6px' }}>
+              In Excel, select the Class/Course, Teacher, and Room columns (in that order) and copy
+              (Ctrl+C) — then paste below. One class per row; teacher/room are optional.
+            </p>
+            <textarea className="school-paste-textarea" rows={6} value={classPasteText}
+              onChange={(e) => setClassPasteText(e.target.value)}
+              placeholder={'English 7\tMrs. Snyder\t170\nMath 7\tMr. Jackson\t171'} />
+            <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', marginTop: 8 }}
+              disabled={!classPasteText.trim()} onClick={handleClassPasteImport}>
+              Add these classes
+            </button>
+          </div>
+        )}
 
         {classError && (
           <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>⚠ {classError}</p>

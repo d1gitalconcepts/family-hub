@@ -1721,6 +1721,27 @@ html, body, #root {
   border-radius: 8px;
 }
 
+.school-paste-box {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.school-paste-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--s-sm, 0.85em);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px;
+  resize: vertical;
+}
+
 /* Blocks tab — one row per time slot */
 .school-block-row {
   display: flex;
