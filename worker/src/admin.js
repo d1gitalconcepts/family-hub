@@ -45,6 +45,17 @@ async function requireAdmin(request, env) {
   return profile?.is_admin ? user : null;
 }
 
+// Supabase error responses use different field names depending on which
+// layer rejected the request (GoTrue: msg/error_description, PostgREST:
+// message, the Kong gateway itself on a bad/missing API key: message too)
+// — check them all so a real reason reaches the admin UI instead of a
+// generic fallback. Also logged server-side for `wrangler tail`.
+function supabaseErrorMessage(data, fallback) {
+  const msg = data?.msg || data?.message || data?.error_description || data?.error;
+  if (!msg) console.error('[admin] Unrecognized Supabase error shape:', JSON.stringify(data));
+  return msg || fallback;
+}
+
 function serviceHdrs(env, extra = {}) {
   return {
     apikey:          env.SUPABASE_SERVICE_ROLE_KEY,
@@ -71,7 +82,7 @@ async function createProfile(request, env) {
   });
   const created = await createRes.json();
   if (!createRes.ok) {
-    return json({ error: created?.msg || created?.error_description || 'Failed to create account' }, createRes.status);
+    return json({ error: supabaseErrorMessage(created, 'Failed to create account') }, createRes.status);
   }
 
   const profileRow = {
@@ -95,7 +106,7 @@ async function createProfile(request, env) {
     await fetch(`${env.SUPABASE_URL}/auth/v1/admin/users/${created.id}`, {
       method: 'DELETE', headers: serviceHdrs(env),
     }).catch(() => {});
-    return json({ error: inserted?.message || 'Failed to save profile' }, insertRes.status);
+    return json({ error: supabaseErrorMessage(inserted, 'Failed to save profile') }, insertRes.status);
   }
 
   return json({ profile: inserted[0] || profileRow });
@@ -115,7 +126,7 @@ async function setPassword(request, env, profileId) {
     body:    JSON.stringify({ password }),
   });
   const data = await res.json();
-  if (!res.ok) return json({ error: data?.msg || 'Failed to reset password' }, res.status);
+  if (!res.ok) return json({ error: supabaseErrorMessage(data, 'Failed to reset password') }, res.status);
   return json({ ok: true });
 }
 
@@ -130,7 +141,7 @@ async function deleteProfile(request, env, profileId) {
   });
   if (!res.ok && res.status !== 404) {
     const data = await res.json().catch(() => ({}));
-    return json({ error: data?.msg || 'Failed to delete account' }, res.status);
+    return json({ error: supabaseErrorMessage(data, 'Failed to delete account') }, res.status);
   }
   // `profiles.id` references auth.users(id) on delete cascade — the
   // profiles row is removed automatically, no separate REST call needed.
