@@ -1731,6 +1731,20 @@ html, body, #root {
   flex-wrap: wrap;
 }
 
+/* Duration ("for __ min") input — the browser's native up/down spinner
+   otherwise eats most of a narrow number input, leaving almost no room
+   to actually type a value. */
+.school-duration-input {
+  -moz-appearance: textfield;
+  text-align: center;
+}
+
+.school-duration-input::-webkit-outer-spin-button,
+.school-duration-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Days tab — palette of draggable classes */
 .school-classes-palette {
   display: flex;

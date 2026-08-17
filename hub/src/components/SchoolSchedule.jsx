@@ -440,7 +440,7 @@ export default function SchoolSchedule({ profile, onClose }) {
             <input type="time" style={{ ...inputBoxStyle, width: 92 }} value={(p.start_time || '').slice(0, 5)}
               onChange={(e) => handleStartChange(p, e.target.value)} />
             <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>for</span>
-            <input type="number" min={1} style={{ ...inputBoxStyle, width: 52 }}
+            <input type="number" min={1} className="school-duration-input" style={{ ...inputBoxStyle, width: 62 }}
               value={minutesBetween(p.start_time, p.end_time)}
               onChange={(e) => handleDurationChange(p, parseInt(e.target.value, 10) || 1)} />
             <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>min (ends {formatTime(p.end_time)})</span>
