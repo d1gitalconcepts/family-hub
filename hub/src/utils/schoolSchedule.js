@@ -88,17 +88,6 @@ export function getDayEntries(periods, assignments, dayKey, date) {
     .sort((a, b) => (a.period.start_time || '').localeCompare(b.period.start_time || ''));
 }
 
-// Groups periods by block_number, each group's slots sorted by slot_index,
-// and the groups themselves sorted by block_number.
-export function groupPeriodsByBlock(periods) {
-  const grouped = {};
-  (periods || []).forEach((p) => { (grouped[p.block_number] ??= []).push(p); });
-  return Object.keys(grouped)
-    .map(Number)
-    .sort((a, b) => a - b)
-    .map((num) => ({ blockNumber: num, slots: grouped[num].sort((a, b) => a.slot_index - b.slot_index) }));
-}
-
 // 'HH:MM' or 'HH:MM:SS' (Postgres time) -> '7:45 AM'
 export function formatTime(t) {
   if (!t) return '';

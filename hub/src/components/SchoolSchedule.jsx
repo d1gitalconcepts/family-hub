@@ -6,20 +6,23 @@ import { useSchoolSchedulePeriods } from '../hooks/useSchoolSchedulePeriods';
 import { useSchoolScheduleAssignments } from '../hooks/useSchoolScheduleAssignments';
 import { useSchoolCalendarExceptions } from '../hooks/useSchoolCalendarExceptions';
 import {
-  dateStr, parseDateStr, getDayKey, getDayEntries, groupPeriodsByBlock, formatTime,
+  dateStr, parseDateStr, getDayKey, getDayEntries, formatTime,
   addMinutesToTime, minutesBetween, getWeekdayStrip, sameDay, WEEKDAY_LABELS,
 } from '../utils/schoolSchedule';
 
 const WEEKLY_DAY_KEYS = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
 
-// Block 1/2/4 as one 82-minute period, Block 3 split into three 41-minute
-// parts around lunch — the shape this app is built around by default.
-// Purely a starting point: every number here is editable afterward.
+// Block 1/2/4 as one 82-minute row, Block 3 split into three 41-minute
+// rows around lunch — the shape this app is built around by default.
+// Purely a starting point: every label/time here is editable afterward,
+// and rows can be added/removed/reordered freely.
 const DEFAULT_TEMPLATE = [
-  { parts: 1, minutes: 82 },
-  { parts: 1, minutes: 82 },
-  { parts: 3, minutes: 41 },
-  { parts: 1, minutes: 82 },
+  { label: 'Block 1',  minutes: 82 },
+  { label: 'Block 2',  minutes: 82 },
+  { label: 'Block 3a', minutes: 41 },
+  { label: 'Block 3b', minutes: 41 },
+  { label: 'Block 3c', minutes: 41 },
+  { label: 'Block 4',  minutes: 82 },
 ];
 
 const EXCEPTION_TYPES = [
@@ -35,16 +38,16 @@ const selectStyle = { fontSize: 'var(--s-sm)', border: '1px solid var(--border)'
 const inputBoxStyle = { fontSize: 'var(--s-sm)', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg)', color: 'var(--text)', padding: '5px 8px', fontFamily: 'var(--font)' };
 const fieldLabelStyle = { display: 'flex', flexDirection: 'column', gap: 2, fontSize: 'var(--s-xs)', color: 'var(--text-muted)' };
 
+// Each row is its own top-level period — block_number is just a sequential
+// row-order key here (slot_index is always 0), so "splitting a block" is
+// nothing more than adding another ordinary row and naming it e.g. "3b".
 async function seedDefaultPeriods(scheduleId) {
   let cursor = '08:00';
-  const rows = [];
-  DEFAULT_TEMPLATE.forEach((block, bi) => {
-    for (let slot = 0; slot < block.parts; slot++) {
-      const start = cursor;
-      const end = addMinutesToTime(start, block.minutes);
-      rows.push({ schedule_id: scheduleId, block_number: bi + 1, slot_index: slot, start_time: start, end_time: end });
-      cursor = end;
-    }
+  const rows = DEFAULT_TEMPLATE.map((block, i) => {
+    const start = cursor;
+    const end = addMinutesToTime(start, block.minutes);
+    cursor = end;
+    return { schedule_id: scheduleId, block_number: i + 1, slot_index: 0, label: block.label, start_time: start, end_time: end };
   });
   await supabase.from('school_schedule_periods').insert(rows);
 }
@@ -56,9 +59,9 @@ async function seedDefaultPeriods(scheduleId) {
 // specific kid's actual classes lives in this file — it's all data,
 // entered and edited through the Manage UI below.
 //
-// Block/time structure (school_schedule_periods) is entered once per
-// schedule and shared across every day-letter; the day-by-day content
-// (school_schedule_assignments) is a grid of period × day-letter.
+// The Blocks tab is one grid: rows are periods (school_schedule_periods —
+// label + time, shared across every day-letter), columns are day-letters,
+// and each cell is that period's class on that day (school_schedule_assignments).
 export default function SchoolSchedule({ profile, onClose }) {
   const schedules   = useSchoolSchedules();
   const allProfiles = useProfiles();
@@ -104,7 +107,7 @@ export default function SchoolSchedule({ profile, onClose }) {
     if (data) {
       await seedDefaultPeriods(data.id);
       setSelectedId(data.id);
-      setManageTab('structure');
+      setManageTab('blocks');
     }
   }
 
@@ -243,48 +246,34 @@ export default function SchoolSchedule({ profile, onClose }) {
     );
   }
 
-  function renderStructureTab() {
+  function renderBlocksTab() {
     if (schedules.length === 0) {
       return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
     }
 
-    const blocks = groupPeriodsByBlock(periods);
+    const sortedPeriods = [...periods].sort((a, b) => a.block_number - b.block_number);
+    const dayKeys = dayKeyOptionsFor(activeSchedule);
 
-    async function handleSetPartCount(blockNumber, newCount) {
-      const group = blocks.find((b) => b.blockNumber === blockNumber);
-      const existing = group ? group.slots : [];
-      const currentCount = existing.length;
-      if (newCount > currentCount) {
-        const rows = [];
-        let prevEnd = existing[existing.length - 1]?.end_time;
-        const defaultMinutes = existing.length ? minutesBetween(existing[0].start_time, existing[0].end_time) : 41;
-        for (let i = currentCount; i < newCount; i++) {
-          const start = prevEnd || '08:00';
-          const end = addMinutesToTime(start, defaultMinutes);
-          rows.push({ schedule_id: activeId, block_number: blockNumber, slot_index: i, start_time: start, end_time: end });
-          prevEnd = end;
-        }
-        await supabase.from('school_schedule_periods').insert(rows);
-      } else if (newCount < currentCount) {
-        const toRemove = existing.slice(newCount).map((p) => p.id);
-        await supabase.from('school_schedule_periods').delete().in('id', toRemove);
-      }
-    }
-
-    async function handleAddBlock() {
-      const nextNum = blocks.length ? Math.max(...blocks.map((b) => b.blockNumber)) + 1 : 1;
-      const lastBlock = blocks[blocks.length - 1];
-      const lastEnd = lastBlock ? lastBlock.slots[lastBlock.slots.length - 1].end_time : '08:00';
+    async function handleAddRow() {
+      const nextNum = sortedPeriods.length ? Math.max(...sortedPeriods.map((p) => p.block_number)) + 1 : 1;
+      const lastEnd = sortedPeriods[sortedPeriods.length - 1]?.end_time || '08:00';
       await supabase.from('school_schedule_periods').insert({
         schedule_id: activeId, block_number: nextNum, slot_index: 0,
-        start_time: lastEnd, end_time: addMinutesToTime(lastEnd, 82),
+        label: `Block ${nextNum}`, start_time: lastEnd, end_time: addMinutesToTime(lastEnd, 41),
       });
     }
 
-    async function handleDeleteBlock(blockNumber) {
-      const group = blocks.find((b) => b.blockNumber === blockNumber);
-      const ids = (group?.slots || []).map((p) => p.id);
-      await supabase.from('school_schedule_periods').delete().in('id', ids);
+    async function handleDeleteRow(id) {
+      await supabase.from('school_schedule_periods').delete().eq('id', id);
+    }
+
+    function moveRow(period, direction) {
+      const idx = sortedPeriods.findIndex((p) => p.id === period.id);
+      const otherIdx = idx + direction;
+      if (otherIdx < 0 || otherIdx >= sortedPeriods.length) return;
+      const other = sortedPeriods[otherIdx];
+      updatePeriodField(period.id, 'block_number', other.block_number);
+      updatePeriodField(other.id, 'block_number', period.block_number);
     }
 
     function handleStartChange(period, newStart) {
@@ -295,88 +284,6 @@ export default function SchoolSchedule({ profile, onClose }) {
 
     function handleDurationChange(period, minutes) {
       updatePeriodField(period.id, 'end_time', addMinutesToTime(period.start_time, minutes));
-    }
-
-    return (
-      <div className="settings-section">
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0 }}>Block Structure</h3>
-          <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
-            {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
-          </select>
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-          These times are shared across every day-letter — set them once here, then fill in the
-          actual classes per day in the Assignments tab. Split a block into parts for one with a
-          lunch break in the middle.
-        </p>
-
-        {blocks.length === 0 && (
-          <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', marginBottom: 16 }}
-            onClick={() => seedDefaultPeriods(activeId)}>
-            🪄 Use default: 4 blocks (Block 3 split into 3 for lunch)
-          </button>
-        )}
-
-        {blocks.map(({ blockNumber, slots }) => (
-          <div key={blockNumber} className="school-block-group">
-            <div className="school-block-group-header">
-              <strong>Block {blockNumber}</strong>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--s-sm)' }}>
-                Parts:
-                <input type="number" min={1} max={6} value={slots.length} style={{ ...inputBoxStyle, width: 50 }}
-                  onChange={(e) => handleSetPartCount(blockNumber, Math.max(1, parseInt(e.target.value, 10) || 1))} />
-              </label>
-              <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete block"
-                onClick={() => handleDeleteBlock(blockNumber)}>✕</button>
-            </div>
-
-            {slots.map((p) => (
-              <div key={p.id} className="school-period-row">
-                {slots.length > 1 && (
-                  <input className="cal-name-input" style={{ ...inputBoxStyle, width: 90 }}
-                    placeholder={`Part ${p.slot_index + 1}`}
-                    defaultValue={p.label || ''}
-                    onBlur={(e) => updatePeriodField(p.id, 'label', e.target.value || null)} />
-                )}
-                <input type="time" style={inputBoxStyle} value={(p.start_time || '').slice(0, 5)}
-                  onChange={(e) => handleStartChange(p, e.target.value)} />
-                <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>for</span>
-                <input type="number" min={1} style={{ ...inputBoxStyle, width: 60 }}
-                  value={minutesBetween(p.start_time, p.end_time)}
-                  onChange={(e) => handleDurationChange(p, parseInt(e.target.value, 10) || 1)} />
-                <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>
-                  min &nbsp;(ends {formatTime(p.end_time)})
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-
-        <button className="btn" style={{ fontSize: 'var(--s-sm)', marginTop: 10 }} onClick={handleAddBlock}>+ Add block</button>
-      </div>
-    );
-  }
-
-  function renderAssignmentsTab() {
-    if (schedules.length === 0) {
-      return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
-    }
-    const blocks = groupPeriodsByBlock(periods);
-    const dayKeys = dayKeyOptionsFor(activeSchedule);
-
-    if (blocks.length === 0) {
-      return (
-        <div className="settings-section">
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0 }}>Assignments</h3>
-            <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
-              {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
-            </select>
-          </div>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Set up the block structure in the Structure tab first.</p>
-        </div>
-      );
     }
 
     function cellAssignments(periodId, dayKey) {
@@ -415,77 +322,110 @@ export default function SchoolSchedule({ profile, onClose }) {
     return (
       <div className="settings-section">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
-          <h3 style={{ margin: 0 }}>Assignments</h3>
+          <h3 style={{ margin: 0 }}>Blocks</h3>
           <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
             {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
           </select>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-          Type a course name to fill in a cell. Use 📅 on a filled-in cell if a class changes
-          partway through the year (e.g. an elective that swaps at the semester).
+          One row per block — set its label and time on the left, then type each day's class into
+          the grid. A block with a lunch break in the middle is just three ordinary rows (e.g.
+          "Block 3a/3b/3c") rather than one block split into parts.
         </p>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table className="school-assign-table">
-            <thead>
-              <tr>
-                <th></th>
-                {dayKeys.map((k) => <th key={k}>{k}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {blocks.map(({ blockNumber, slots }) => slots.map((p) => (
-                <tr key={p.id}>
-                  <td className="school-assign-periodcell">
-                    <strong>Block {blockNumber}{slots.length > 1 ? ` · ${p.label || `Part ${p.slot_index + 1}`}` : ''}</strong>
-                    <span>{formatTime(p.start_time)}–{formatTime(p.end_time)}</span>
-                  </td>
-                  {dayKeys.map((dayKey) => {
-                    const cell = cellAssignments(p.id, dayKey);
-                    return (
-                      <td key={dayKey} className="school-assign-cell">
-                        {cell.length === 0 && (
-                          <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="+ Course"
-                            onBlur={(e) => { handleCreateAssignment(p.id, dayKey, e.target.value); e.target.value = ''; }} />
-                        )}
-                        {cell.map((a) => (
-                          <div key={a.id} className="school-assign-chip">
-                            <div style={{ display: 'flex', gap: 4 }}>
-                              <input className="cal-name-input" style={{ ...inputBoxStyle, flex: 1 }} placeholder="Course"
-                                defaultValue={a.course_name} onBlur={(e) => updateAssignmentField(a.id, 'course_name', e.target.value)} />
-                              <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12 }} title="Only part of the year?"
-                                onClick={() => toggleExpanded(a.id)}>📅</button>
-                              <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12, color: 'var(--danger)' }} title="Delete"
-                                onClick={() => handleDeleteAssignment(a.id)}>✕</button>
-                            </div>
-                            <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Teacher"
-                              defaultValue={a.teacher || ''} onBlur={(e) => updateAssignmentField(a.id, 'teacher', e.target.value)} />
-                            <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Room"
-                              defaultValue={a.room || ''} onBlur={(e) => updateAssignmentField(a.id, 'room', e.target.value)} />
-                            {expandedDates.has(a.id) && (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid from (blank = start of year)"
-                                  value={a.valid_from || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_from', e.target.value || null)} />
-                                <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid until (blank = end of year)"
-                                  value={a.valid_until || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_until', e.target.value || null)} />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {cell.length > 0 && (
-                          <button className="btn-icon" style={{ fontSize: 11, color: 'var(--text-muted)' }}
-                            title="Add a version that starts later in the year" onClick={() => handleAddAnother(p.id, dayKey)}>
-                            + later in the year
-                          </button>
-                        )}
-                      </td>
-                    );
-                  })}
+        {sortedPeriods.length === 0 && (
+          <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)', marginBottom: 16 }}
+            onClick={() => seedDefaultPeriods(activeId)}>
+            🪄 Use default: Block 1, 2, 3a/3b/3c (lunch), 4
+          </button>
+        )}
+
+        {sortedPeriods.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="school-assign-table">
+              <thead>
+                <tr>
+                  <th>Block</th>
+                  {dayKeys.map((k) => <th key={k}>{k}</th>)}
                 </tr>
-              )))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {sortedPeriods.map((p, i) => (
+                  <tr key={p.id}>
+                    <td className="school-assign-periodcell">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === 0}
+                            title="Move up" onClick={() => moveRow(p, -1)}>▲</button>
+                          <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === sortedPeriods.length - 1}
+                            title="Move down" onClick={() => moveRow(p, 1)}>▼</button>
+                        </div>
+                        <input className="cal-name-input" style={{ ...inputBoxStyle, width: 76 }}
+                          defaultValue={p.label || `Block ${i + 1}`}
+                          onBlur={(e) => updatePeriodField(p.id, 'label', e.target.value || `Block ${i + 1}`)} />
+                        <button className="btn-icon" style={{ padding: '2px 4px', color: 'var(--danger)' }} title="Delete row"
+                          onClick={() => handleDeleteRow(p.id)}>✕</button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <input type="time" style={{ ...inputBoxStyle, width: 92 }} value={(p.start_time || '').slice(0, 5)}
+                          onChange={(e) => handleStartChange(p, e.target.value)} />
+                        <span>for</span>
+                        <input type="number" min={1} style={{ ...inputBoxStyle, width: 48 }}
+                          value={minutesBetween(p.start_time, p.end_time)}
+                          onChange={(e) => handleDurationChange(p, parseInt(e.target.value, 10) || 1)} />
+                        <span>min</span>
+                      </div>
+                      <span>ends {formatTime(p.end_time)}</span>
+                    </td>
+                    {dayKeys.map((dayKey) => {
+                      const cell = cellAssignments(p.id, dayKey);
+                      return (
+                        <td key={dayKey} className="school-assign-cell">
+                          {cell.length === 0 && (
+                            <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="+ Course"
+                              onBlur={(e) => { handleCreateAssignment(p.id, dayKey, e.target.value); e.target.value = ''; }} />
+                          )}
+                          {cell.map((a) => (
+                            <div key={a.id} className="school-assign-chip">
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <input className="cal-name-input" style={{ ...inputBoxStyle, flex: 1 }} placeholder="Course"
+                                  defaultValue={a.course_name} onBlur={(e) => updateAssignmentField(a.id, 'course_name', e.target.value)} />
+                                <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12 }} title="Only part of the year?"
+                                  onClick={() => toggleExpanded(a.id)}>📅</button>
+                                <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12, color: 'var(--danger)' }} title="Delete"
+                                  onClick={() => handleDeleteAssignment(a.id)}>✕</button>
+                              </div>
+                              <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Teacher"
+                                defaultValue={a.teacher || ''} onBlur={(e) => updateAssignmentField(a.id, 'teacher', e.target.value)} />
+                              <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Room"
+                                defaultValue={a.room || ''} onBlur={(e) => updateAssignmentField(a.id, 'room', e.target.value)} />
+                              {expandedDates.has(a.id) && (
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid from (blank = start of year)"
+                                    value={a.valid_from || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_from', e.target.value || null)} />
+                                  <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid until (blank = end of year)"
+                                    value={a.valid_until || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_until', e.target.value || null)} />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {cell.length > 0 && (
+                            <button className="btn-icon" style={{ fontSize: 11, color: 'var(--text-muted)' }}
+                              title="Add a version that starts later in the year" onClick={() => handleAddAnother(p.id, dayKey)}>
+                              + later in the year
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <button className="btn" style={{ fontSize: 'var(--s-sm)', marginTop: 10 }} onClick={handleAddRow}>+ Add block</button>
       </div>
     );
   }
@@ -627,10 +567,9 @@ export default function SchoolSchedule({ profile, onClose }) {
   }
 
   const MANAGE_TABS = [
-    { id: 'schedules',   label: 'Schedules' },
-    { id: 'structure',   label: 'Structure' },
-    { id: 'assignments', label: 'Assignments' },
-    { id: 'snowdays',    label: 'Snow Days' },
+    { id: 'schedules', label: 'Schedules' },
+    { id: 'blocks',    label: 'Blocks' },
+    { id: 'snowdays',  label: 'Snow Days' },
   ];
 
   return (
@@ -660,10 +599,9 @@ export default function SchoolSchedule({ profile, onClose }) {
         )}
 
         <div className="settings-body">
-          {manageTab === 'schedules'   && renderSchedulesTab()}
-          {manageTab === 'structure'   && renderStructureTab()}
-          {manageTab === 'assignments' && renderAssignmentsTab()}
-          {manageTab === 'snowdays'    && renderSnowDaysTab()}
+          {manageTab === 'schedules' && renderSchedulesTab()}
+          {manageTab === 'blocks'    && renderBlocksTab()}
+          {manageTab === 'snowdays' && renderSnowDaysTab()}
 
           {!manageTab && schedules.length === 0 && (
             <p style={{ color: 'var(--text-muted)' }}>

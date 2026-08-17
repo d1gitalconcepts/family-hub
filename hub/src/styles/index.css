@@ -1700,28 +1700,6 @@ html, body, #root {
   color: var(--text-muted);
 }
 
-.school-block-group {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-}
-
-.school-block-group-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.school-period-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  flex-wrap: wrap;
-}
-
 .school-assign-table {
   border-collapse: collapse;
   width: 100%;
