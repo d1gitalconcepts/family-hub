@@ -2,7 +2,7 @@ import { pollAllCalendars, syncMealCalendar } from './calendar.js';
 import { pollWeather } from './weather.js';
 import { sbSelect, sbUpsert, setConfigValue } from './supabase.js';
 import { enrichSportsEvents } from './sports.js';
-import { handleAdminRequest } from './admin.js';
+import { handleAdminRequest, corsHeaders } from './admin.js';
 
 export default {
   // Two cron triggers, each gets its own invocation and subrequest budget:
@@ -169,12 +169,4 @@ async function runFullSync(env) {
       }]).catch(() => {});
     }
   }
-}
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin':  '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
 }
