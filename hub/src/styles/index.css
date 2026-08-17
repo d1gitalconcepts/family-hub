@@ -1700,13 +1700,75 @@ html, body, #root {
   color: var(--text-muted);
 }
 
-.school-block-row {
+.school-block-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.school-block-group-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.school-period-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
   flex-wrap: wrap;
+}
+
+.school-assign-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.school-assign-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-size: var(--s-xs, 0.78em);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.school-assign-periodcell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.school-assign-periodcell span {
+  font-size: var(--s-xs, 0.78em);
+  color: var(--text-muted);
+}
+
+.school-assign-cell {
+  padding: 8px;
+  min-width: 170px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.school-assign-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  margin-bottom: 4px;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */

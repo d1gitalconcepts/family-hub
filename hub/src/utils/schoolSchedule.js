@@ -73,15 +73,30 @@ export function getDayKey(date, schedule, exceptionsByDate) {
   return letters[idx];
 }
 
-// Blocks for a resolved day-key, filtered to those valid on `date` and
-// sorted by start time.
-export function getBlocksForDay(blocks, dayKey, date) {
+// Joins periods (the time template) with assignments (day-letter content)
+// for a resolved day-key, filtered to assignments valid on `date`, sorted
+// by period start time. Each result is { period, assignment }.
+export function getDayEntries(periods, assignments, dayKey, date) {
   if (!dayKey) return [];
   const d = dateStr(date);
-  return (blocks || [])
-    .filter((b) => b.day_key === dayKey)
-    .filter((b) => (!b.valid_from || b.valid_from <= d) && (!b.valid_until || b.valid_until >= d))
-    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+  const periodsById = Object.fromEntries((periods || []).map((p) => [p.id, p]));
+  return (assignments || [])
+    .filter((a) => a.day_key === dayKey)
+    .filter((a) => (!a.valid_from || a.valid_from <= d) && (!a.valid_until || a.valid_until >= d))
+    .map((a) => ({ assignment: a, period: periodsById[a.period_id] }))
+    .filter((e) => e.period)
+    .sort((a, b) => (a.period.start_time || '').localeCompare(b.period.start_time || ''));
+}
+
+// Groups periods by block_number, each group's slots sorted by slot_index,
+// and the groups themselves sorted by block_number.
+export function groupPeriodsByBlock(periods) {
+  const grouped = {};
+  (periods || []).forEach((p) => { (grouped[p.block_number] ??= []).push(p); });
+  return Object.keys(grouped)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .map((num) => ({ blockNumber: num, slots: grouped[num].sort((a, b) => a.slot_index - b.slot_index) }));
 }
 
 // 'HH:MM' or 'HH:MM:SS' (Postgres time) -> '7:45 AM'
@@ -92,6 +107,25 @@ export function formatTime(t) {
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${mStr} ${period}`;
+}
+
+// 'HH:MM' or 'HH:MM:SS' + minutes -> 'HH:MM', wrapping at midnight.
+export function addMinutesToTime(t, minutes) {
+  const [hStr, mStr] = (t || '00:00').split(':');
+  const total = (parseInt(hStr, 10) * 60 + parseInt(mStr, 10) + Number(minutes || 0) + 1440) % 1440;
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Minutes between two 'HH:MM'/'HH:MM:SS' times, assuming end is same-day
+// (wraps forward if end looks earlier than start, e.g. crossing midnight).
+export function minutesBetween(start, end) {
+  const [sh, sm] = (start || '00:00').split(':').map(Number);
+  const [eh, em] = (end || '00:00').split(':').map(Number);
+  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff < 0) diff += 1440;
+  return diff;
 }
 
 export function getWeekdayStrip(date) {

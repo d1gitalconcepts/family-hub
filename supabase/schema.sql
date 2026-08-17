@@ -265,13 +265,35 @@ create table if not exists school_schedules (
   updated_at              timestamptz not null default now()
 );
 
-create table if not exists school_schedule_blocks (
+-- The block/time template — entered once per schedule, independent of
+-- which day-letter it is. block_number groups slots into a "Block" (e.g.
+-- "Block 3"); slot_index orders slots within a split block (e.g. a block
+-- divided around lunch has slot_index 0/1/2). A plain, unsplit block just
+-- has one row with slot_index 0.
+create table if not exists school_schedule_periods (
   id            uuid primary key default gen_random_uuid(),
   schedule_id   uuid not null references school_schedules(id) on delete cascade,
-  day_key       text not null, -- one of the schedule's day_letters, or 'MON'..'FRI' for schedule_type='weekly'
+  block_number  int not null,
+  slot_index    int not null default 0,
+  label         text, -- optional override for this slot (e.g. "Lunch"); blank = "Block N" / "Block N part M"
   start_time    time not null,
   end_time      time not null,
-  period_label  text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now(),
+  unique (schedule_id, block_number, slot_index)
+);
+
+create index if not exists school_schedule_periods_schedule_idx on school_schedule_periods(schedule_id);
+
+-- The actual day-by-day content: what happens in a given period on a given
+-- day-letter. valid_from/valid_until let a period's course change partway
+-- through the year (e.g. an elective that swaps at the semester) without
+-- touching the period template itself.
+create table if not exists school_schedule_assignments (
+  id            uuid primary key default gen_random_uuid(),
+  schedule_id   uuid not null references school_schedules(id) on delete cascade,
+  period_id     uuid not null references school_schedule_periods(id) on delete cascade,
+  day_key       text not null, -- one of the schedule's day_letters, or 'MON'..'FRI' for schedule_type='weekly'
   course_name   text not null,
   teacher       text,
   room          text,
@@ -281,7 +303,8 @@ create table if not exists school_schedule_blocks (
   updated_at    timestamptz not null default now()
 );
 
-create index if not exists school_schedule_blocks_schedule_idx on school_schedule_blocks(schedule_id);
+create index if not exists school_schedule_assignments_schedule_idx on school_schedule_assignments(schedule_id);
+create index if not exists school_schedule_assignments_period_idx   on school_schedule_assignments(period_id);
 
 create table if not exists school_calendar_exceptions (
   date           date primary key,
@@ -292,9 +315,10 @@ create table if not exists school_calendar_exceptions (
   created_at     timestamptz not null default now()
 );
 
-alter table school_schedules            enable row level security;
-alter table school_schedule_blocks      enable row level security;
-alter table school_calendar_exceptions  enable row level security;
+alter table school_schedules              enable row level security;
+alter table school_schedule_periods       enable row level security;
+alter table school_schedule_assignments   enable row level security;
+alter table school_calendar_exceptions    enable row level security;
 
 create policy "authenticated read school_schedules"
   on school_schedules for select to authenticated using (true);
@@ -302,10 +326,16 @@ create policy "admin write school_schedules"
   on school_schedules for all to authenticated
   using (is_admin()) with check (is_admin());
 
-create policy "authenticated read school_schedule_blocks"
-  on school_schedule_blocks for select to authenticated using (true);
-create policy "admin write school_schedule_blocks"
-  on school_schedule_blocks for all to authenticated
+create policy "authenticated read school_schedule_periods"
+  on school_schedule_periods for select to authenticated using (true);
+create policy "admin write school_schedule_periods"
+  on school_schedule_periods for all to authenticated
+  using (is_admin()) with check (is_admin());
+
+create policy "authenticated read school_schedule_assignments"
+  on school_schedule_assignments for select to authenticated using (true);
+create policy "admin write school_schedule_assignments"
+  on school_schedule_assignments for all to authenticated
   using (is_admin()) with check (is_admin());
 
 create policy "authenticated read school_calendar_exceptions"
@@ -319,4 +349,13 @@ create policy "admin write school_calendar_exceptions"
 -- by hand in the Supabase SQL editor before using the School
 -- Schedule panel in the app. Nothing to backfill; the tables start
 -- empty and are populated entirely from the Manage UI.
+--
+-- NOTE: an earlier version of this feature used a single
+-- school_schedule_blocks table (times re-entered per day-letter).
+-- It's been replaced by school_schedule_periods (the time template,
+-- entered once) + school_schedule_assignments (day-letter content).
+-- If school_schedule_blocks exists from that earlier run and has no
+-- real data in it yet, drop it first:
+--
+--   drop table if exists school_schedule_blocks;
 -- ============================================================
