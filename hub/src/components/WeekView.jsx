@@ -4,6 +4,7 @@ import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
 import { useSportsEnrichment } from '../hooks/useSportsEnrichment';
 import { useMyClassScheduleEvents } from '../hooks/useMyClassScheduleEvents';
+import { useRotationDayLabels } from '../hooks/useRotationDayLabels';
 import WeatherNavCanvas from './WeatherNavCanvas';
 import TwilightNavCanvas from './TwilightNavCanvas';
 import HolidayNavCanvas, { getActiveHoliday } from './HolidayNavCanvas';
@@ -212,6 +213,7 @@ export default function WeekView({ profile }) {
   const events    = myClassSchedule.calendar
     ? [...calEvents, ...myClassSchedule.events]
     : calEvents;
+  const rotationByDay = useRotationDayLabels(profile, days);
 
   function sameDay(a, b) {
     return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
@@ -343,6 +345,11 @@ export default function WeekView({ profile }) {
             }}>‹</button>
             <span style={{ flex: 1, textAlign: 'center' }}>
               {DAY_NAMES[selectedDay.getDay()]} {selectedDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+              {rotationByDay[mobileDayIdx]?.length > 0 && (
+                <span className="day-header-rotation day-header-rotation--inline">
+                  {rotationByDay[mobileDayIdx].map((b) => b.label).join(' · ')}
+                </span>
+              )}
             </span>
             <button className="btn" onClick={goToday}>Today</button>
             <button className="btn-icon" onClick={() => {
@@ -362,6 +369,13 @@ export default function WeekView({ profile }) {
               <div key={i} className={`day-header${dayClasses[i] ? ' ' + dayClasses[i] : ''}`}>
                 {DAY_NAMES[day.getDay()]}
                 <span className="day-date">{day.getDate()}</span>
+                {rotationByDay[i]?.length > 0 && (
+                  <span className="day-header-rotation">
+                    {rotationByDay[i].map((b) => (
+                      <span key={b.id} className="day-header-rotation-pill">{b.label}</span>
+                    ))}
+                  </span>
+                )}
               </div>
             ))}
           </div>

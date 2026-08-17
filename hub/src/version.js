@@ -1,6 +1,14 @@
-export const APP_VERSION = '1.13.0';
+export const APP_VERSION = '1.14.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.14.0',
+    date: 'August 2026',
+    notes: [
+      'Optional rotation day-letter (Day A, Day 3…) in the week grid\'s date headers, turned on per person from "My Calendar View"',
+      'Kids get a simple on/off toggle for their own schedule; admins/parents can pick any combination across everyone\'s schedules — all, some, or none',
+    ],
+  },
   {
     version: '1.13.0',
     date: 'August 2026',

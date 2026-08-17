@@ -407,12 +407,15 @@ end $$;
 -- PROFILES — self-service per-person calendar view (v1.13.0)
 -- ============================================================
 -- Admin still decides WHICH calendars a person can see at all
--- (existing `visible_calendar_ids`, unchanged). These two new columns
--- let the person themselves further hide calendars from that allowed
--- set and re-group/reorder them into their own personal sections —
--- entirely separate from the admin's global `calendar_sections`
--- config. null in either column = "use the admin's defaults", exactly
--- like the existing visible_calendar_ids null-means-inherit pattern.
+-- (existing `visible_calendar_ids`, unchanged). These new columns let
+-- the person themselves further hide calendars from that allowed set,
+-- re-group/reorder them into their own personal sections, and choose
+-- whose rotation day-letter shows in the grid header — all entirely
+-- separate from the admin's global `calendar_sections` config. null in
+-- own_hidden_calendar_ids/own_calendar_sections = "use the admin's
+-- defaults", exactly like the existing visible_calendar_ids
+-- null-means-inherit pattern; header_rotation_ids has no admin default
+-- to inherit, null/empty just means nothing shown.
 --
 -- own_hidden_calendar_ids: jsonb array of calendar ids this person has
 --   personally hidden (on top of whatever the admin already exposes).
@@ -420,15 +423,21 @@ end $$;
 --   shape as the global `calendar_sections` config value, but private
 --   to this person and edited from the "My Calendar View" screen
 --   instead of admin Settings.
+-- header_rotation_ids: jsonb array of school_schedules.id whose rotation
+--   day-letter (Day A, Day 3, …) this person wants shown in the week
+--   grid's day/date headers — a kid picks from just their own linked
+--   schedule (0 or 1 entries), a parent/admin can pick across everyone's.
 alter table profiles add column if not exists own_hidden_calendar_ids jsonb;
 alter table profiles add column if not exists own_calendar_sections   jsonb;
+alter table profiles add column if not exists header_rotation_ids     jsonb;
 
 -- Row-level security only gates WHICH rows a statement can touch, not
 -- which columns — by default a person allowed to update their own row
 -- could set is_admin=true on themselves. This trigger closes that gap:
--- non-admins may only ever change the two columns above (plus
--- updated_at) on any row they're otherwise allowed to update; admins
--- are unrestricted, same as today.
+-- non-admins may only ever change the three columns above (plus
+-- updated_at) on any row they're otherwise allowed to update — new
+-- columns are self-editable by default (only the explicitly-listed
+-- ones below are protected) — admins are unrestricted, same as today.
 create or replace function public.enforce_self_profile_update()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
@@ -469,9 +478,8 @@ create policy "own profile update own view prefs"
 
 -- ============================================================
 -- ONE-TIME MANUAL MIGRATION — run this block by hand in the Supabase
--- SQL editor. Adds the two columns + trigger + policy above to an
--- already-live profiles table; nothing to backfill (both new columns
--- default to null = "inherit the admin's calendars/grouping", today's
--- exact behavior for everyone until a person customizes their own
--- view from the new "My Calendar View" screen).
+-- SQL editor. Adds the three columns + trigger + policy above to an
+-- already-live profiles table; nothing to backfill (all three default
+-- to null, today's exact behavior for everyone until a person
+-- customizes their own view from the new "My Calendar View" screen).
 -- ============================================================

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useConfig } from '../hooks/useConfig';
 import { useMyClassScheduleEvents } from '../hooks/useMyClassScheduleEvents';
+import { useSchoolSchedules } from '../hooks/useSchoolSchedules';
 
 const FORECAST_ID = '__weather_forecast';
 
@@ -17,6 +18,7 @@ export default function MyCalendarView({ profile, onClose }) {
   const [globalSections]  = useConfig('calendar_sections');
   const [weatherForecast] = useConfig('weather_forecast');
   const myClassSchedule   = useMyClassScheduleEvents(profile, []);
+  const allSchedules      = useSchoolSchedules();
 
   const [hidden,    setHidden]    = useState(() => profile?.own_hidden_calendar_ids || []);
   // null = not customized yet, use the admin's global grouping as a
@@ -24,6 +26,7 @@ export default function MyCalendarView({ profile, onClose }) {
   const [sections,  setSections]  = useState(() => (
     Array.isArray(profile?.own_calendar_sections) ? profile.own_calendar_sections : null
   ));
+  const [headerRotationIds, setHeaderRotationIds] = useState(() => profile?.header_rotation_ids || []);
   const [saveError, setSaveError] = useState('');
   const [dropTarget, setDropTarget] = useState(null);
   const drag = useRef(null);
@@ -87,6 +90,14 @@ export default function MyCalendarView({ profile, onClose }) {
   function resetToAdminDefault() {
     setSections(null);
     persist({ own_calendar_sections: null });
+  }
+
+  function toggleHeaderRotation(scheduleId) {
+    const next = headerRotationIds.includes(scheduleId)
+      ? headerRotationIds.filter((id) => id !== scheduleId)
+      : [...headerRotationIds, scheduleId];
+    setHeaderRotationIds(next);
+    persist({ header_rotation_ids: next });
   }
 
   function onSectionDragStart(e, idx) {
@@ -287,6 +298,45 @@ export default function MyCalendarView({ profile, onClose }) {
               </>
             )}
           </div>
+
+          {(() => {
+            const ownSchedule = allSchedules.find((s) => s.profile_id === profile?.id);
+            // Kids get a plain on/off toggle for just their own schedule;
+            // admins/parents get to pick across everyone's, since a
+            // parent may want to see more than one kid's rotation day at
+            // once (all, some, or none).
+            if (!profile?.is_admin && !ownSchedule) return null;
+            return (
+              <div className="settings-section">
+                <h3 style={{ marginBottom: 6 }}>Rotation Day in Header</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
+                  Show the rotation day-letter (Day A, Day 3…) next to the date in the grid's headers.
+                </p>
+                {!profile?.is_admin && ownSchedule && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--s-base)' }}>
+                    <input type="checkbox" checked={headerRotationIds.includes(ownSchedule.id)}
+                      onChange={() => toggleHeaderRotation(ownSchedule.id)} />
+                    Show my rotation day{ownSchedule.school_name ? ` (${ownSchedule.school_name})` : ''}
+                  </label>
+                )}
+                {profile?.is_admin && (
+                  allSchedules.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>
+                      No schedules set up yet — add one in School Schedule → Manage → Schedules.
+                    </p>
+                  ) : (
+                    allSchedules.map((s) => (
+                      <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--s-base)', padding: '4px 0' }}>
+                        <input type="checkbox" checked={headerRotationIds.includes(s.id)}
+                          onChange={() => toggleHeaderRotation(s.id)} />
+                        {s.profile?.display_name || 'Unknown'}{s.school_name ? ` — ${s.school_name}` : ''}
+                      </label>
+                    ))
+                  )
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
