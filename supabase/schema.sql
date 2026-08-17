@@ -402,3 +402,76 @@ end $$;
 --
 --   drop table if exists school_schedule_blocks;
 -- ============================================================
+
+-- ============================================================
+-- PROFILES — self-service per-person calendar view (v1.13.0)
+-- ============================================================
+-- Admin still decides WHICH calendars a person can see at all
+-- (existing `visible_calendar_ids`, unchanged). These two new columns
+-- let the person themselves further hide calendars from that allowed
+-- set and re-group/reorder them into their own personal sections —
+-- entirely separate from the admin's global `calendar_sections`
+-- config. null in either column = "use the admin's defaults", exactly
+-- like the existing visible_calendar_ids null-means-inherit pattern.
+--
+-- own_hidden_calendar_ids: jsonb array of calendar ids this person has
+--   personally hidden (on top of whatever the admin already exposes).
+-- own_calendar_sections: jsonb array of {id, name, calendarIds} — same
+--   shape as the global `calendar_sections` config value, but private
+--   to this person and edited from the "My Calendar View" screen
+--   instead of admin Settings.
+alter table profiles add column if not exists own_hidden_calendar_ids jsonb;
+alter table profiles add column if not exists own_calendar_sections   jsonb;
+
+-- Row-level security only gates WHICH rows a statement can touch, not
+-- which columns — by default a person allowed to update their own row
+-- could set is_admin=true on themselves. This trigger closes that gap:
+-- non-admins may only ever change the two columns above (plus
+-- updated_at) on any row they're otherwise allowed to update; admins
+-- are unrestricted, same as today.
+create or replace function public.enforce_self_profile_update()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if public.is_admin() then
+    return new;
+  end if;
+  if new.id                     is distinct from old.id
+     or new.email                 is distinct from old.email
+     or new.display_name          is distinct from old.display_name
+     or new.is_admin               is distinct from old.is_admin
+     or new.can_access_settings   is distinct from old.can_access_settings
+     or new.can_sync               is distinct from old.can_sync
+     or new.can_print              is distinct from old.can_print
+     or new.visible_calendar_ids  is distinct from old.visible_calendar_ids
+     or new.visible_checklist_keys is distinct from old.visible_checklist_keys
+  then
+    raise exception 'Only an admin can change that field';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_enforce_self_update on profiles;
+create trigger profiles_enforce_self_update
+  before update on profiles
+  for each row execute function public.enforce_self_profile_update();
+
+-- Lets a signed-in person update their OWN profile row (the trigger
+-- above is what actually keeps them from touching anything but their
+-- own view prefs — this policy just needs to admit the row at all).
+-- Combines with "admin update profiles" via OR, so admins keep full
+-- access to every row exactly as before.
+drop policy if exists "own profile update own view prefs" on profiles;
+create policy "own profile update own view prefs"
+  on profiles for update to authenticated
+  using (id = auth.uid())
+  with check (id = auth.uid());
+
+-- ============================================================
+-- ONE-TIME MANUAL MIGRATION — run this block by hand in the Supabase
+-- SQL editor. Adds the two columns + trigger + policy above to an
+-- already-live profiles table; nothing to backfill (both new columns
+-- default to null = "inherit the admin's calendars/grouping", today's
+-- exact behavior for everyone until a person customizes their own
+-- view from the new "My Calendar View" screen).
+-- ============================================================

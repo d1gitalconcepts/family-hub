@@ -4,6 +4,7 @@ import WeekView from './components/WeekView';
 import ShoppingList from './components/ShoppingList';
 import AdminSettings from './components/AdminSettings';
 import SchoolSchedule from './components/SchoolSchedule';
+import MyCalendarView from './components/MyCalendarView';
 import WeatherWidget from './components/WeatherWidget';
 import { getSession, logout } from './auth';
 import { supabase } from './supabaseClient';
@@ -43,6 +44,7 @@ export default function App() {
   const [loading, setLoading]         = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showSchool, setShowSchool]   = useState(false);
+  const [showMyView, setShowMyView]   = useState(false);
   const [showMobileList, setShowMobileList] = useState(false);
   const [showMenu, setShowMenu]       = useState(false);
   const [sidebarPinned, setSidebarPinned] = useState(() => localStorage.getItem('fh_sidebar_pinned') !== 'false');
@@ -331,12 +333,23 @@ export default function App() {
                   </span>
                 </button>
               )}
+              {/* Kids also see their own class schedule inline in the grid
+                  now (WeekView/useMyClassScheduleEvents) — this stays
+                  available to everyone as the full table view + admins'
+                  management screen. */}
               <button
                 className="header-menu-item"
                 onClick={() => { setShowSchool(true); setShowMenu(false); }}
               >
                 <span>🎒</span>
                 <span className="header-menu-item-label">School Schedule</span>
+              </button>
+              <button
+                className="header-menu-item"
+                onClick={() => { setShowMyView(true); setShowMenu(false); }}
+              >
+                <span>🗂</span>
+                <span className="header-menu-item-label">My Calendar View</span>
               </button>
               {/* Settings — always in hamburger (mobile and desktop) */}
               {canSettings && (
@@ -450,6 +463,10 @@ export default function App() {
 
       {showSchool && (
         <SchoolSchedule profile={profile} onClose={() => setShowSchool(false)} />
+      )}
+
+      {showMyView && (
+        <MyCalendarView profile={profile} onClose={() => setShowMyView(false)} />
       )}
 
       {showChangelog && (

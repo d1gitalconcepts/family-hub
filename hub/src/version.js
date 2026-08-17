@@ -1,6 +1,15 @@
-export const APP_VERSION = '1.12.0';
+export const APP_VERSION = '1.13.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.13.0',
+    date: 'August 2026',
+    notes: [
+      'A kid\'s own class schedule now shows right in their week grid as regular event cards, alongside their other calendars, instead of only in the separate School Schedule screen',
+      'New "My Calendar View" — every account can hide calendars from their own grid and drag them into personal sections, without touching anyone else\'s view or the admin\'s global layout',
+      'Admins still control which calendars each person can see at all (Settings → People) — personal hiding/grouping only narrows further, within that',
+    ],
+  },
   {
     version: '1.12.0',
     date: 'August 2026',

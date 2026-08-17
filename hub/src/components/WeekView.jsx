@@ -3,6 +3,7 @@ import SectionRow from './SectionRow';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { useConfig } from '../hooks/useConfig';
 import { useSportsEnrichment } from '../hooks/useSportsEnrichment';
+import { useMyClassScheduleEvents } from '../hooks/useMyClassScheduleEvents';
 import WeatherNavCanvas from './WeatherNavCanvas';
 import TwilightNavCanvas from './TwilightNavCanvas';
 import HolidayNavCanvas, { getActiveHoliday } from './HolidayNavCanvas';
@@ -206,7 +207,11 @@ export default function WeekView({ profile }) {
   const days      = getWeekDays(anchor);
   const weekStart = days[0];
   const weekEnd   = new Date(days[7]); weekEnd.setHours(23, 59, 59, 999);
-  const events    = useCalendarEvents(weekStart, weekEnd);
+  const calEvents = useCalendarEvents(weekStart, weekEnd);
+  const myClassSchedule = useMyClassScheduleEvents(profile, days);
+  const events    = myClassSchedule.calendar
+    ? [...calEvents, ...myClassSchedule.events]
+    : calEvents;
 
   function sameDay(a, b) {
     return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
@@ -234,10 +239,26 @@ export default function WeekView({ profile }) {
   // this person down to a subset — mark the rest as invisible so section structure
   // (grouping, unassigned bucket) stays intact, same as toggling visible off globally.
   const profileCalendarIds = profile?.visible_calendar_ids;
-  const calendars   = (calConfig || []).map((c) =>
+  const globalCalendars = (calConfig || []).map((c) =>
     (profileCalendarIds && !profileCalendarIds.includes(c.id)) ? { ...c, visible: false } : c
   );
-  const sectionList = sections   || [];
+  // The class-schedule virtual calendar is this person's own data, not an
+  // admin-managed household calendar, so it bypasses visible_calendar_ids
+  // scoping above and is always present — the person can still hide it
+  // themselves below, same as any other calendar.
+  const withClassSchedule = myClassSchedule.calendar
+    ? [...globalCalendars, myClassSchedule.calendar]
+    : globalCalendars;
+  // Person's own further hide-list, on top of whatever the admin exposes —
+  // see profile.own_hidden_calendar_ids in "My Calendar View".
+  const ownHiddenIds = new Set(profile?.own_hidden_calendar_ids || []);
+  const calendars    = withClassSchedule.map((c) =>
+    ownHiddenIds.has(c.id) ? { ...c, visible: false } : c
+  );
+  // Person's own section grouping, when they've customized it, takes over
+  // entirely from the admin's global grouping (same null-means-inherit
+  // pattern as visible_calendar_ids).
+  const sectionList = profile?.own_calendar_sections || sections || [];
 
   const assignedIds = new Set(sectionList.flatMap((s) => s.calendarIds || []));
   const unassigned  = calendars.filter((c) => !assignedIds.has(c.id) && c.visible !== false);
