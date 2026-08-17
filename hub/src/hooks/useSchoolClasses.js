@@ -5,24 +5,27 @@ import { supabase } from '../supabaseClient';
 // schedule — defined once, then dragged onto blocks/days in the Days tab
 // instead of retyping the same class everywhere it repeats.
 //
-// Returns [classes, fetchError]. classes is `undefined` until the first
-// fetch for the current scheduleId resolves (same convention as
-// useCurrentProfile), then always an array. This lets a consumer that
-// keeps its own optimistic local copy tell "haven't loaded yet" apart
-// from "loaded, zero classes" — so it can sync once on load without a
-// later background refetch silently clobbering an in-progress local
-// edit/delete. fetchError is a string message when the query itself
-// failed — a real Postgrest/RLS error used to be swallowed here (`if
-// (!error) setClasses(...)` and nothing else), which left the UI showing
-// a plain "No classes yet" with zero indication anything had gone wrong.
+// Returns [classes, fetchError]. classes is `undefined` until data has
+// actually been fetched *for the scheduleId currently being asked about*,
+// then always an array (even an empty one is a valid loaded state — "no
+// schedule selected" or "loaded, zero classes"). fetchError is a string
+// message when the query itself failed.
+//
+// State and scheduleId are bundled into one object (not separate useState
+// calls) specifically to close a render-order race: when scheduleId
+// changes (e.g. from null to a real id, once the parent schedule finishes
+// loading), React re-renders with the *old* state before this hook's own
+// effect has run to reset it — so a naive "classes !== undefined" check
+// would treat last id's stale (possibly empty) result as valid data for
+// the new id. Comparing state.scheduleId against the live scheduleId
+// argument at render time (not just in the effect) catches that case
+// immediately and returns undefined until a fetch for THIS id lands.
 export function useSchoolClasses(scheduleId) {
-  const [classes, setClasses] = useState(undefined);
-  const [fetchError, setFetchError] = useState(null);
+  const [state, setState] = useState({ forId: null, classes: undefined, error: null });
 
   useEffect(() => {
-    if (!scheduleId) { setClasses([]); setFetchError(null); return; }
-    setClasses(undefined);
-    setFetchError(null);
+    if (!scheduleId) { setState({ forId: scheduleId, classes: [], error: null }); return; }
+    setState({ forId: scheduleId, classes: undefined, error: null });
 
     async function fetch() {
       // created_at, not name — sorting by name would reshuffle the whole
@@ -32,14 +35,12 @@ export function useSchoolClasses(scheduleId) {
         .select('*')
         .eq('schedule_id', scheduleId)
         .order('created_at');
-      console.log('[useSchoolClasses] fetch result', { scheduleId, count: data?.length, error });
       if (error) {
         console.error('[useSchoolClasses] fetch failed', error);
-        setFetchError(error.message || 'Failed to load classes');
+        setState({ forId: scheduleId, classes: undefined, error: error.message || 'Failed to load classes' });
         return;
       }
-      setFetchError(null);
-      setClasses(data || []);
+      setState({ forId: scheduleId, classes: data || [], error: null });
     }
 
     fetch();
@@ -53,5 +54,6 @@ export function useSchoolClasses(scheduleId) {
     return () => supabase.removeChannel(channel);
   }, [scheduleId]);
 
-  return [classes, fetchError];
+  if (state.forId !== scheduleId) return [undefined, null];
+  return [state.classes, state.error];
 }
