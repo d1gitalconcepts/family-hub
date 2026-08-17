@@ -11,11 +11,13 @@ export function useSchoolClasses(scheduleId) {
     if (!scheduleId) { setClasses([]); return; }
 
     async function fetch() {
+      // created_at, not name — sorting by name would reshuffle the whole
+      // list mid-edit every time a class's name changes.
       const { data, error } = await supabase
         .from('school_classes')
         .select('*')
         .eq('schedule_id', scheduleId)
-        .order('name');
+        .order('created_at');
       if (!error) setClasses(data || []);
     }
 

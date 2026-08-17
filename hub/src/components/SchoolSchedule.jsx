@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useProfiles } from '../hooks/useProfiles';
 import { useSchoolSchedules } from '../hooks/useSchoolSchedules';
@@ -85,6 +85,12 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [swapEditingId, setSwapEditingId] = useState(null);
   const [swapDate, setSwapDate]         = useState(() => dateStr(new Date()));
   const [swapClassId, setSwapClassId]   = useState('');
+  const [classDrafts, setClassDrafts]   = useState([]);
+  const [newClassName, setNewClassName]   = useState('');
+  const [newClassTeacher, setNewClassTeacher] = useState('');
+  const [newClassRoom, setNewClassRoom]   = useState('');
+  const [classError, setClassError]       = useState('');
+  const [classDeleteConfirmId, setClassDeleteConfirmId] = useState(null);
   const drag = useRef(null);
 
   const activeId = selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null);
@@ -92,6 +98,11 @@ export default function SchoolSchedule({ profile, onClose }) {
   const periods = useSchoolSchedulePeriods(activeId);
   const classes = useSchoolClasses(activeId);
   const assignments = useSchoolScheduleAssignments(activeId);
+
+  // Local mirror of `classes` for the Classes tab — edits apply here
+  // immediately (so the UI never looks like it "didn't do anything"),
+  // and are persisted to Supabase in the background.
+  useEffect(() => { setClassDrafts(classes); }, [classes]);
 
   const exceptionsByDate = {};
   exceptions.forEach((e) => { exceptionsByDate[e.date] = e; });
@@ -260,16 +271,38 @@ export default function SchoolSchedule({ profile, onClose }) {
       return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
     }
 
-    async function handleAddClass() {
-      await supabase.from('school_classes').insert({ schedule_id: activeId, name: 'New class' });
+    // Edits apply to classDrafts immediately (instant feedback, no
+    // dependency on a realtime round-trip) and persist in the background.
+    function updateClassLocal(id, field, value) {
+      setClassDrafts((rows) => rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
     }
 
-    async function updateClassField(id, field, value) {
-      await supabase.from('school_classes').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
+    async function saveClassField(id, field, value) {
+      const { error } = await supabase.from('school_classes').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) setClassError(error.message);
+    }
+
+    async function handleAddClass() {
+      const name = newClassName.trim();
+      if (!name) { setClassError('Class name is required.'); return; }
+      setClassError('');
+      const { data, error } = await supabase.from('school_classes').insert({
+        schedule_id: activeId, name, teacher: newClassTeacher.trim() || null, room: newClassRoom.trim() || null,
+      }).select().maybeSingle();
+      if (error) { setClassError(error.message); return; }
+      if (data) setClassDrafts((rows) => [...rows, data]);
+      setNewClassName(''); setNewClassTeacher(''); setNewClassRoom('');
+    }
+
+    function onNewClassKeyDown(e) {
+      if (e.key === 'Enter') handleAddClass();
     }
 
     async function handleDeleteClass(id) {
-      await supabase.from('school_classes').delete().eq('id', id);
+      setClassDeleteConfirmId(null);
+      setClassDrafts((rows) => rows.filter((r) => r.id !== id));
+      const { error } = await supabase.from('school_classes').delete().eq('id', id);
+      if (error) setClassError(error.message);
     }
 
     return (
@@ -285,20 +318,53 @@ export default function SchoolSchedule({ profile, onClose }) {
           day in the Days tab; define each class once here and reuse it everywhere it repeats.
         </p>
 
-        {classes.map((c) => (
+        {classError && (
+          <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>⚠ {classError}</p>
+        )}
+
+        {classDrafts.length === 0 && (
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 12 }}>
+            No classes yet — add the first one below.
+          </p>
+        )}
+
+        {classDrafts.map((c) => (
           <div key={c.id} className="school-class-row">
             <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 160px' }} placeholder="Class name"
-              defaultValue={c.name} onBlur={(e) => updateClassField(c.id, 'name', e.target.value || 'New class')} />
+              value={c.name} onChange={(e) => updateClassLocal(c.id, 'name', e.target.value)}
+              onBlur={(e) => saveClassField(c.id, 'name', e.target.value.trim() || 'New class')} />
             <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 130px' }} placeholder="Teacher"
-              defaultValue={c.teacher || ''} onBlur={(e) => updateClassField(c.id, 'teacher', e.target.value)} />
+              value={c.teacher || ''} onChange={(e) => updateClassLocal(c.id, 'teacher', e.target.value)}
+              onBlur={(e) => saveClassField(c.id, 'teacher', e.target.value)} />
             <input className="cal-name-input" style={{ ...inputBoxStyle, width: 80 }} placeholder="Room"
-              defaultValue={c.room || ''} onBlur={(e) => updateClassField(c.id, 'room', e.target.value)} />
-            <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete class"
-              onClick={() => handleDeleteClass(c.id)}>✕</button>
+              value={c.room || ''} onChange={(e) => updateClassLocal(c.id, 'room', e.target.value)}
+              onBlur={(e) => saveClassField(c.id, 'room', e.target.value)} />
+            {classDeleteConfirmId === c.id ? (
+              <span style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 'var(--s-xs)' }}>
+                Delete?
+                <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px', color: 'var(--danger)' }}
+                  onClick={() => handleDeleteClass(c.id)}>Yes</button>
+                <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px' }}
+                  onClick={() => setClassDeleteConfirmId(null)}>No</button>
+              </span>
+            ) : (
+              <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete class"
+                onClick={() => setClassDeleteConfirmId(c.id)}>✕</button>
+            )}
           </div>
         ))}
 
-        <button className="btn" style={{ fontSize: 'var(--s-sm)', marginTop: 10 }} onClick={handleAddClass}>+ Add class</button>
+        <div className="school-class-add-form">
+          <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 160px' }} placeholder="Class name"
+            value={newClassName} onChange={(e) => setNewClassName(e.target.value)} onKeyDown={onNewClassKeyDown} />
+          <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 130px' }} placeholder="Teacher (optional)"
+            value={newClassTeacher} onChange={(e) => setNewClassTeacher(e.target.value)} onKeyDown={onNewClassKeyDown} />
+          <input className="cal-name-input" style={{ ...inputBoxStyle, width: 80 }} placeholder="Room"
+            value={newClassRoom} onChange={(e) => setNewClassRoom(e.target.value)} onKeyDown={onNewClassKeyDown} />
+          <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)' }} disabled={!newClassName.trim()} onClick={handleAddClass}>
+            + Add class
+          </button>
+        </div>
       </div>
     );
   }
@@ -460,7 +526,7 @@ export default function SchoolSchedule({ profile, onClose }) {
     if (sortedPeriods.length === 0) {
       return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Set up your blocks in the Blocks tab first.</p>;
     }
-    if (classes.length === 0) {
+    if (classDrafts.length === 0) {
       return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add some classes in the Classes tab first.</p>;
     }
 
@@ -486,7 +552,7 @@ export default function SchoolSchedule({ profile, onClose }) {
 
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
           <div className="school-classes-palette">
-            {classes.map((c) => (
+            {classDrafts.map((c) => (
               <div key={c.id} className="school-class-chip" draggable
                 onDragStart={(e) => onClassDragStart(e, c.id)} onDragEnd={onDragEnd}>
                 <strong>{c.name}</strong>
@@ -511,7 +577,7 @@ export default function SchoolSchedule({ profile, onClose }) {
                   <div className="school-slot-content">
                     {cell.length === 0 && <span className="school-slot-empty">Drop a class here</span>}
                     {cell.map((a) => {
-                      const cls = classes.find((c) => c.id === a.class_id);
+                      const cls = classDrafts.find((c) => c.id === a.class_id);
                       if (!cls) return null;
                       return (
                         <div key={a.id} className="school-class-chip school-class-chip--assigned" draggable
@@ -536,7 +602,7 @@ export default function SchoolSchedule({ profile, onClose }) {
                               <span>Changes to</span>
                               <select value={swapClassId} onChange={(e) => setSwapClassId(e.target.value)} style={selectStyle}>
                                 <option value="">Pick a class…</option>
-                                {classes.filter((c) => c.id !== a.class_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                {classDrafts.filter((c) => c.id !== a.class_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                               </select>
                               <span>starting</span>
                               <input type="date" style={inputBoxStyle} value={swapDate} onChange={(e) => setSwapDate(e.target.value)} />
@@ -619,7 +685,7 @@ export default function SchoolSchedule({ profile, onClose }) {
   function renderDayView() {
     const weekDays = getWeekdayStrip(viewDate);
     const dayKey = getDayKey(viewDate, activeSchedule, exceptionsByDate);
-    const dayEntries = getDayEntries(periods, assignments, classes, dayKey, viewDate);
+    const dayEntries = getDayEntries(periods, assignments, classDrafts, dayKey, viewDate);
     const ex = exceptionsByDate[dateStr(viewDate)];
     const noSchool = ex?.school_closed;
     const isWeekly = activeSchedule.schedule_type === 'weekly';

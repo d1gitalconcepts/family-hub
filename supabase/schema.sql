@@ -366,6 +366,27 @@ create policy "admin write school_calendar_exceptions"
   on school_calendar_exceptions for all to authenticated
   using (is_admin()) with check (is_admin());
 
+-- Live updates (the hub's useSchoolSchedules/useSchoolClasses/etc. hooks)
+-- depend on these tables being in the realtime publication. Idempotent —
+-- safe to re-run even if some/all are already added.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'school_schedules', 'school_schedule_periods', 'school_classes',
+    'school_schedule_assignments', 'school_calendar_exceptions'
+  ]
+  loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
 -- ============================================================
 -- ONE-TIME MANUAL MIGRATION for the tables above — run this block
 -- by hand in the Supabase SQL editor before using the School

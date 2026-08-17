@@ -1710,6 +1710,17 @@ html, body, #root {
   flex-wrap: wrap;
 }
 
+.school-class-add-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
 /* Blocks tab — one row per time slot */
 .school-block-row {
   display: flex;
