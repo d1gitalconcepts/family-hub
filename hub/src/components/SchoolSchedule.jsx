@@ -98,7 +98,14 @@ export default function SchoolSchedule({ profile, onClose }) {
   const drag = useRef(null);
   const classesSyncedForRef = useRef(null);
 
-  const activeId = selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null);
+  // Non-admin accounts (e.g. kids logging in on their own profile) are
+  // scoped to whichever schedule links to their own profile_id — no
+  // switcher, no seeing siblings' schedules. Admins keep the full
+  // switcher below so a parent can check on every kid at a glance.
+  const myScheduleId = schedules.find((s) => s.profile_id === profile?.id)?.id || null;
+  const activeId = isAdmin
+    ? (selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null))
+    : myScheduleId;
   const activeSchedule = schedules.find((s) => s.id === activeId) || null;
   const periods = useSchoolSchedulePeriods(activeId);
   const [rawClasses, classesFetchError] = useSchoolClasses(activeId); // rawClasses: undefined until first load for activeId, then always an array
@@ -979,17 +986,26 @@ export default function SchoolSchedule({ profile, onClose }) {
             </p>
           )}
 
-          {!manageTab && schedules.length > 0 && (
+          {!manageTab && schedules.length > 0 && !isAdmin && !activeSchedule && (
+            <p style={{ color: 'var(--text-muted)' }}>
+              No school schedule has been linked to your account yet. Ask an admin to add one in
+              Settings → School Schedule → Manage → Schedules.
+            </p>
+          )}
+
+          {!manageTab && activeSchedule && (
             <>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                {schedules.map((s) => (
-                  <button key={s.id} className={`btn${activeId === s.id ? ' btn-primary' : ''}`} style={{ fontSize: 'var(--s-sm)' }}
-                    onClick={() => setSelectedId(s.id)}>
-                    {s.profile?.display_name || 'Unknown'}
-                  </button>
-                ))}
-              </div>
-              {activeSchedule && renderDayView()}
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  {schedules.map((s) => (
+                    <button key={s.id} className={`btn${activeId === s.id ? ' btn-primary' : ''}`} style={{ fontSize: 'var(--s-sm)' }}
+                      onClick={() => setSelectedId(s.id)}>
+                      {s.profile?.display_name || 'Unknown'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {renderDayView()}
             </>
           )}
         </div>
