@@ -285,18 +285,32 @@ create table if not exists school_schedule_periods (
 
 create index if not exists school_schedule_periods_schedule_idx on school_schedule_periods(schedule_id);
 
--- The actual day-by-day content: what happens in a given period on a given
--- day-letter. valid_from/valid_until let a period's course change partway
--- through the year (e.g. an elective that swaps at the semester) without
--- touching the period template itself.
+-- The class catalog — a class (course + teacher + room) is defined once
+-- per schedule and reused across every block/day it's dragged onto,
+-- instead of retyping "Social Studies 7 / Mr. Wright / Room 172" every
+-- place it appears.
+create table if not exists school_classes (
+  id            uuid primary key default gen_random_uuid(),
+  schedule_id   uuid not null references school_schedules(id) on delete cascade,
+  name          text not null,
+  teacher       text,
+  room          text,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists school_classes_schedule_idx on school_classes(schedule_id);
+
+-- The actual day-by-day content: which class happens in a given period on
+-- a given day-letter. valid_from/valid_until let a period's class change
+-- partway through the year (e.g. an elective that swaps at the semester)
+-- without touching the period template itself.
 create table if not exists school_schedule_assignments (
   id            uuid primary key default gen_random_uuid(),
   schedule_id   uuid not null references school_schedules(id) on delete cascade,
   period_id     uuid not null references school_schedule_periods(id) on delete cascade,
   day_key       text not null, -- one of the schedule's day_letters, or 'MON'..'FRI' for schedule_type='weekly'
-  course_name   text not null,
-  teacher       text,
-  room          text,
+  class_id      uuid not null references school_classes(id) on delete cascade,
   valid_from    date, -- null = applies from the start of the year
   valid_until   date, -- null = applies through the end of the year
   created_at    timestamptz not null default now(),
@@ -305,6 +319,7 @@ create table if not exists school_schedule_assignments (
 
 create index if not exists school_schedule_assignments_schedule_idx on school_schedule_assignments(schedule_id);
 create index if not exists school_schedule_assignments_period_idx   on school_schedule_assignments(period_id);
+create index if not exists school_schedule_assignments_class_idx    on school_schedule_assignments(class_id);
 
 create table if not exists school_calendar_exceptions (
   date           date primary key,
@@ -317,6 +332,7 @@ create table if not exists school_calendar_exceptions (
 
 alter table school_schedules              enable row level security;
 alter table school_schedule_periods       enable row level security;
+alter table school_classes                enable row level security;
 alter table school_schedule_assignments   enable row level security;
 alter table school_calendar_exceptions    enable row level security;
 
@@ -330,6 +346,12 @@ create policy "authenticated read school_schedule_periods"
   on school_schedule_periods for select to authenticated using (true);
 create policy "admin write school_schedule_periods"
   on school_schedule_periods for all to authenticated
+  using (is_admin()) with check (is_admin());
+
+create policy "authenticated read school_classes"
+  on school_classes for select to authenticated using (true);
+create policy "admin write school_classes"
+  on school_classes for all to authenticated
   using (is_admin()) with check (is_admin());
 
 create policy "authenticated read school_schedule_assignments"

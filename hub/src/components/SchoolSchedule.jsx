@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useProfiles } from '../hooks/useProfiles';
 import { useSchoolSchedules } from '../hooks/useSchoolSchedules';
 import { useSchoolSchedulePeriods } from '../hooks/useSchoolSchedulePeriods';
+import { useSchoolClasses } from '../hooks/useSchoolClasses';
 import { useSchoolScheduleAssignments } from '../hooks/useSchoolScheduleAssignments';
 import { useSchoolCalendarExceptions } from '../hooks/useSchoolCalendarExceptions';
 import {
@@ -59,9 +60,11 @@ async function seedDefaultPeriods(scheduleId) {
 // specific kid's actual classes lives in this file — it's all data,
 // entered and edited through the Manage UI below.
 //
-// The Blocks tab is one grid: rows are periods (school_schedule_periods —
-// label + time, shared across every day-letter), columns are day-letters,
-// and each cell is that period's class on that day (school_schedule_assignments).
+// Three separate concerns, each its own tab:
+//   Classes — the reusable catalog (course + teacher + room), defined once.
+//   Blocks  — the time template (label + time), shared across every day-letter.
+//   Days    — per day-letter, drag classes from the catalog onto blocks to
+//             build that day's schedule (school_schedule_assignments).
 export default function SchoolSchedule({ profile, onClose }) {
   const schedules   = useSchoolSchedules();
   const allProfiles = useProfiles();
@@ -77,11 +80,17 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [newExType, setNewExType]   = useState('snow_day');
   const [newExNote, setNewExNote]   = useState('');
   const [newExClosed, setNewExClosed] = useState(true);
-  const [expandedDates, setExpandedDates] = useState(() => new Set());
+  const [selectedDayKey, setSelectedDayKey] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [swapEditingId, setSwapEditingId] = useState(null);
+  const [swapDate, setSwapDate]         = useState(() => dateStr(new Date()));
+  const [swapClassId, setSwapClassId]   = useState('');
+  const drag = useRef(null);
 
   const activeId = selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null);
   const activeSchedule = schedules.find((s) => s.id === activeId) || null;
   const periods = useSchoolSchedulePeriods(activeId);
+  const classes = useSchoolClasses(activeId);
   const assignments = useSchoolScheduleAssignments(activeId);
 
   const exceptionsByDate = {};
@@ -107,7 +116,7 @@ export default function SchoolSchedule({ profile, onClose }) {
     if (data) {
       await seedDefaultPeriods(data.id);
       setSelectedId(data.id);
-      setManageTab('blocks');
+      setManageTab('classes');
     }
   }
 
@@ -246,13 +255,60 @@ export default function SchoolSchedule({ profile, onClose }) {
     );
   }
 
+  function renderClassesTab() {
+    if (schedules.length === 0) {
+      return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
+    }
+
+    async function handleAddClass() {
+      await supabase.from('school_classes').insert({ schedule_id: activeId, name: 'New class' });
+    }
+
+    async function updateClassField(id, field, value) {
+      await supabase.from('school_classes').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
+    }
+
+    async function handleDeleteClass(id) {
+      await supabase.from('school_classes').delete().eq('id', id);
+    }
+
+    return (
+      <div className="settings-section">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>Classes</h3>
+          <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
+            {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
+          </select>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
+          The classes this person takes — teacher and room included. Drag these onto blocks per
+          day in the Days tab; define each class once here and reuse it everywhere it repeats.
+        </p>
+
+        {classes.map((c) => (
+          <div key={c.id} className="school-class-row">
+            <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 160px' }} placeholder="Class name"
+              defaultValue={c.name} onBlur={(e) => updateClassField(c.id, 'name', e.target.value || 'New class')} />
+            <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 130px' }} placeholder="Teacher"
+              defaultValue={c.teacher || ''} onBlur={(e) => updateClassField(c.id, 'teacher', e.target.value)} />
+            <input className="cal-name-input" style={{ ...inputBoxStyle, width: 80 }} placeholder="Room"
+              defaultValue={c.room || ''} onBlur={(e) => updateClassField(c.id, 'room', e.target.value)} />
+            <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete class"
+              onClick={() => handleDeleteClass(c.id)}>✕</button>
+          </div>
+        ))}
+
+        <button className="btn" style={{ fontSize: 'var(--s-sm)', marginTop: 10 }} onClick={handleAddClass}>+ Add class</button>
+      </div>
+    );
+  }
+
   function renderBlocksTab() {
     if (schedules.length === 0) {
       return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
     }
 
     const sortedPeriods = [...periods].sort((a, b) => a.block_number - b.block_number);
-    const dayKeys = dayKeyOptionsFor(activeSchedule);
 
     async function handleAddRow() {
       const nextNum = sortedPeriods.length ? Math.max(...sortedPeriods.map((p) => p.block_number)) + 1 : 1;
@@ -286,39 +342,6 @@ export default function SchoolSchedule({ profile, onClose }) {
       updatePeriodField(period.id, 'end_time', addMinutesToTime(period.start_time, minutes));
     }
 
-    function cellAssignments(periodId, dayKey) {
-      return assignments.filter((a) => a.period_id === periodId && a.day_key === dayKey);
-    }
-
-    async function updateAssignmentField(id, field, value) {
-      await supabase.from('school_schedule_assignments').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
-    }
-
-    async function handleCreateAssignment(periodId, dayKey, courseName) {
-      if (!courseName.trim()) return;
-      await supabase.from('school_schedule_assignments').insert({
-        schedule_id: activeId, period_id: periodId, day_key: dayKey, course_name: courseName.trim(),
-      });
-    }
-
-    async function handleAddAnother(periodId, dayKey) {
-      await supabase.from('school_schedule_assignments').insert({
-        schedule_id: activeId, period_id: periodId, day_key: dayKey, course_name: 'New class', valid_from: dateStr(new Date()),
-      });
-    }
-
-    async function handleDeleteAssignment(id) {
-      await supabase.from('school_schedule_assignments').delete().eq('id', id);
-    }
-
-    function toggleExpanded(id) {
-      setExpandedDates((set) => {
-        const next = new Set(set);
-        if (next.has(id)) next.delete(id); else next.add(id);
-        return next;
-      });
-    }
-
     return (
       <div className="settings-section">
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
@@ -328,9 +351,9 @@ export default function SchoolSchedule({ profile, onClose }) {
           </select>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-          One row per block — set its label and time on the left, then type each day's class into
-          the grid. A block with a lunch break in the middle is just three ordinary rows (e.g.
-          "Block 3a/3b/3c") rather than one block split into parts.
+          The time slots, shared across every day-letter. A block with a lunch break in the middle
+          is just three ordinary rows (e.g. "Block 3a/3b/3c") rather than one split into parts.
+          Assign classes to these in the Days tab.
         </p>
 
         {sortedPeriods.length === 0 && (
@@ -340,92 +363,196 @@ export default function SchoolSchedule({ profile, onClose }) {
           </button>
         )}
 
-        {sortedPeriods.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="school-assign-table">
-              <thead>
-                <tr>
-                  <th>Block</th>
-                  {dayKeys.map((k) => <th key={k}>{k}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {sortedPeriods.map((p, i) => (
-                  <tr key={p.id}>
-                    <td className="school-assign-periodcell">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === 0}
-                            title="Move up" onClick={() => moveRow(p, -1)}>▲</button>
-                          <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === sortedPeriods.length - 1}
-                            title="Move down" onClick={() => moveRow(p, 1)}>▼</button>
-                        </div>
-                        <input className="cal-name-input" style={{ ...inputBoxStyle, width: 76 }}
-                          defaultValue={p.label || `Block ${i + 1}`}
-                          onBlur={(e) => updatePeriodField(p.id, 'label', e.target.value || `Block ${i + 1}`)} />
-                        <button className="btn-icon" style={{ padding: '2px 4px', color: 'var(--danger)' }} title="Delete row"
-                          onClick={() => handleDeleteRow(p.id)}>✕</button>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                        <input type="time" style={{ ...inputBoxStyle, width: 92 }} value={(p.start_time || '').slice(0, 5)}
-                          onChange={(e) => handleStartChange(p, e.target.value)} />
-                        <span>for</span>
-                        <input type="number" min={1} style={{ ...inputBoxStyle, width: 48 }}
-                          value={minutesBetween(p.start_time, p.end_time)}
-                          onChange={(e) => handleDurationChange(p, parseInt(e.target.value, 10) || 1)} />
-                        <span>min</span>
-                      </div>
-                      <span>ends {formatTime(p.end_time)}</span>
-                    </td>
-                    {dayKeys.map((dayKey) => {
-                      const cell = cellAssignments(p.id, dayKey);
-                      return (
-                        <td key={dayKey} className="school-assign-cell">
-                          {cell.length === 0 && (
-                            <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="+ Course"
-                              onBlur={(e) => { handleCreateAssignment(p.id, dayKey, e.target.value); e.target.value = ''; }} />
-                          )}
-                          {cell.map((a) => (
-                            <div key={a.id} className="school-assign-chip">
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <input className="cal-name-input" style={{ ...inputBoxStyle, flex: 1 }} placeholder="Course"
-                                  defaultValue={a.course_name} onBlur={(e) => updateAssignmentField(a.id, 'course_name', e.target.value)} />
-                                <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12 }} title="Only part of the year?"
-                                  onClick={() => toggleExpanded(a.id)}>📅</button>
-                                <button className="btn-icon" style={{ padding: '2px 4px', fontSize: 12, color: 'var(--danger)' }} title="Delete"
-                                  onClick={() => handleDeleteAssignment(a.id)}>✕</button>
-                              </div>
-                              <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Teacher"
-                                defaultValue={a.teacher || ''} onBlur={(e) => updateAssignmentField(a.id, 'teacher', e.target.value)} />
-                              <input className="cal-name-input" style={{ ...inputBoxStyle, width: '100%' }} placeholder="Room"
-                                defaultValue={a.room || ''} onBlur={(e) => updateAssignmentField(a.id, 'room', e.target.value)} />
-                              {expandedDates.has(a.id) && (
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                  <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid from (blank = start of year)"
-                                    value={a.valid_from || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_from', e.target.value || null)} />
-                                  <input type="date" style={{ ...inputBoxStyle, width: '100%' }} title="Valid until (blank = end of year)"
-                                    value={a.valid_until || ''} onChange={(e) => updateAssignmentField(a.id, 'valid_until', e.target.value || null)} />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          {cell.length > 0 && (
-                            <button className="btn-icon" style={{ fontSize: 11, color: 'var(--text-muted)' }}
-                              title="Add a version that starts later in the year" onClick={() => handleAddAnother(p.id, dayKey)}>
-                              + later in the year
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {sortedPeriods.map((p, i) => (
+          <div key={p.id} className="school-block-row">
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === 0}
+                title="Move up" onClick={() => moveRow(p, -1)}>▲</button>
+              <button className="btn-icon" style={{ padding: '0 3px', fontSize: 9, lineHeight: 1 }} disabled={i === sortedPeriods.length - 1}
+                title="Move down" onClick={() => moveRow(p, 1)}>▼</button>
+            </div>
+            <input className="cal-name-input" style={{ ...inputBoxStyle, width: 90 }}
+              defaultValue={p.label || `Block ${i + 1}`}
+              onBlur={(e) => updatePeriodField(p.id, 'label', e.target.value || `Block ${i + 1}`)} />
+            <input type="time" style={{ ...inputBoxStyle, width: 92 }} value={(p.start_time || '').slice(0, 5)}
+              onChange={(e) => handleStartChange(p, e.target.value)} />
+            <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>for</span>
+            <input type="number" min={1} style={{ ...inputBoxStyle, width: 52 }}
+              value={minutesBetween(p.start_time, p.end_time)}
+              onChange={(e) => handleDurationChange(p, parseInt(e.target.value, 10) || 1)} />
+            <span style={{ fontSize: 'var(--s-sm)', color: 'var(--text-muted)' }}>min (ends {formatTime(p.end_time)})</span>
+            <button className="btn-icon" style={{ color: 'var(--danger)', marginLeft: 'auto' }} title="Delete row"
+              onClick={() => handleDeleteRow(p.id)}>✕</button>
           </div>
-        )}
+        ))}
 
         <button className="btn" style={{ fontSize: 'var(--s-sm)', marginTop: 10 }} onClick={handleAddRow}>+ Add block</button>
+      </div>
+    );
+  }
+
+  function renderDaysTab() {
+    if (schedules.length === 0) {
+      return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add a schedule first in the Schedules tab.</p>;
+    }
+
+    const sortedPeriods = [...periods].sort((a, b) => a.block_number - b.block_number);
+    const dayKeys = dayKeyOptionsFor(activeSchedule);
+    const currentDayKey = selectedDayKey && dayKeys.includes(selectedDayKey) ? selectedDayKey : dayKeys[0];
+
+    function slotAssignments(periodId) {
+      return assignments.filter((a) => a.period_id === periodId && a.day_key === currentDayKey);
+    }
+
+    async function assignClassToPeriod(periodId, classId) {
+      const existing = assignments.filter((a) => a.period_id === periodId && a.day_key === currentDayKey);
+      for (const e of existing) await supabase.from('school_schedule_assignments').delete().eq('id', e.id);
+      await supabase.from('school_schedule_assignments').insert({
+        schedule_id: activeId, period_id: periodId, day_key: currentDayKey, class_id: classId,
+      });
+    }
+
+    async function moveAssignment(assignment, toPeriodId) {
+      if (toPeriodId === assignment.period_id) return;
+      const existing = assignments.filter((a) => a.period_id === toPeriodId && a.day_key === currentDayKey);
+      for (const e of existing) await supabase.from('school_schedule_assignments').delete().eq('id', e.id);
+      await supabase.from('school_schedule_assignments').update({ period_id: toPeriodId, updated_at: new Date().toISOString() }).eq('id', assignment.id);
+    }
+
+    async function handleRemoveAssignment(id) {
+      await supabase.from('school_schedule_assignments').delete().eq('id', id);
+    }
+
+    async function handleSplitAssignment(assignment) {
+      if (!swapClassId || !swapDate) return;
+      const cutover = parseDateStr(swapDate);
+      const before = new Date(cutover);
+      before.setDate(before.getDate() - 1);
+      await supabase.from('school_schedule_assignments').update({ valid_until: dateStr(before) }).eq('id', assignment.id);
+      await supabase.from('school_schedule_assignments').insert({
+        schedule_id: activeId, period_id: assignment.period_id, day_key: assignment.day_key, class_id: swapClassId, valid_from: swapDate,
+      });
+      setSwapEditingId(null);
+      setSwapClassId('');
+    }
+
+    function onClassDragStart(e, classId) {
+      drag.current = { type: 'class', classId };
+      e.dataTransfer.effectAllowed = 'copy';
+    }
+
+    function onAssignmentDragStart(e, assignment) {
+      drag.current = { type: 'assignment', assignment };
+      e.dataTransfer.effectAllowed = 'move';
+      e.stopPropagation();
+    }
+
+    function onSlotDrop(e, periodId) {
+      e.preventDefault();
+      if (drag.current?.type === 'class') assignClassToPeriod(periodId, drag.current.classId);
+      else if (drag.current?.type === 'assignment') moveAssignment(drag.current.assignment, periodId);
+      drag.current = null;
+      setDropTarget(null);
+    }
+
+    function onDragEnd() { drag.current = null; setDropTarget(null); }
+
+    if (sortedPeriods.length === 0) {
+      return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Set up your blocks in the Blocks tab first.</p>;
+    }
+    if (classes.length === 0) {
+      return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)' }}>Add some classes in the Classes tab first.</p>;
+    }
+
+    return (
+      <div className="settings-section">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0 }}>Days</h3>
+          <select value={activeId || ''} onChange={(e) => setSelectedId(e.target.value)} style={selectStyle}>
+            {schedules.map((s) => <option key={s.id} value={s.id}>{s.profile?.display_name || 'Unknown'}</option>)}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {dayKeys.map((k) => (
+            <button key={k} className={`btn${currentDayKey === k ? ' btn-primary' : ''}`} style={{ fontSize: 'var(--s-sm)' }}
+              onClick={() => setSelectedDayKey(k)}>{k}</button>
+          ))}
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
+          Drag a class onto a block to assign it to Day {currentDayKey}. Drag an assigned class to
+          a different block to move it there instead.
+        </p>
+
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div className="school-classes-palette">
+            {classes.map((c) => (
+              <div key={c.id} className="school-class-chip" draggable
+                onDragStart={(e) => onClassDragStart(e, c.id)} onDragEnd={onDragEnd}>
+                <strong>{c.name}</strong>
+                {c.teacher && <span>{c.teacher}</span>}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ flex: '1 1 280px', minWidth: 260 }}>
+            {sortedPeriods.map((p) => {
+              const cell = slotAssignments(p.id);
+              const isDropTarget = dropTarget === p.id;
+              return (
+                <div key={p.id} className={`school-slot-row${isDropTarget ? ' school-slot-row--drop-target' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); setDropTarget(p.id); }}
+                  onDragLeave={() => setDropTarget((dt) => (dt === p.id ? null : dt))}
+                  onDrop={(e) => onSlotDrop(e, p.id)}>
+                  <div className="school-slot-label">
+                    <strong>{p.label}</strong>
+                    <span>{formatTime(p.start_time)}–{formatTime(p.end_time)}</span>
+                  </div>
+                  <div className="school-slot-content">
+                    {cell.length === 0 && <span className="school-slot-empty">Drop a class here</span>}
+                    {cell.map((a) => {
+                      const cls = classes.find((c) => c.id === a.class_id);
+                      if (!cls) return null;
+                      return (
+                        <div key={a.id} className="school-class-chip school-class-chip--assigned" draggable
+                          onDragStart={(e) => onAssignmentDragStart(e, a)} onDragEnd={onDragEnd}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <strong style={{ flex: 1 }}>{cls.name}</strong>
+                            <button className="btn-icon" style={{ padding: '1px 3px', fontSize: 11 }} title="Changes later in the year?"
+                              onClick={() => setSwapEditingId(swapEditingId === a.id ? null : a.id)}>📅</button>
+                            <button className="btn-icon" style={{ padding: '1px 3px', fontSize: 11, color: 'var(--danger)' }} title="Remove"
+                              onClick={() => handleRemoveAssignment(a.id)}>✕</button>
+                          </div>
+                          {(cls.teacher || cls.room) && <span>{[cls.teacher, cls.room].filter(Boolean).join(' · ')}</span>}
+                          {(a.valid_from || a.valid_until) && (
+                            <span className="school-chip-dates">
+                              {a.valid_from ? parseDateStr(a.valid_from).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'start'}
+                              {' – '}
+                              {a.valid_until ? parseDateStr(a.valid_until).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'end'}
+                            </span>
+                          )}
+                          {swapEditingId === a.id && (
+                            <div className="school-swap-form" onClick={(e) => e.stopPropagation()}>
+                              <span>Changes to</span>
+                              <select value={swapClassId} onChange={(e) => setSwapClassId(e.target.value)} style={selectStyle}>
+                                <option value="">Pick a class…</option>
+                                {classes.filter((c) => c.id !== a.class_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                              <span>starting</span>
+                              <input type="date" style={inputBoxStyle} value={swapDate} onChange={(e) => setSwapDate(e.target.value)} />
+                              <button className="btn btn-primary" style={{ fontSize: 'var(--s-xs)', padding: '3px 8px' }}
+                                disabled={!swapClassId} onClick={() => handleSplitAssignment(a)}>Split</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     );
   }
@@ -492,7 +619,7 @@ export default function SchoolSchedule({ profile, onClose }) {
   function renderDayView() {
     const weekDays = getWeekdayStrip(viewDate);
     const dayKey = getDayKey(viewDate, activeSchedule, exceptionsByDate);
-    const dayEntries = getDayEntries(periods, assignments, dayKey, viewDate);
+    const dayEntries = getDayEntries(periods, assignments, classes, dayKey, viewDate);
     const ex = exceptionsByDate[dateStr(viewDate)];
     const noSchool = ex?.school_closed;
     const isWeekly = activeSchedule.schedule_type === 'weekly';
@@ -551,12 +678,12 @@ export default function SchoolSchedule({ profile, onClose }) {
               <tr><th>Time</th><th>Course</th><th>Teacher</th><th>Room</th></tr>
             </thead>
             <tbody>
-              {dayEntries.map(({ period, assignment }) => (
+              {dayEntries.map(({ period, assignment, class: cls }) => (
                 <tr key={assignment.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{formatTime(period.start_time)}–{formatTime(period.end_time)}</td>
-                  <td>{assignment.course_name}</td>
-                  <td>{assignment.teacher || '—'}</td>
-                  <td>{assignment.room || '—'}</td>
+                  <td>{cls.name}</td>
+                  <td>{cls.teacher || '—'}</td>
+                  <td>{cls.room || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -568,7 +695,9 @@ export default function SchoolSchedule({ profile, onClose }) {
 
   const MANAGE_TABS = [
     { id: 'schedules', label: 'Schedules' },
+    { id: 'classes',   label: 'Classes' },
     { id: 'blocks',    label: 'Blocks' },
+    { id: 'days',      label: 'Days' },
     { id: 'snowdays',  label: 'Snow Days' },
   ];
 
@@ -600,8 +729,10 @@ export default function SchoolSchedule({ profile, onClose }) {
 
         <div className="settings-body">
           {manageTab === 'schedules' && renderSchedulesTab()}
+          {manageTab === 'classes'   && renderClassesTab()}
           {manageTab === 'blocks'    && renderBlocksTab()}
-          {manageTab === 'snowdays' && renderSnowDaysTab()}
+          {manageTab === 'days'      && renderDaysTab()}
+          {manageTab === 'snowdays'  && renderSnowDaysTab()}
 
           {!manageTab && schedules.length === 0 && (
             <p style={{ color: 'var(--text-muted)' }}>

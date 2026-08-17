@@ -74,17 +74,19 @@ export function getDayKey(date, schedule, exceptionsByDate) {
 }
 
 // Joins periods (the time template) with assignments (day-letter content)
-// for a resolved day-key, filtered to assignments valid on `date`, sorted
-// by period start time. Each result is { period, assignment }.
-export function getDayEntries(periods, assignments, dayKey, date) {
+// and the class catalog for a resolved day-key, filtered to assignments
+// valid on `date`, sorted by period start time. Each result is
+// { period, assignment, class }.
+export function getDayEntries(periods, assignments, classes, dayKey, date) {
   if (!dayKey) return [];
   const d = dateStr(date);
   const periodsById = Object.fromEntries((periods || []).map((p) => [p.id, p]));
+  const classesById = Object.fromEntries((classes || []).map((c) => [c.id, c]));
   return (assignments || [])
     .filter((a) => a.day_key === dayKey)
     .filter((a) => (!a.valid_from || a.valid_from <= d) && (!a.valid_until || a.valid_until >= d))
-    .map((a) => ({ assignment: a, period: periodsById[a.period_id] }))
-    .filter((e) => e.period)
+    .map((a) => ({ assignment: a, period: periodsById[a.period_id], class: classesById[a.class_id] }))
+    .filter((e) => e.period && e.class)
     .sort((a, b) => (a.period.start_time || '').localeCompare(b.period.start_time || ''));
 }
 

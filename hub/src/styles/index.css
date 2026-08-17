@@ -1700,53 +1700,122 @@ html, body, #root {
   color: var(--text-muted);
 }
 
-.school-assign-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-.school-assign-table th {
-  text-align: left;
-  padding: 6px 8px;
-  font-size: var(--s-xs, 0.78em);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+/* Classes tab — one row per class */
+.school-class-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+  flex-wrap: wrap;
 }
 
-.school-assign-periodcell {
+/* Blocks tab — one row per time slot */
+.school-block-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+/* Days tab — palette of draggable classes */
+.school-classes-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 180px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  align-self: flex-start;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.school-class-chip {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px;
-  white-space: nowrap;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: grab;
+  font-size: var(--s-sm, 0.85em);
 }
 
-.school-assign-periodcell span {
+.school-class-chip:active { cursor: grabbing; }
+
+.school-class-chip span {
   font-size: var(--s-xs, 0.78em);
   color: var(--text-muted);
 }
 
-.school-assign-cell {
-  padding: 8px;
-  min-width: 170px;
-  vertical-align: top;
-  border-bottom: 1px solid var(--border);
-  border-left: 1px solid var(--border);
+.school-class-chip--assigned {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  margin-bottom: 4px;
 }
 
-.school-assign-chip {
+.school-chip-dates {
+  font-size: var(--s-xs, 0.78em);
+  color: var(--accent);
+}
+
+.school-swap-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  cursor: default;
+}
+
+/* Days tab — one drop-target row per block */
+.school-slot-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.school-slot-row--drop-target {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+
+.school-slot-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 100px;
+  white-space: nowrap;
+}
+
+.school-slot-label span {
+  font-size: var(--s-xs, 0.78em);
+  color: var(--text-muted);
+}
+
+.school-slot-content {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px;
-  border-radius: 6px;
-  background: var(--bg-secondary);
-  margin-bottom: 4px;
+}
+
+.school-slot-empty {
+  font-size: var(--s-sm, 0.85em);
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
