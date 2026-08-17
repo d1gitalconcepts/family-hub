@@ -3,7 +3,6 @@ import { useConfig } from '../hooks/useConfig';
 import { HOLIDAYS } from './HolidayNavCanvas';
 import { useTaskLists } from '../hooks/useTaskLists';
 import { useProfiles } from '../hooks/useProfiles';
-import { supabase } from '../supabaseClient';
 import { createProfile, resetPassword, deleteProfile } from '../auth';
 
 function makeMonogramDataUrl(text, bg = '#1a73e8') {
@@ -41,7 +40,7 @@ export default function AdminSettings({ onClose, theme, onThemeChange, profile, 
   const [weatherLocation,  setWeatherLocation]  = useConfig('weather_location');
   const [placesPhotosCfg,  setPlacesPhotosCfg]  = useConfig('places_photos');
   const allTaskLists = useTaskLists();
-  const allProfiles = useProfiles();
+  const [allProfiles, updateProfile] = useProfiles();
 
   const [newPersonName,     setNewPersonName]     = useState('');
   const [newPersonEmail,    setNewPersonEmail]    = useState('');
@@ -239,8 +238,10 @@ export default function AdminSettings({ onClose, theme, onThemeChange, profile, 
   }
 
   // --- Profile (People tab) field updates ---
+  // Delegates to useProfiles' optimistic updateProfile so checkboxes/inputs
+  // reflect the change immediately instead of waiting on a realtime refetch.
   async function updateProfileField(id, field, value) {
-    await supabase.from('profiles').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id);
+    await updateProfile(id, { [field]: value });
   }
 
   function slugifyEmail(name) {

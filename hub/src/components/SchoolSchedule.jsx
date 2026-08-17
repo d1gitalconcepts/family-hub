@@ -67,7 +67,7 @@ async function seedDefaultPeriods(scheduleId) {
 //             build that day's schedule (school_schedule_assignments).
 export default function SchoolSchedule({ profile, onClose }) {
   const schedules   = useSchoolSchedules();
-  const allProfiles = useProfiles();
+  const [allProfiles] = useProfiles();
   const exceptions  = useSchoolCalendarExceptions();
   const isAdmin = !!profile?.is_admin;
 
