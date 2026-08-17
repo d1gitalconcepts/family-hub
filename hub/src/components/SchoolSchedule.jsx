@@ -98,7 +98,7 @@ export default function SchoolSchedule({ profile, onClose }) {
   const activeId = selectedId && schedules.some((s) => s.id === selectedId) ? selectedId : (schedules[0]?.id || null);
   const activeSchedule = schedules.find((s) => s.id === activeId) || null;
   const periods = useSchoolSchedulePeriods(activeId);
-  const rawClasses = useSchoolClasses(activeId); // undefined until first load for activeId, then always an array
+  const [rawClasses, classesFetchError] = useSchoolClasses(activeId); // rawClasses: undefined until first load for activeId, then always an array
   const assignments = useSchoolScheduleAssignments(activeId);
 
   // Local mirror of rawClasses, synced from the server exactly once per
@@ -372,11 +372,17 @@ export default function SchoolSchedule({ profile, onClose }) {
           </div>
         )}
 
+        {classesFetchError && (
+          <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>
+            ⚠ Couldn't load classes: {classesFetchError}
+          </p>
+        )}
+
         {classError && (
           <p style={{ color: 'var(--danger)', fontSize: 'var(--s-sm)', marginBottom: 10 }}>⚠ {classError}</p>
         )}
 
-        {classDrafts.length === 0 && (
+        {classDrafts.length === 0 && !classesFetchError && (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 12 }}>
             No classes yet — add the first one below.
           </p>
