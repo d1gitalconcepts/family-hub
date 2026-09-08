@@ -236,13 +236,12 @@ export async function pollAllCalendars(env) {
   min.setHours(0, 0, 0, 0);
   const max = new Date(); max.setDate(max.getDate() + 14); max.setHours(23, 59, 59, 999);
 
-  let calListRes;
-  try {
-    calListRes = await googleGet(env, `${CAL_BASE}/users/me/calendarList`);
-  } catch (err) {
-    console.warn('[CalPoller] Could not list calendars:', err.message);
-    return;
-  }
+  // Let this one fail loudly (don't swallow) — it's the auth/connectivity
+  // canary for the whole poll. runFullSync's catch turns a token failure
+  // here into a visible `sync_error` config row; if we swallowed it instead,
+  // the sync would look "healthy" (last_calendar_sync keeps updating) while
+  // silently doing nothing.
+  const calListRes = await googleGet(env, `${CAL_BASE}/users/me/calendarList`);
 
   const calendars    = calListRes.items || [];
   const allEvents    = [];
