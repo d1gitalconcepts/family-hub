@@ -312,19 +312,33 @@ async function scrapeKeep(page, targetNotes) {
     titleElements.forEach((titleEl) => {
       const title = titleEl.innerText.trim();
       if (!targetNotes.includes(title)) return;
-      const isEditor = dialog && dialog.contains(titleEl);
-      if (!byTitle[title] || isEditor) byTitle[title] = titleEl;
-    });
 
-    Object.entries(byTitle).forEach(([title, titleEl]) => {
-      const isInDialog = dialog && dialog.contains(titleEl);
-      const noteContainer =
-        (isInDialog ? dialog : null) ||
+      const isEditor = dialog && dialog.contains(titleEl);
+      const container =
+        (isEditor ? dialog : null) ||
         titleEl.closest('[data-note]') ||
         titleEl.parentElement?.parentElement?.parentElement ||
         titleEl.parentElement?.parentElement;
+      if (!container) return;
 
-      if (!noteContainer) return;
+      // A pinned note renders twice: once in the Pinned section of the
+      // always-mounted grid (behind whatever's opened), once as the actual
+      // hash-opened/expanded note — and picking whichever came first in the
+      // DOM was often the wrong (background, unopened) copy, which is why
+      // only pinned notes (titleMatches>1) were ever truncated. Score each
+      // candidate by how much is actually rendered under it and keep the
+      // richest — the real opened note always has far more than a static
+      // background card.
+      const richness = (container.innerText || '').length
+        + container.querySelectorAll('div[role="checkbox"]').length * 100;
+      const existing = byTitle[title];
+      if (!existing || isEditor || (!existing.isEditor && richness > existing.richness)) {
+        byTitle[title] = { titleEl, container, isEditor, richness };
+      }
+    });
+
+    Object.entries(byTitle).forEach(([title, candidate]) => {
+      const { titleEl, container: noteContainer } = candidate;
 
       // Start with checkboxes visible in the shallow noteContainer, then try
       // to expand by walking up from document.activeElement. When a note is
