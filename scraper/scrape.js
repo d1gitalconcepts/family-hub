@@ -490,6 +490,16 @@ async function main() {
     // navigator.webdriver=true is the standard automation tell; the launch
     // flag above doesn't fully suppress it on every Chromium build.
     Object.defineProperty(navigator, 'webdriver', { get: () => false, configurable: true });
+
+    // Google Translate's own "translate this page?" banner steals
+    // document.activeElement the moment it mounts, which starves every note
+    // page opened as a fresh tab (the one-shot removal below only ever ran
+    // on the single long-lived main `page`, never on those). Strip it the
+    // instant it appears, on every page/tab in this context.
+    const KILL_SELECTOR = '.VIpgJd-TUo6Hb, .goog-te-banner-frame, #goog-gt-tt, .skiptranslate';
+    const killBanner = () => document.querySelectorAll(KILL_SELECTOR).forEach((el) => el.remove());
+    new MutationObserver(killBanner).observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener('DOMContentLoaded', killBanner);
   });
 
   // Main page — used for session check and fallback (no-URL) notes.
