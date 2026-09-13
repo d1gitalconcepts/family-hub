@@ -18,6 +18,16 @@ const SESSION_FILE = path.join(__dirname, '.session', 'state.json');
 // Meal Planning is always included (used for calendar sync).
 const DEFAULT_NOTE_TITLES = ['Shopping List', 'Meal Planning'];
 
+// scrapeKeep()'s last-resort strategy reads Keep's own card-preview DOM, which
+// truncates long notes and leaves a literal "…" as the final line. The worker
+// (calendar.js) refuses to sync a note in that state, so upserting it here
+// would silently jam calendar sync until the next successful full capture.
+// Skip the upsert instead and keep whatever fuller copy is already in
+// Supabase — self-heals as soon as a capture gets the untruncated content.
+function isTruncatedTextNote(note) {
+  return note?.type === 'text' && note.lines?.[note.lines.length - 1] === '…';
+}
+
 // ── Supabase ──────────────────────────────────────────────────────────────────
 
 let _jwt = null;
@@ -562,7 +572,11 @@ async function main() {
           const scraped = await scrapeKeep(notePage, [noteName]);
           const itemCount = scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0;
           console.log(`[${ts}] Scraped "${noteName}": ${itemCount} item(s)`);
-          allNotes.push(...scraped);
+          if (scraped.some(isTruncatedTextNote)) {
+            console.warn(`[${ts}] "${noteName}" capture looks truncated (fell back to card preview) — not overwriting Supabase.`);
+          } else {
+            allNotes.push(...scraped);
+          }
 
           // Apply pending checkbox updates while the editor is open
           if (pendingUpdates.length) {
@@ -651,7 +665,11 @@ async function main() {
         if (!dialogOpened) console.warn(`[${ts}] Editor did not open for "${noteName}" — scraping card preview only.`);
 
         const scraped = await scrapeKeep(page, [noteName]);
-        allNotes.push(...scraped);
+        if (scraped.some(isTruncatedTextNote)) {
+          console.warn(`[${ts}] "${noteName}" capture looks truncated (card preview) — not overwriting Supabase.`);
+        } else {
+          allNotes.push(...scraped);
+        }
 
         await page.keyboard.press('Escape');
         await page.waitForTimeout(600);
