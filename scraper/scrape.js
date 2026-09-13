@@ -465,21 +465,20 @@ async function main() {
   // to their hash URL instead of trying to click cards — much more reliable.
   const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
 
-  // Match setup.js's browser fingerprint. Default headless Chromium exposes
-  // navigator.webdriver=true and a "HeadlessChrome" UA — both are standard
-  // automation signals, and Keep serving a reduced client (skipping the
-  // focus-follows-navigation JS the text-note scrape strategies rely on) to
-  // a session it doesn't trust would explain why this broke right after the
-  // account was re-authenticated: the fresh login is exactly the kind of
-  // event that can tighten Google's server-side trust for a session.
+  // Don't override the UA string: `npx playwright --version` shows the real
+  // installed Chromium is 147.x, while the hardcoded string this used to
+  // carry (copied from setup.js) claimed 124.0.0.0. Modern Chrome also sends
+  // Client Hints headers (Sec-CH-UA-Full-Version-List etc.) that reflect the
+  // *actual* engine and aren't touched by Playwright's userAgent option — so
+  // that override made every request simultaneously claim "124" and "147",
+  // a mismatch far more suspicious to Google's fraud detection than sending
+  // no override at all. --disable-blink-features and the webdriver override
+  // below don't create that kind of inconsistency, so they stay.
   const browser = await chromium.launch({
     headless: true,
     args: ['--disable-blink-features=AutomationControlled'],
   });
-  const context = await browser.newContext({
-    storageState: SESSION_FILE,
-    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  });
+  const context = await browser.newContext({ storageState: SESSION_FILE });
 
   // Apply visibility overrides to every page opened from this context.
   // Headless Chrome reports document.hidden = true which can suppress Keep's

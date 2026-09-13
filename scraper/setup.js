@@ -20,13 +20,19 @@ async function main() {
   console.log('A browser window will open. Sign in to Google, wait for Keep to load,');
   console.log('then come back here and press Enter.\n');
 
+  // No userAgent override: it hardcoded Chrome/124.0.0.0 while the actually
+  // installed Chromium is 147.x (`npx playwright --version`). Modern Chrome
+  // also sends Client Hints headers reflecting the real engine version,
+  // which this override never touched — so every login made under this
+  // string simultaneously claimed to be Chrome 124 and Chrome 147, a
+  // mismatch worse than sending no override at all. A session logged in
+  // under that inconsistency may itself be tainted; re-run this after
+  // pulling the fix so the next login is captured cleanly.
   const browser = await chromium.launch({
     headless: false,
     args: ['--disable-blink-features=AutomationControlled'],
   });
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-  });
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   await page.goto('https://keep.google.com');
