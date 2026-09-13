@@ -557,6 +557,39 @@ async function main() {
           await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
           await notePage.bringToFront();
 
+          // Diagnostics confirmed the body never becomes editable passively —
+          // just navigating here no longer opens a real editor, it only
+          // scrolls to the card. Try clicking directly on each on-screen
+          // element matching this note's title (there can be more than one —
+          // e.g. a duplicate/skeleton copy) and check after each whether a
+          // real dialog opens, so we know exactly which click (if any) works
+          // instead of guessing an offset again.
+          await notePage.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 8000, polling: 300 }
+          ).catch(() => {});
+
+          const titleBoxes = await notePage.evaluate((title) => {
+            return Array.from(document.querySelectorAll('div[role="textbox"]'))
+              .filter((t) => t.innerText.trim() === title)
+              .map((t) => {
+                const r = t.getBoundingClientRect();
+                return { x: r.x, y: r.y, width: r.width, height: r.height };
+              });
+          }, noteName).catch(() => []);
+
+          for (const [i, box] of titleBoxes.entries()) {
+            if (box.width <= 0 || box.height <= 0) {
+              console.log(`[${ts}] "${noteName}" title match #${i}: zero-size, skipping click`);
+              continue;
+            }
+            await notePage.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+            await notePage.waitForTimeout(500);
+            const dialogNow = await notePage.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
+            console.log(`[${ts}] "${noteName}" title match #${i} (${Math.round(box.x)},${Math.round(box.y)}): clicked, dialog=${dialogNow}`);
+            if (dialogNow) break;
+          }
+
           // Wait for Keep to finish loading and focus the note content.
           // Poll for a non-title contenteditable becoming active (the note body).
           let focusedEditable = false;
