@@ -573,6 +573,18 @@ async function main() {
           const activeInfo = await notePage.evaluate((title) => {
             const a = document.activeElement;
             const editorOpen = !!document.querySelector('div[role="dialog"]');
+
+            // Census every contenteditable and every title textbox on the
+            // page, regardless of focus — tells us whether a full, real
+            // editable body exists in the DOM at all (just unfocused), vs.
+            // scrapeKeep() grabbing the wrong one of several same-titled
+            // matches (e.g. a collapsed background copy vs. the open one).
+            const editables = Array.from(document.querySelectorAll('[contenteditable="true"]'))
+              .map((el) => (el.innerText || '').trim().length)
+              .sort((x, y) => y - x);
+            const titleMatches = Array.from(document.querySelectorAll('div[role="textbox"]'))
+              .filter((t) => t.innerText.trim() === title).length;
+
             return {
               editorOpen,
               editable:   a?.isContentEditable ?? false,
@@ -582,11 +594,14 @@ async function main() {
                 ? (a.innerText?.split('\n').filter(l => l.trim()).length ?? 0)
                 : 0,
               preview:    a?.innerText?.trim()?.slice(0, 80) ?? '',
+              editableLens: editables.slice(0, 5),
+              titleMatches,
             };
           }, noteName).catch(() => ({}));
 
           console.log(
             `[${ts}] "${noteName}": dialog=${activeInfo.editorOpen} focusedEditable=${activeInfo.editable}` +
+            ` titleMatches=${activeInfo.titleMatches} editableLens=${JSON.stringify(activeInfo.editableLens)}` +
             ` tag=${activeInfo.tag} cls="${activeInfo.cls}" lines≈${activeInfo.lineCount} preview="${activeInfo.preview?.slice(0, 40)}"`
           );
 
