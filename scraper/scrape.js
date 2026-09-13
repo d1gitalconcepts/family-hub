@@ -465,8 +465,21 @@ async function main() {
   // to their hash URL instead of trying to click cards — much more reliable.
   const NOTE_URLS = await fetchKeepNoteUrls().catch(() => ({}));
 
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ storageState: SESSION_FILE });
+  // Match setup.js's browser fingerprint. Default headless Chromium exposes
+  // navigator.webdriver=true and a "HeadlessChrome" UA — both are standard
+  // automation signals, and Keep serving a reduced client (skipping the
+  // focus-follows-navigation JS the text-note scrape strategies rely on) to
+  // a session it doesn't trust would explain why this broke right after the
+  // account was re-authenticated: the fresh login is exactly the kind of
+  // event that can tighten Google's server-side trust for a session.
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-blink-features=AutomationControlled'],
+  });
+  const context = await browser.newContext({
+    storageState: SESSION_FILE,
+    userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  });
 
   // Apply visibility overrides to every page opened from this context.
   // Headless Chrome reports document.hidden = true which can suppress Keep's
@@ -474,6 +487,9 @@ async function main() {
   await context.addInitScript(() => {
     Object.defineProperty(document, 'hidden',          { get: () => false,     configurable: true });
     Object.defineProperty(document, 'visibilityState', { get: () => 'visible', configurable: true });
+    // navigator.webdriver=true is the standard automation tell; the launch
+    // flag above doesn't fully suppress it on every Chromium build.
+    Object.defineProperty(navigator, 'webdriver', { get: () => false, configurable: true });
   });
 
   // Main page — used for session check and fallback (no-URL) notes.
@@ -523,34 +539,15 @@ async function main() {
         const notePage = await context.newPage();
 
         try {
-          // Navigate directly to the note URL. Keep opens the note in a focused
-          // card state — but (unlike what we used to see) that focus lands on
-          // the card container, not the body's contenteditable div, so nothing
-          // is actually in "edit" mode yet. Click into the body ourselves, the
-          // same way the search+click fallback below already has to.
+          // Navigate directly to the note URL.
+          // Keep processes the hash and opens the note in an editable focused-card
+          // state — NOT a dialog modal. The note body becomes document.activeElement
+          // (a contenteditable div) with ALL lines present, including those beyond
+          // the card's visual height limit.
           await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
           await notePage.bringToFront();
 
-          // Ensure note textboxes are present before we try to click one
-          await notePage.waitForFunction(
-            () => document.querySelectorAll('div[role="textbox"]').length > 0,
-            { timeout: 8000, polling: 300 }
-          ).catch(() => {});
-
-          // Click just below the note's title to focus its body — mirrors the
-          // click the fallback path uses; direct URL navigation alone no
-          // longer seems to auto-focus the body's contenteditable.
-          const titleBox = await notePage.evaluate((title) => {
-            const el = [...document.querySelectorAll('div[role="textbox"]')]
-              .find((t) => t.innerText.trim() === title);
-            if (!el) return null;
-            const r = el.getBoundingClientRect();
-            return { x: r.x, y: r.y, width: r.width, height: r.height };
-          }, noteName).catch(() => null);
-          if (titleBox) {
-            await notePage.mouse.click(titleBox.x + titleBox.width / 2, titleBox.y + titleBox.height + 20);
-          }
-
+          // Wait for Keep to finish loading and focus the note content.
           // Poll for a non-title contenteditable becoming active (the note body).
           let focusedEditable = false;
           for (let i = 0; i < 24 && !focusedEditable; i++) {
@@ -579,9 +576,15 @@ async function main() {
           }, noteName).catch(() => ({}));
 
           console.log(
-            `[${ts}] "${noteName}": clicked=${!!titleBox} dialog=${activeInfo.editorOpen} focusedEditable=${activeInfo.editable}` +
+            `[${ts}] "${noteName}": dialog=${activeInfo.editorOpen} focusedEditable=${activeInfo.editable}` +
             ` tag=${activeInfo.tag} cls="${activeInfo.cls}" lines≈${activeInfo.lineCount} preview="${activeInfo.preview?.slice(0, 40)}"`
           );
+
+          // Ensure note textboxes are present before scraping
+          await notePage.waitForFunction(
+            () => document.querySelectorAll('div[role="textbox"]').length > 0,
+            { timeout: 8000, polling: 300 }
+          ).catch(() => {});
 
           const scraped = await scrapeKeep(notePage, [noteName]);
           const itemCount = scraped[0]?.lines?.length ?? scraped[0]?.items?.length ?? 0;
