@@ -569,14 +569,21 @@ async function main() {
             { timeout: 8000, polling: 300 }
           ).catch(() => {});
 
+          // (341,47) showed up as a second "match" for every note in the last
+          // run — a fixed-position sidebar shortcut, not the note itself.
+          // Clicking it is actively harmful (it navigates away from
+          // whatever's open). Restrict to matches that are actually inside a
+          // note card ([data-note], the same anchor scrapeKeep() itself uses
+          // to resolve a note's container) so we only ever click the real one.
           const titleBoxes = await notePage.evaluate((title) => {
             return Array.from(document.querySelectorAll('div[role="textbox"]'))
-              .filter((t) => t.innerText.trim() === title)
+              .filter((t) => t.innerText.trim() === title && t.closest('[data-note]'))
               .map((t) => {
                 const r = t.getBoundingClientRect();
                 return { x: r.x, y: r.y, width: r.width, height: r.height };
               });
           }, noteName).catch(() => []);
+          console.log(`[${ts}] "${noteName}": ${titleBoxes.length} title match(es) inside a real note card`);
 
           for (const [i, box] of titleBoxes.entries()) {
             if (box.width <= 0 || box.height <= 0) {
