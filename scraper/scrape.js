@@ -549,24 +549,17 @@ async function main() {
         const notePage = await context.newPage();
 
         try {
-          // Loading the note URL directly — hash present on the very first
-          // request — never gave us a real editor: diagnostics showed the
-          // body never becomes editable that way, no matter how long we wait
-          // or what we click. Likely cause: Keep's router only reacts to the
-          // hash *changing* on an already-loaded page (a `hashchange`
-          // listener), not by reading location.hash during its own
-          // bootstrap. A user pasting this same URL into an already-open
-          // Keep tab gets a real hash change and it opens fine; a fresh
-          // navigation with the hash baked in from the start is a first
-          // load, not a change, so Keep silently falls back to the plain
-          // grid. Load the bare origin first, let Keep fully boot, then
-          // navigate to the hash URL as a second step so it's a genuine
-          // same-document hash change this time.
-          await notePage.goto('https://keep.google.com', { waitUntil: 'load', timeout: 30000 });
-          await notePage.waitForFunction(
-            () => document.querySelectorAll('div[role="textbox"]').length > 0,
-            { timeout: 15000, polling: 300 }
-          ).catch(() => {});
+          // Navigate directly to the note URL in this brand-new tab — a cold
+          // load with the hash present from the start. This file's own
+          // history (eb48064, ac6bd2a, 852eed3) already settled this: Keep's
+          // router only processes the note hash during its own page-load
+          // init, NOT via a hashchange event on an already-loaded page, and
+          // setting location.hash after load breaks Playwright's execution
+          // context outright. Loading the bare origin first and navigating
+          // to the hash URL as a second step (tried in ceb957d) was already
+          // tried and abandoned for exactly that reason — don't reintroduce
+          // it. Keep opens the note in an editable focused-card state here —
+          // NOT a dialog modal — with the body becoming document.activeElement.
           await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
           await notePage.bringToFront();
 
