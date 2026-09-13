@@ -549,53 +549,26 @@ async function main() {
         const notePage = await context.newPage();
 
         try {
-          // Navigate directly to the note URL.
-          // Keep processes the hash and opens the note in an editable focused-card
-          // state — NOT a dialog modal. The note body becomes document.activeElement
-          // (a contenteditable div) with ALL lines present, including those beyond
-          // the card's visual height limit.
-          await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
-          await notePage.bringToFront();
-
-          // Diagnostics confirmed the body never becomes editable passively —
-          // just navigating here no longer opens a real editor, it only
-          // scrolls to the card. Try clicking directly on each on-screen
-          // element matching this note's title (there can be more than one —
-          // e.g. a duplicate/skeleton copy) and check after each whether a
-          // real dialog opens, so we know exactly which click (if any) works
-          // instead of guessing an offset again.
+          // Loading the note URL directly — hash present on the very first
+          // request — never gave us a real editor: diagnostics showed the
+          // body never becomes editable that way, no matter how long we wait
+          // or what we click. Likely cause: Keep's router only reacts to the
+          // hash *changing* on an already-loaded page (a `hashchange`
+          // listener), not by reading location.hash during its own
+          // bootstrap. A user pasting this same URL into an already-open
+          // Keep tab gets a real hash change and it opens fine; a fresh
+          // navigation with the hash baked in from the start is a first
+          // load, not a change, so Keep silently falls back to the plain
+          // grid. Load the bare origin first, let Keep fully boot, then
+          // navigate to the hash URL as a second step so it's a genuine
+          // same-document hash change this time.
+          await notePage.goto('https://keep.google.com', { waitUntil: 'load', timeout: 30000 });
           await notePage.waitForFunction(
             () => document.querySelectorAll('div[role="textbox"]').length > 0,
-            { timeout: 8000, polling: 300 }
+            { timeout: 15000, polling: 300 }
           ).catch(() => {});
-
-          // (341,47) showed up as a second "match" for every note in the last
-          // run — a fixed-position sidebar shortcut, not the note itself.
-          // Clicking it is actively harmful (it navigates away from
-          // whatever's open). Restrict to matches that are actually inside a
-          // note card ([data-note], the same anchor scrapeKeep() itself uses
-          // to resolve a note's container) so we only ever click the real one.
-          const titleBoxes = await notePage.evaluate((title) => {
-            return Array.from(document.querySelectorAll('div[role="textbox"]'))
-              .filter((t) => t.innerText.trim() === title && t.closest('[data-note]'))
-              .map((t) => {
-                const r = t.getBoundingClientRect();
-                return { x: r.x, y: r.y, width: r.width, height: r.height };
-              });
-          }, noteName).catch(() => []);
-          console.log(`[${ts}] "${noteName}": ${titleBoxes.length} title match(es) inside a real note card`);
-
-          for (const [i, box] of titleBoxes.entries()) {
-            if (box.width <= 0 || box.height <= 0) {
-              console.log(`[${ts}] "${noteName}" title match #${i}: zero-size, skipping click`);
-              continue;
-            }
-            await notePage.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-            await notePage.waitForTimeout(500);
-            const dialogNow = await notePage.evaluate(() => !!document.querySelector('div[role="dialog"]')).catch(() => false);
-            console.log(`[${ts}] "${noteName}" title match #${i} (${Math.round(box.x)},${Math.round(box.y)}): clicked, dialog=${dialogNow}`);
-            if (dialogNow) break;
-          }
+          await notePage.goto(noteUrl, { waitUntil: 'load', timeout: 30000 });
+          await notePage.bringToFront();
 
           // Wait for Keep to finish loading and focus the note content.
           // Poll for a non-title contenteditable becoming active (the note body).
