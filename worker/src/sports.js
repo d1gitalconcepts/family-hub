@@ -99,7 +99,58 @@ async function enrichMlb(event, config, standingsMap = {}) {
 
 // ── NFL ──────────────────────────────────────────────────────────────────────
 
-async function enrichNfl(event, config) {
+// Fetch a team's current record + standings position once per sync and cache it.
+// sports_config typically tracks one team, so this is 1-2 extra fetches per run,
+// not one per game (mirrors the MLB standings cache pattern).
+async function fetchNflTeamInfo(abbrev, cache) {
+  const key = (abbrev || '').toLowerCase();
+  if (!key) return null;
+  if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+
+  let info = null;
+  try {
+    const json = await fetchJson(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${key}`);
+    const team = json?.team;
+    const totalRecord = (team?.record?.items || []).find((i) => i.type === 'total');
+    info = {
+      recordSummary: totalRecord?.summary || null,
+      standingSummary: team?.standingSummary || null, // e.g. "1st in AFC West"
+    };
+  } catch (e) {
+    console.warn('[Sports] NFL team info fetch failed:', e.message);
+  }
+  cache[key] = info;
+  return info;
+}
+
+// Combines the win-loss record with standings position, e.g. "2-0 · 1st AFC West".
+// Falls back to the scoreboard's plain W-L summary if the team-info fetch failed.
+function nflRecordLine(info, fallbackSummary) {
+  const summary = info?.recordSummary || fallbackSummary || null;
+  if (!summary) return null;
+  const standing = info?.standingSummary ? ` · ${info.standingSummary.replace(' in ', ' ')}` : '';
+  return `${summary}${standing}`;
+}
+
+// Game-level top performer per stat category — NFL's equivalent of MLB's W/L/S decisions.
+function buildNflLeaders(comp, idToAbbrev) {
+  const cats = comp?.leaders || [];
+  const pick = (name, label) => {
+    const leader = cats.find((c) => c.name === name)?.leaders?.[0];
+    if (!leader) return null;
+    return {
+      label,
+      abbrev: idToAbbrev[leader.team?.id] || null,
+      name: leader.athlete?.shortName || leader.athlete?.displayName || null,
+      line: leader.displayValue || null,
+    };
+  };
+  const leaders = [pick('passingYards', 'P'), pick('rushingYards', 'R'), pick('receivingYards', 'REC')]
+    .filter(Boolean);
+  return leaders.length ? leaders : null;
+}
+
+async function enrichNfl(event, config, teamCache = {}) {
   const dateStr = (event.start_date || (event.start_at ? localDate(event.start_at) : null));
   if (!dateStr) throw new Error('No date for NFL event');
 
@@ -120,6 +171,25 @@ async function enrichNfl(event, config) {
   const away = competitors.find((c) => c.homeAway === 'away');
 
   const status = comp?.status?.type?.description || 'Scheduled';
+  const isLive = comp?.status?.type?.state === 'in';
+
+  const idToAbbrev = {};
+  if (home?.team?.id) idToAbbrev[home.team.id] = home.team.abbreviation;
+  if (away?.team?.id) idToAbbrev[away.team.id] = away.team.abbreviation;
+
+  const [homeInfo, awayInfo] = await Promise.all([
+    fetchNflTeamInfo(home?.team?.abbreviation, teamCache),
+    fetchNflTeamInfo(away?.team?.abbreviation, teamCache),
+  ]);
+
+  // Down & distance only means anything while the game is live — `down` is -1
+  // between plays (e.g. right after a score) so guard on a real down number.
+  const situation = isLive ? comp?.situation : null;
+  const downDistance = situation && situation.down > 0 ? {
+    text: situation.shortDownDistanceText || situation.downDistanceText || null,
+    isRedZone: !!situation.isRedZone,
+    possession: idToAbbrev[situation.possession] || null,
+  } : null;
 
   return {
     status,
@@ -129,10 +199,13 @@ async function enrichNfl(event, config) {
     awayScore: away?.score != null ? Number(away.score) : null,
     homeLinescores: (home?.linescores || []).map((l) => l.value),
     awayLinescores: (away?.linescores || []).map((l) => l.value),
-    homeRecord: home?.records?.[0]?.summary || null,
-    awayRecord: away?.records?.[0]?.summary || null,
+    homeRecord: nflRecordLine(homeInfo, home?.records?.[0]?.summary),
+    awayRecord: nflRecordLine(awayInfo, away?.records?.[0]?.summary),
     period: comp?.status?.period || null,
     clock: comp?.status?.displayClock || null,
+    venue: comp?.venue?.fullName || null,
+    leaders: buildNflLeaders(comp, idToAbbrev),
+    downDistance,
     network: espnBroadcast(game) || espnBroadcast(comp),
   };
 }
@@ -720,6 +793,9 @@ export async function enrichSportsEvents(env) {
   // Cache: dedup key → enrichment data. Prevents multiple calendar events for the
   // same game (e.g. 3 "Knicks" placeholders) from each making a separate API call.
   const apiCache = {};
+  // Cache: NFL team abbrev → { recordSummary, standingSummary }. Shared across every
+  // NFL game in this sync so a tracked team's record/standings are fetched once, not per game.
+  const nflTeamCache = {};
   const now = new Date();
 
   // Process F1 and golf last — they make the most subrequests and should not
@@ -755,7 +831,7 @@ export async function enrichSportsEvents(env) {
       } else {
         switch (config.sport) {
           case 'mlb':    data = await enrichMlb(event, config, mlbStandingsMap); break;
-          case 'nfl':    data = await enrichNfl(event, config);                  break;
+          case 'nfl':    data = await enrichNfl(event, config, nflTeamCache);     break;
           case 'nba':    data = await enrichNba(event, config);                  break;
           case 'nhl':    data = await enrichNhl(event, config);                  break;
           case 'golf':   data = await enrichGolf(event, config);                 break;

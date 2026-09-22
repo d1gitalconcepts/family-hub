@@ -145,8 +145,10 @@ function MlbPanel({ data, detail }) {
 // ── NFL Panel ────────────────────────────────────────────────────────────────
 
 function NflPanel({ data, detail }) {
-  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores, homeRecord, awayRecord, period, clock, network } = data;
+  const { status, homeTeam, awayTeam, homeScore, awayScore, homeLinescores, awayLinescores,
+          homeRecord, awayRecord, period, clock, venue, leaders, downDistance, network } = data;
   const showBox = detail === 'boxscore' || detail === 'all';
+  const showAll = detail === 'all';
   const quarters = homeLinescores?.length > 4
     ? ['Q1','Q2','Q3','Q4',...homeLinescores.slice(4).map((_,i) => `OT${i+1}`)]
     : ['Q1','Q2','Q3','Q4'];
@@ -157,6 +159,19 @@ function NflPanel({ data, detail }) {
         <StatusBadge sport="nfl" status={status} />
         {period && clock && <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Q{period} {clock}</span>}
       </div>
+
+      {downDistance?.text && (
+        <div style={{
+          fontSize: 'var(--s-xs)',
+          color: downDistance.isRedZone ? 'var(--accent)' : 'var(--text-muted)',
+          fontWeight: downDistance.isRedZone ? 600 : 400,
+          marginBottom: 6,
+        }}>
+          {downDistance.isRedZone ? '🔴 ' : ''}
+          {downDistance.possession ? `${downDistance.possession} ball · ` : ''}
+          {downDistance.text}
+        </div>
+      )}
 
       <div className="sports-score-row">
         <div className="sports-score-team sports-score-team--away">{awayTeam?.name}</div>
@@ -192,6 +207,20 @@ function NflPanel({ data, detail }) {
       {showBox && (homeRecord || awayRecord) && (
         <div className="sports-record">
           {awayRecord} · {homeRecord}
+        </div>
+      )}
+
+      {showBox && leaders?.length > 0 && (
+        <div className="sports-decisions">
+          {leaders.map((l) => (
+            <span key={l.label}>{l.label}: {l.abbrev ? `${l.abbrev} ` : ''}{l.name} {l.line}</span>
+          ))}
+        </div>
+      )}
+
+      {showAll && venue && (
+        <div style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', marginTop: 4 }}>
+          📍 {venue}
         </div>
       )}
     </div>
