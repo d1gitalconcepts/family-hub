@@ -9,9 +9,18 @@ import { useSchoolCalendarExceptions } from '../hooks/useSchoolCalendarException
 import {
   dateStr, parseDateStr, parsePastedDate, getDayKey, getDayEntries, formatTime,
   addMinutesToTime, minutesBetween, getWeekdayStrip, sameDay, WEEKDAY_LABELS,
+  getNextSchoolDay, getRotationOverride,
 } from '../utils/schoolSchedule';
 
 const WEEKLY_DAY_KEYS = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+const ALL_WEEKDAY_KEYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+// Snow days are local to one district, so their letter is burned to stay
+// in step with neighbors that stayed open; everything else (holidays,
+// breaks — shared across districts) pushes.
+function defaultEffectFor(type) {
+  return type === 'snow_day' ? 'skip' : 'push';
+}
 
 // Block 1/2/4 as one 82-minute row, Block 3 split into three 41-minute
 // rows around lunch — the shape this app is built around by default.
@@ -80,6 +89,8 @@ export default function SchoolSchedule({ profile, onClose }) {
   const [newExType, setNewExType]   = useState('snow_day');
   const [newExNote, setNewExNote]   = useState('');
   const [newExClosed, setNewExClosed] = useState(true);
+  const [newExEffect, setNewExEffect] = useState('skip');
+  const [overrideEditing, setOverrideEditing] = useState(false);
   const [showExPaste, setShowExPaste] = useState(false);
   const [exPasteText, setExPasteText] = useState('');
   const [exPasteError, setExPasteError] = useState('');
@@ -163,7 +174,7 @@ export default function SchoolSchedule({ profile, onClose }) {
   async function handleAddException() {
     if (!newExDate) return;
     await supabase.from('school_calendar_exceptions').upsert(
-      { date: newExDate, type: newExType, note: newExNote || null, school_closed: newExClosed },
+      { date: newExDate, type: newExType, note: newExNote || null, school_closed: newExClosed, rotation_effect: newExEffect },
       { onConflict: 'date' }
     );
     setNewExNote('');
@@ -171,7 +182,7 @@ export default function SchoolSchedule({ profile, onClose }) {
 
   async function handleQuickSnowDay() {
     await supabase.from('school_calendar_exceptions').upsert(
-      { date: dateStr(new Date()), type: 'snow_day', school_closed: true },
+      { date: dateStr(new Date()), type: 'snow_day', school_closed: true, rotation_effect: 'skip' },
       { onConflict: 'date' }
     );
   }
@@ -180,9 +191,49 @@ export default function SchoolSchedule({ profile, onClose }) {
     await supabase.from('school_calendar_exceptions').delete().eq('date', date);
   }
 
-  async function updateExceptionField(date, field, value) {
-    const { error } = await supabase.from('school_calendar_exceptions').update({ [field]: value }).eq('date', date);
+  async function updateException(date, fields) {
+    const { error } = await supabase.from('school_calendar_exceptions').update(fields).eq('date', date);
     if (error) setExPasteError(error.message);
+  }
+
+  function updateExceptionField(date, field, value) {
+    return updateException(date, { [field]: value });
+  }
+
+  // "this date is Day X" — replaces any existing reset on that date.
+  async function setRotationOverride(schedule, date, dayKey) {
+    const d = dateStr(date);
+    const rest = (schedule.rotation_overrides || []).filter((o) => o.date !== d);
+    const next = dayKey ? [...rest, { date: d, day_key: dayKey }].sort((a, b) => a.date.localeCompare(b.date)) : rest;
+    await updateScheduleField(schedule.id, 'rotation_overrides', next);
+  }
+
+  // Option text for the push/skip picker: what the next school day after
+  // `date` would be under `effect`, for every rotation schedule — e.g.
+  // "Skip — next day (Wed) is C", or "...: Sam C · Alex 3" with several kids.
+  function effectOptionLabel(date, effect) {
+    const rotations = schedules.filter((s) => s.schedule_type === 'rotation');
+    const name = effect === 'skip' ? 'Skip' : 'Push';
+    const simulated = { ...exceptionsByDate, [date]: { ...exceptionsByDate[date], date, school_closed: true, rotation_effect: effect } };
+    const results = rotations
+      .map((s) => ({ s, next: getNextSchoolDay(parseDateStr(date), s, simulated) }))
+      .filter((r) => r.next?.key);
+    if (results.length === 0) return name;
+    const weekday = results[0].next.date.toLocaleDateString(undefined, { weekday: 'short' });
+    if (results.length === 1) return `${name} — next day (${weekday}) is ${results[0].next.key}`;
+    const parts = results.map(({ s, next }) => `${(s.profile?.display_name || '').split(' ')[0]} ${next.key}`);
+    return `${name} — next day (${weekday}): ${parts.join(' · ')}`;
+  }
+
+  function renderEffectSelect(date, value, onChange) {
+    if (!schedules.some((s) => s.schedule_type === 'rotation')) return null;
+    return (
+      <select value={value} style={selectStyle} onChange={(e) => onChange(e.target.value)}
+        title="Push: the next school day takes this day's letter (holidays). Skip: this day's letter is used up (snow days).">
+        <option value="push">{effectOptionLabel(date, 'push')}</option>
+        <option value="skip">{effectOptionLabel(date, 'skip')}</option>
+      </select>
+    );
   }
 
   function renderSchedulesTab() {
@@ -192,9 +243,10 @@ export default function SchoolSchedule({ profile, onClose }) {
       <div className="settings-section">
         <h3 style={{ marginBottom: 6 }}>Schedules</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-          One schedule per person. "Rotation" cycles through day-letters (A, B, C, D…) that only
-          advance on real school days — add a snow day in the Snow Days tab and every day-letter
-          after it shifts automatically. "Weekly" is a fixed Mon–Fri schedule that doesn't rotate.
+          One schedule per person. "Rotation" cycles through day-letters (A, B, C, D…) that
+          advance on school days — days off in the Snow Days tab push or skip the rotation
+          automatically, and any day can be manually reset from the day view ("today is Day C").
+          "Weekly" is a fixed Mon–Fri schedule that doesn't rotate.
         </p>
 
         {schedules.map((s) => (
@@ -253,6 +305,19 @@ export default function SchoolSchedule({ profile, onClose }) {
                 </>
               )}
             </div>
+
+            {(s.rotation_overrides || []).length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)' }}>Manual resets</span>
+                {s.rotation_overrides.map((o) => (
+                  <span key={o.date} className="school-class-chip" style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    {parseDateStr(o.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} → {s.schedule_type === 'weekly' ? o.day_key : `Day ${o.day_key}`}
+                    <button className="btn-icon" style={{ padding: '1px 3px', fontSize: 11, color: 'var(--danger)' }} title="Remove reset"
+                      onClick={() => setRotationOverride(s, parseDateStr(o.date), null)}>✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--s-xs)', color: 'var(--text-muted)', width: '100%' }}>School days</span>
@@ -739,7 +804,7 @@ export default function SchoolSchedule({ profile, onClose }) {
         const endObj = parseDateStr(endDate || startDate);
         let guard = 0;
         while (cursor <= endObj && guard < 60) { // safety cap — no real school break spans 60+ days
-          rows.push({ date: dateStr(cursor), type: endDate ? 'break' : 'holiday', note: label || null, school_closed: true });
+          rows.push({ date: dateStr(cursor), type: endDate ? 'break' : 'holiday', note: label || null, school_closed: true, rotation_effect: 'push' });
           cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1);
           guard++;
         }
@@ -766,8 +831,10 @@ export default function SchoolSchedule({ profile, onClose }) {
           </button>
         </div>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginBottom: 14 }}>
-          Shared across every kid. Adding a day here removes it from every rotation schedule's
-          day-letter count — everything after it pushes forward automatically.
+          Shared across every kid. A closed day either <strong>pushes</strong> the rotation (the
+          next school day takes the letter this day would have had — holidays) or{' '}
+          <strong>skips</strong> it (this day's letter is used up — snow days). For anything
+          else, like an admin-dictated day, reset the day directly from the day view.
         </p>
 
         {showExPaste && (
@@ -804,7 +871,7 @@ export default function SchoolSchedule({ profile, onClose }) {
           </label>
           <label style={fieldLabelStyle}>
             <span>Type</span>
-            <select value={newExType} style={selectStyle} onChange={(e) => setNewExType(e.target.value)}>
+            <select value={newExType} style={selectStyle} onChange={(e) => { setNewExType(e.target.value); setNewExEffect(defaultEffectFor(e.target.value)); }}>
               {EXCEPTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </label>
@@ -816,6 +883,12 @@ export default function SchoolSchedule({ profile, onClose }) {
             <input type="checkbox" checked={newExClosed} onChange={(e) => setNewExClosed(e.target.checked)} />
             School closed
           </label>
+          {newExClosed && newExDate && (
+            <label style={fieldLabelStyle}>
+              <span>Rotation</span>
+              {renderEffectSelect(newExDate, newExEffect, setNewExEffect)}
+            </label>
+          )}
           <button className="btn btn-primary" style={{ fontSize: 'var(--s-sm)' }} onClick={handleAddException}>+ Add</button>
         </div>
 
@@ -828,7 +901,7 @@ export default function SchoolSchedule({ profile, onClose }) {
                 {parseDateStr(ex.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
               <select value={ex.type} style={{ ...selectStyle, flex: '0 0 170px' }}
-                onChange={(e) => updateExceptionField(ex.date, 'type', e.target.value)}>
+                onChange={(e) => updateException(ex.date, { type: e.target.value, rotation_effect: defaultEffectFor(e.target.value) })}>
                 {EXCEPTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
               <input className="cal-name-input" style={{ ...inputBoxStyle, flex: '1 1 140px' }} placeholder="Note"
@@ -838,6 +911,8 @@ export default function SchoolSchedule({ profile, onClose }) {
                   onChange={(e) => updateExceptionField(ex.date, 'school_closed', e.target.checked)} />
                 Closed
               </label>
+              {ex.school_closed && renderEffectSelect(ex.date, ex.rotation_effect || 'push',
+                (v) => updateExceptionField(ex.date, 'rotation_effect', v))}
               <button className="btn-icon" style={{ color: 'var(--danger)' }} title="Delete" onClick={() => handleDeleteException(ex.date)}>✕</button>
             </div>
           ))
@@ -854,6 +929,8 @@ export default function SchoolSchedule({ profile, onClose }) {
     const noSchool = ex?.school_closed;
     const isWeekly = activeSchedule.schedule_type === 'weekly';
     const needsAnchor = !isWeekly && !activeSchedule.rotation_anchor_date;
+    const override = getRotationOverride(viewDate, activeSchedule);
+    const dayLabel = (k) => (isWeekly ? WEEKDAY_LABELS[ALL_WEEKDAY_KEYS.indexOf(k)] : `Day ${k}`);
 
     // ‹ › page by week (the day-strip below picks a specific day within
     // whichever week is showing) — paging by single day made the strip
@@ -902,8 +979,34 @@ export default function SchoolSchedule({ profile, onClose }) {
         </div>
 
         <div className="school-day-badge">
-          {dayKey ? (isWeekly ? WEEKDAY_LABELS[viewDate.getDay()] : `Day ${dayKey}`) : (noSchool ? 'No School' : '—')}
+          {dayKey ? dayLabel(dayKey) : (noSchool ? 'No School' : '—')}
         </div>
+
+        {isAdmin && dayKey && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--s-sm)', marginBottom: 10 }}>
+            {override && <span style={{ color: 'var(--text-muted)' }}>Set manually</span>}
+            {override && (
+              <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px' }}
+                onClick={() => setRotationOverride(activeSchedule, viewDate, null)}>Undo reset</button>
+            )}
+            {!overrideEditing ? (
+              <button className="btn" style={{ fontSize: 'var(--s-xs)', padding: '2px 8px' }}
+                onClick={() => setOverrideEditing(true)}>Change day…</button>
+            ) : (
+              <>
+                <span>Make this</span>
+                <select value={dayKey} style={selectStyle}
+                  onChange={(e) => { setRotationOverride(activeSchedule, viewDate, e.target.value); setOverrideEditing(false); }}>
+                  {dayKeyOptionsFor(activeSchedule).map((k) => <option key={k} value={k}>{dayLabel(k)}</option>)}
+                </select>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {isWeekly ? '(just this date)' : '— every day after follows from it'}
+                </span>
+                <button className="btn-icon" title="Cancel" onClick={() => setOverrideEditing(false)}>✕</button>
+              </>
+            )}
+          </div>
+        )}
 
         {ex && (
           <div className={`school-exception-banner${noSchool ? '' : ' school-exception-banner--open'}`}>
@@ -914,7 +1017,7 @@ export default function SchoolSchedule({ profile, onClose }) {
 
         {dayKey && dayEntries.length === 0 && (
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--s-sm)', marginTop: 10 }}>
-            No classes set up for {isWeekly ? WEEKDAY_LABELS[viewDate.getDay()] : `Day ${dayKey}`} yet.
+            No classes set up for {dayLabel(dayKey)} yet.
           </p>
         )}
 

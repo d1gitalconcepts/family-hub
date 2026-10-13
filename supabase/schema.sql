@@ -239,11 +239,11 @@ create policy "admin write place_photos"
 --
 -- schedule_type:
 --   'rotation' — cyclical day-letters (A/B/C/D/…) that advance only
---                on real school days. A snow day or holiday in
---                school_calendar_exceptions is simply never counted,
---                so every day-letter after it shifts by one
---                automatically — the "push" the whole schedule
---                mechanic — with no manual re-numbering.
+--                on real school days. A closed day in
+--                school_calendar_exceptions either pushes (never
+--                counted, every letter after it shifts by one) or
+--                skips (its letter is burned) — see rotation_effect
+--                below — with no manual re-numbering either way.
 --   'weekly'   — a fixed Mon–Fri schedule that doesn't rotate; a
 --                cancelled day just has no school that day.
 --
@@ -401,6 +401,35 @@ end $$;
 -- real data in it yet, drop it first:
 --
 --   drop table if exists school_schedule_blocks;
+-- ============================================================
+
+-- ============================================================
+-- SCHOOL SCHEDULE — push vs skip, manual day resets (v1.15.0)
+-- ============================================================
+-- rotation_effect: what a closed day does to a rotation schedule.
+--   'push' — the day isn't counted; the next school day takes the
+--            letter this day would have had (holidays/breaks — shared
+--            across local districts, so they all push together).
+--   'skip' — the day's letter is burned; the next school day gets the
+--            one after it (snow days — local, so the rotation keeps
+--            marching to stay in step with districts that stayed open).
+-- Ignored when school_closed = false.
+--
+-- rotation_overrides: jsonb array of {date, day_key} — "this date is
+-- Day X" resets (e.g. a superintendent dictating the day after an
+-- admin day). Each one acts as a new rotation anchor from that date
+-- forward. For a weekly schedule it just swaps that one date's
+-- weekday schedule (e.g. a Friday that runs as Monday).
+alter table school_calendar_exceptions add column if not exists rotation_effect text not null default 'push'
+  check (rotation_effect in ('push', 'skip'));
+alter table school_schedules add column if not exists rotation_overrides jsonb not null default '[]'::jsonb;
+
+-- ============================================================
+-- ONE-TIME MANUAL MIGRATION — run the two ALTERs above by hand in the
+-- Supabase SQL editor, then this backfill so existing snow days follow
+-- the skip rule (everything else stays push, today's behavior):
+--
+--   update school_calendar_exceptions set rotation_effect = 'skip' where type = 'snow_day';
 -- ============================================================
 
 -- ============================================================

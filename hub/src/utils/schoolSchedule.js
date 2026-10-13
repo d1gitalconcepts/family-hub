@@ -58,11 +58,44 @@ export function isSchoolDay(date, schedule, exceptionsByDate) {
   return true;
 }
 
-// Core "push" mechanic. The day-key for `date` is however many real
-// school days have elapsed since the rotation anchor, cycling through
-// schedule.day_letters. A day that isn't a real school day (weekend,
-// holiday, snow day) is simply never counted — so cancelling one day
-// shifts every day-letter after it by one, with no manual re-numbering.
+// Does `date` use up a rotation day-letter. Real school days always do.
+// A closed day does only when its exception is a "skip" (snow days —
+// local, so the rotation keeps marching to stay in step with districts
+// that stayed open); a "push" (holidays — shared across districts) is
+// never counted, so the next school day takes the letter it would have had.
+function advancesRotation(date, schedule, exceptionsByDate) {
+  if (!isConfiguredSchoolWeekday(date, schedule)) return false;
+  const ex = exceptionsByDate?.[dateStr(date)];
+  if (!ex || !ex.school_closed) return true;
+  return ex.rotation_effect === 'skip';
+}
+
+// The most recent manual "this date is Day X" reset on or before `date`
+// (schedule.rotation_overrides), falling back to the first-day-of-school
+// anchor. Overrides are how admin-dictated days get handled — everything
+// after one counts forward from it instead of from the start of the year.
+function effectiveAnchor(date, schedule, letters) {
+  const target = dateStr(date);
+  let best = schedule.rotation_anchor_date
+    ? { date: schedule.rotation_anchor_date, day_key: schedule.rotation_anchor_letter || letters[0] }
+    : null;
+  (schedule.rotation_overrides || []).forEach((o) => {
+    if (!o?.date || o.date > target || !letters.includes(o.day_key)) return;
+    if (!best || o.date >= best.date) best = o;
+  });
+  return best;
+}
+
+export function getRotationOverride(date, schedule) {
+  const d = dateStr(date);
+  return (schedule?.rotation_overrides || []).find((o) => o.date === d) || null;
+}
+
+// The day-key for `date` is however many rotation-advancing days have
+// elapsed since the effective anchor, cycling through schedule.day_letters.
+// Weekends and "push" closures are never counted, so they shift every
+// day-letter after them by one; "skip" closures are counted, so the
+// letter is burned. No manual re-numbering either way.
 //
 // Returns null if there's no school that day, or the schedule isn't
 // configured (fully) yet.
@@ -71,27 +104,44 @@ export function getDayKey(date, schedule, exceptionsByDate) {
   if (!isSchoolDay(date, schedule, exceptionsByDate)) return null;
 
   if (schedule.schedule_type === 'weekly') {
-    return WEEKDAY_KEYS[date.getDay()];
+    const override = getRotationOverride(date, schedule);
+    return override && WEEKDAY_KEYS.includes(override.day_key) ? override.day_key : WEEKDAY_KEYS[date.getDay()];
   }
 
   const letters = schedule.day_letters?.length ? schedule.day_letters : ['A', 'B', 'C', 'D'];
-  const anchorDate = parseDateStr(schedule.rotation_anchor_date);
-  if (!anchorDate || date < anchorDate) return null;
-  const anchorIdx = Math.max(0, letters.indexOf(schedule.rotation_anchor_letter || letters[0]));
+  const anchor = effectiveAnchor(date, schedule, letters);
+  if (!anchor) return null;
+  const anchorDate = parseDateStr(anchor.date);
+  if (date < anchorDate) return null;
+  const anchorIdx = Math.max(0, letters.indexOf(anchor.day_key));
 
-  // Count real school days strictly between the anchor and `date` — that
-  // count is the rotation offset from the anchor's letter.
+  // Count rotation-advancing days after the anchor up to and including
+  // `date` — that count is the rotation offset from the anchor's letter.
   let offset = 0;
   const cursor = new Date(anchorDate);
   const target = dateStr(date);
   let guard = 0;
   while (dateStr(cursor) !== target && guard < 3650) {
     cursor.setDate(cursor.getDate() + 1);
-    if (isSchoolDay(cursor, schedule, exceptionsByDate)) offset++;
+    if (advancesRotation(cursor, schedule, exceptionsByDate)) offset++;
     guard++;
   }
   const idx = (anchorIdx + offset) % letters.length;
   return letters[idx];
+}
+
+// The first real school day after `date` and its day-key — used for
+// "next school day would be Day X" previews. null if nothing within ~a
+// season (e.g. summer, or the schedule isn't set up).
+export function getNextSchoolDay(date, schedule, exceptionsByDate) {
+  const cursor = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  for (let i = 0; i < 120; i++) {
+    cursor.setDate(cursor.getDate() + 1);
+    if (isSchoolDay(cursor, schedule, exceptionsByDate)) {
+      return { date: new Date(cursor), key: getDayKey(cursor, schedule, exceptionsByDate) };
+    }
+  }
+  return null;
 }
 
 // Joins periods (the time template) with assignments (day-letter content)

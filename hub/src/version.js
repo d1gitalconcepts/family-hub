@@ -1,6 +1,14 @@
-export const APP_VERSION = '1.14.0';
+export const APP_VERSION = '1.15.0';
 
 export const CHANGELOG = [
+  {
+    version: '1.15.0',
+    date: 'October 2026',
+    notes: [
+      'Days off now either push the rotation (holidays — the next school day takes that day\'s letter) or skip it (snow days — that day\'s letter is used up), with a preview of what the next school day becomes',
+      'Any school day can be manually reset ("today is Day C") from the day view — every day after it follows from there, for admin-dictated days',
+    ],
+  },
   {
     version: '1.14.0',
     date: 'August 2026',
